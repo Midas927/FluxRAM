@@ -820,8 +820,6 @@ public partial class MainWindow : Window
         EditionCaptionTextBlock.Text = T("EDITION", "版本");
         EditionHelpButton.ToolTip = T("Edition details", "版本功能明细");
         EditionValueTextBlock.Text = T(edition.EditionLabelEnglish, edition.EditionLabelChinese);
-        EditionFeatureTextBlock.Text = T(edition.FeatureSummaryEnglish, edition.FeatureSummaryChinese);
-        ProIntroTextBlock.Text = T(edition.ProIntroductionEnglish, edition.ProIntroductionChinese);
         DetailSettingsButton.Content = _isDetailPanelVisible
             ? T("Hide Details", "收起详情")
             : T("Details", "详细设置");

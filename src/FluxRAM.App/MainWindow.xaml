@@ -582,15 +582,11 @@
           <Grid>
             <Grid.RowDefinitions>
               <RowDefinition Height="Auto" />
-              <RowDefinition Height="5" />
+              <RowDefinition Height="12" />
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="8" />
               <RowDefinition Height="Auto" />
               <RowDefinition Height="10" />
-              <RowDefinition Height="Auto" />
-              <RowDefinition Height="8" />
-              <RowDefinition Height="Auto" />
-              <RowDefinition Height="8" />
-              <RowDefinition Height="Auto" />
-              <RowDefinition Height="5" />
               <RowDefinition Height="Auto" />
               <RowDefinition Height="5" />
               <RowDefinition Height="Auto" />
@@ -616,48 +612,36 @@
                       ToolTip="Edition details"
                       Click="EditionHelpButton_OnClick" />
             </StackPanel>
-            <TextBlock x:Name="EditionFeatureTextBlock"
-                       Grid.Row="2"
-                       Grid.ColumnSpan="3"
-                       FontSize="11"
-                       Foreground="{StaticResource TextSecondaryBrush}"
-                       TextWrapping="Wrap" />
-            <TextBlock x:Name="ProIntroTextBlock"
-                       Grid.Row="4"
-                       Grid.ColumnSpan="3"
-                       FontSize="11"
-                       Foreground="{StaticResource WarningBrush}"
-                       TextWrapping="Wrap" />
 
             <TextBlock x:Name="MachineIdCaptionTextBlock"
-                       Grid.Row="6"
+                       Grid.Row="2"
                        Grid.ColumnSpan="3"
                        Style="{StaticResource CaptionStyle}"
                        Text="MACHINE ID" />
             <TextBox x:Name="MachineIdTextBox"
-                     Grid.Row="8"
+                     Grid.Row="4"
                      Grid.Column="0"
                      IsReadOnly="True"
                      FontFamily="Consolas"
                      FontSize="10" />
             <Button x:Name="CopyMachineIdButton"
-                    Grid.Row="8"
+                    Grid.Row="4"
                     Grid.Column="2"
                     Content="Copy"
                     Click="CopyMachineIdButton_OnClick" />
 
             <TextBlock x:Name="LicenseKeyCaptionTextBlock"
-                       Grid.Row="10"
+                       Grid.Row="6"
                        Grid.ColumnSpan="3"
                        Style="{StaticResource CaptionStyle}"
                        Text="PRO KEY" />
             <TextBox x:Name="LicenseKeyTextBox"
-                     Grid.Row="12"
+                     Grid.Row="8"
                      Grid.Column="0"
                      FontFamily="Consolas"
                      FontSize="10" />
             <Button x:Name="ActivateProButton"
-                    Grid.Row="12"
+                    Grid.Row="8"
                     Grid.Column="2"
                     Content="Activate"
                     Click="ActivateProButton_OnClick" />
