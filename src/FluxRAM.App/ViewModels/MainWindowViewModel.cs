@@ -1,0 +1,308 @@
+﻿using System.ComponentModel;
+using System.Globalization;
+using System.Runtime.CompilerServices;
+using FluxRAM.Core.Models;
+
+namespace FluxRAM.App.ViewModels;
+
+public sealed class MainWindowViewModel : INotifyPropertyChanged
+{
+    private const int MaxRecentEvents = 30;
+    private const int MaxBoostDetailLines = 20;
+
+    private UiLanguage _language = UiLanguage.English;
+    private long _ramDeltaBytes;
+    private ulong _availableRamBytes;
+    private long _lastBoostTrimmedBytes;
+    private long _totalTrimmedBytes;
+    private long _boostNetGainBytes;
+    private double _reboundRatePercent;
+    private bool _isAutoBoostEnabled;
+    private int _protectedAppCount;
+    private bool _supportsProtectList = true;
+    private string _statusMessage;
+    private string _processSummaryDisplay;
+    private string _foregroundProcessDisplay;
+    private string _protectionSummaryDisplay;
+    private string _selfOverheadDisplay;
+    private DateTimeOffset _lastUpdated;
+    private IReadOnlyList<string> _recentEvents;
+    private IReadOnlyList<string> _boostDetails;
+    private IReadOnlyList<string> _protectedEntries;
+    private AppOverheadSnapshot? _lastOverheadSnapshot;
+
+    public MainWindowViewModel()
+    {
+        _statusMessage = L("Standby.", "待命中。");
+        _processSummaryDisplay = L("Processes: waiting for first scan", "进程：等待首次扫描");
+        _foregroundProcessDisplay = L("Foreground: unknown", "前台：未知");
+        _protectionSummaryDisplay = L("Protected apps: 0", "受保护应用：0");
+        _selfOverheadDisplay = L("FluxRAM Overhead: pending", "FluxRAM 开销：等待数据");
+        _lastUpdated = DateTimeOffset.Now;
+        _recentEvents = Array.Empty<string>();
+        _boostDetails = Array.Empty<string>();
+        _protectedEntries = Array.Empty<string>();
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    public string RamDeltaDisplay
+    {
+        get
+        {
+            var sign = _ramDeltaBytes >= 0 ? "+" : string.Empty;
+            return Metric("RAM Delta", "内存变化", $"{sign}{FormatBytes(_ramDeltaBytes)}");
+        }
+    }
+
+    public string AvailableRamDisplay => Metric("Available RAM", "可用内存", FormatBytes(_availableRamBytes));
+
+    public string LastBoostTrimmedDisplay
+    {
+        get
+        {
+            var sign = _lastBoostTrimmedBytes >= 0 ? "+" : string.Empty;
+            return Metric("Last Boost Trimmed", "最近 Boost 裁剪量", $"{sign}{FormatBytes(_lastBoostTrimmedBytes)}");
+        }
+    }
+
+    public string TotalTrimmedDisplay
+    {
+        get
+        {
+            var sign = _totalTrimmedBytes >= 0 ? "+" : string.Empty;
+            return Metric("Total Trimmed", "累计裁剪量", $"{sign}{FormatBytes(_totalTrimmedBytes)}");
+        }
+    }
+
+    public string BoostNetGainDisplay
+    {
+        get
+        {
+            var sign = _boostNetGainBytes >= 0 ? "+" : string.Empty;
+            return Metric("Boost Net Gain", "Boost 净收益", $"{sign}{FormatBytes(_boostNetGainBytes)}");
+        }
+    }
+
+    public string ReboundRateDisplay => Metric("Rebound Rate", "回弹率", $"{_reboundRatePercent:0.0}%");
+
+    public string AutoBoostDisplay => _isAutoBoostEnabled
+        ? L("Auto Boost: on, pressure-gated", "自动 Boost：开启，按压力触发")
+        : L("Auto Boost: off", "自动 Boost：关闭");
+
+    public string ProcessSummaryDisplay => _processSummaryDisplay;
+
+    public string ForegroundProcessDisplay => _foregroundProcessDisplay;
+
+    public string ProtectionSummaryDisplay => _protectionSummaryDisplay;
+
+    public string SelfOverheadDisplay => _selfOverheadDisplay;
+
+    public string LastUpdatedDisplay => Metric("Last update", "最后更新", $"{_lastUpdated:HH:mm:ss}");
+
+    public string StatusMessage => _statusMessage;
+
+    public IReadOnlyList<string> RecentEvents => _recentEvents;
+
+    public IReadOnlyList<string> BoostDetails => _boostDetails;
+
+    public IReadOnlyList<string> ProtectedEntries => _protectedEntries;
+
+    public void SetLanguage(UiLanguage language)
+    {
+        if (_language == language)
+        {
+            return;
+        }
+
+        _language = language;
+        RaisePropertyChanged(nameof(RamDeltaDisplay));
+        RaisePropertyChanged(nameof(AvailableRamDisplay));
+        RaisePropertyChanged(nameof(LastBoostTrimmedDisplay));
+        RaisePropertyChanged(nameof(TotalTrimmedDisplay));
+        RaisePropertyChanged(nameof(BoostNetGainDisplay));
+        RaisePropertyChanged(nameof(ReboundRateDisplay));
+        RaisePropertyChanged(nameof(AutoBoostDisplay));
+        RefreshProtectionSummary();
+        RaisePropertyChanged(nameof(LastUpdatedDisplay));
+
+        if (_lastOverheadSnapshot.HasValue)
+        {
+            UpdateSelfOverhead(_lastOverheadSnapshot.Value);
+        }
+    }
+
+    public void UpdateRamDelta(long ramDeltaBytes)
+    {
+        _ramDeltaBytes = ramDeltaBytes;
+        RaisePropertyChanged(nameof(RamDeltaDisplay));
+    }
+
+    public void UpdateAvailableMemory(ulong availableRamBytes)
+    {
+        _availableRamBytes = availableRamBytes;
+        RaisePropertyChanged(nameof(AvailableRamDisplay));
+    }
+
+    public void UpdateBoostMetrics(
+        long lastBoostTrimmedBytes,
+        long totalTrimmedBytes,
+        long boostNetGainBytes)
+    {
+        _lastBoostTrimmedBytes = lastBoostTrimmedBytes;
+        _totalTrimmedBytes = totalTrimmedBytes;
+        _boostNetGainBytes = boostNetGainBytes;
+        RaisePropertyChanged(nameof(LastBoostTrimmedDisplay));
+        RaisePropertyChanged(nameof(TotalTrimmedDisplay));
+        RaisePropertyChanged(nameof(BoostNetGainDisplay));
+    }
+
+    public void UpdateReboundRate(double reboundRatePercent)
+    {
+        _reboundRatePercent = Math.Clamp(reboundRatePercent, 0d, 100d);
+        RaisePropertyChanged(nameof(ReboundRateDisplay));
+    }
+
+    public void SetAutoBoost(bool isEnabled)
+    {
+        if (_isAutoBoostEnabled == isEnabled)
+        {
+            return;
+        }
+
+        _isAutoBoostEnabled = isEnabled;
+        RaisePropertyChanged(nameof(AutoBoostDisplay));
+    }
+
+    public void UpdateProcessMetrics(int scannedProcessCount, int purgeCandidateCount, string foregroundProcessName)
+    {
+        _processSummaryDisplay = L(
+            $"Processes: scanned {scannedProcessCount}, boost candidates {purgeCandidateCount}",
+            $"进程：已扫描 {scannedProcessCount}，Boost 候选 {purgeCandidateCount}");
+        _foregroundProcessDisplay = L(
+            $"Foreground: {foregroundProcessName}",
+            $"前台：{foregroundProcessName}");
+        RaisePropertyChanged(nameof(ProcessSummaryDisplay));
+        RaisePropertyChanged(nameof(ForegroundProcessDisplay));
+    }
+
+    public void UpdateProtectionSummary(int protectedAppCount, bool supportsProtectList)
+    {
+        _protectedAppCount = Math.Max(0, protectedAppCount);
+        _supportsProtectList = supportsProtectList;
+        RefreshProtectionSummary();
+    }
+
+    public void UpdateProtectedEntries(IReadOnlyList<string> entries)
+    {
+        _protectedEntries = entries.ToArray();
+        RaisePropertyChanged(nameof(ProtectedEntries));
+    }
+
+    public void UpdateSelfOverhead(AppOverheadSnapshot overheadSnapshot)
+    {
+        _lastOverheadSnapshot = overheadSnapshot;
+        _selfOverheadDisplay = L(
+            $"FluxRAM Overhead: CPU {overheadSnapshot.CpuUsagePercent:0.0}% | " +
+            $"WS {FormatBytes(overheadSnapshot.WorkingSetBytes)} | " +
+            $"Private {FormatBytes(overheadSnapshot.PrivateBytes)} | " +
+            $"Handles {overheadSnapshot.HandleCount}",
+            $"FluxRAM 开销：CPU {overheadSnapshot.CpuUsagePercent:0.0}% | " +
+            $"工作集 {FormatBytes(overheadSnapshot.WorkingSetBytes)} | " +
+            $"私有内存 {FormatBytes(overheadSnapshot.PrivateBytes)} | " +
+            $"句柄 {overheadSnapshot.HandleCount}");
+        RaisePropertyChanged(nameof(SelfOverheadDisplay));
+    }
+
+    public void UpdateBoostDetails(IReadOnlyList<string> details)
+    {
+        _boostDetails = details.Take(MaxBoostDetailLines).ToArray();
+        RaisePropertyChanged(nameof(BoostDetails));
+    }
+
+    public void AddEvent(string message)
+    {
+        var timestamp = DateTimeOffset.Now.ToString("HH:mm:ss", CultureInfo.InvariantCulture);
+        var nextEvents = new List<string>(_recentEvents.Count + 1)
+        {
+            $"{timestamp}  {message}"
+        };
+        nextEvents.AddRange(_recentEvents);
+        _recentEvents = nextEvents.Take(MaxRecentEvents).ToArray();
+        RaisePropertyChanged(nameof(RecentEvents));
+    }
+
+    public void TouchLastUpdated(DateTimeOffset timestamp)
+    {
+        _lastUpdated = timestamp;
+        RaisePropertyChanged(nameof(LastUpdatedDisplay));
+    }
+
+    public void SetStatus(string message)
+    {
+        _statusMessage = message;
+        RaisePropertyChanged(nameof(StatusMessage));
+    }
+
+    private void RefreshProtectionSummary()
+    {
+        _protectionSummaryDisplay = _supportsProtectList
+            ? L($"Protected apps: {_protectedAppCount}", $"受保护应用：{_protectedAppCount}")
+            : L("Protected apps: Pro only", "受保护应用：专业版专属");
+        RaisePropertyChanged(nameof(ProtectionSummaryDisplay));
+    }
+
+    public static string FormatBytes(long bytes)
+    {
+        var absoluteBytes = Math.Abs((double)bytes);
+        if (absoluteBytes >= 1024d * 1024d * 1024d)
+        {
+            return $"{bytes / (1024d * 1024d * 1024d):0.0} GB";
+        }
+
+        if (absoluteBytes >= 1024d * 1024d)
+        {
+            return $"{bytes / (1024d * 1024d):0.0} MB";
+        }
+
+        if (absoluteBytes >= 1024d)
+        {
+            return $"{bytes / 1024d:0.0} KB";
+        }
+
+        return $"{bytes} B";
+    }
+
+    public static string FormatBytes(ulong bytes)
+    {
+        if (bytes <= long.MaxValue)
+        {
+            return FormatBytes((long)bytes);
+        }
+
+        var asDouble = (double)bytes;
+        if (asDouble >= 1024d * 1024d * 1024d)
+        {
+            return $"{asDouble / (1024d * 1024d * 1024d):0.0} GB";
+        }
+
+        return $"{asDouble / (1024d * 1024d):0.0} MB";
+    }
+
+    private string L(string english, string chinese)
+    {
+        return _language == UiLanguage.ChineseSimplified ? chinese : english;
+    }
+
+    private string Metric(string englishLabel, string chineseLabel, string value)
+    {
+        return _language == UiLanguage.ChineseSimplified
+            ? $"{chineseLabel}：{value}"
+            : $"{englishLabel}: {value}";
+    }
+
+    private void RaisePropertyChanged([CallerMemberName] string? propertyName = null)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
+}

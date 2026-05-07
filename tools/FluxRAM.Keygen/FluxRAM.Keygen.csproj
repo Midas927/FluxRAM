@@ -1,0 +1,14 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <ApplicationIcon>..\..\FluxRAM.ico</ApplicationIcon>
+    <RootNamespace>FluxRAM.Keygen</RootNamespace>
+    <AssemblyName>FluxRAM.Keygen</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="..\..\FluxRAM.ico" Link="FluxRAM.ico" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,1034 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Interop;
+using System.Windows.Threading;
+using FluxRAM.App.Automation;
+using FluxRAM.App.Configuration;
+using FluxRAM.App.Licensing;
+using FluxRAM.App.ViewModels;
+using FluxRAM.Core.Interop;
+using FluxRAM.Core.Models;
+using FluxRAM.Core.Services;
+using Drawing = System.Drawing;
+using Forms = System.Windows.Forms;
+using FluxRAMLicenseManager = FluxRAM.App.Licensing.LicenseManager;
+using OpenFileDialog = Microsoft.Win32.OpenFileDialog;
+
+namespace FluxRAM.App;
+
+public partial class MainWindow : Window
+{
+    private const double CompactWindowWidth = 560d;
+    private const double CompactWindowHeight = 360d;
+    private const double CompactMinWindowWidth = 520d;
+    private const double CompactMinWindowHeight = 330d;
+    private const double DetailWindowWidth = 1060d;
+    private const double DetailWindowHeight = 690d;
+    private const double DetailMinWindowWidth = 900d;
+    private const double DetailMinWindowHeight = 600d;
+
+    private readonly MainWindowViewModel _viewModel;
+    private readonly ProcessScraperService _processScraperService;
+    private readonly MemoryStatusService _memoryStatusService;
+    private readonly MemoryPurgeService _memoryPurgeService;
+    private readonly PurgePolicyService _purgePolicyService;
+    private readonly FluxRAMLicenseManager _licenseManager;
+    private readonly ProtectedAppsStore _protectedAppsStore;
+    private readonly DispatcherTimer _optimizerTimer;
+    private readonly Forms.NotifyIcon _trayIcon;
+    private readonly Forms.ToolStripMenuItem _openTrayMenuItem;
+    private readonly Forms.ToolStripMenuItem _boostTrayMenuItem;
+    private readonly Forms.ToolStripMenuItem _exitTrayMenuItem;
+
+    private readonly Dictionary<int, DateTimeOffset> _lastPurgeTimesByProcessId = new();
+    private readonly HashSet<string> _protectedProcessNames = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _protectedProcessPaths = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, string> _protectedEntryDisplayByPath = new(StringComparer.OrdinalIgnoreCase);
+
+    private OptimizerSettings _optimizerSettings;
+    private OptimizerProfile _selectedProfile;
+    private UiLanguage _uiLanguage = UiLanguage.English;
+    private LicenseStatus _licenseStatus;
+
+    private DateTimeOffset? _lastBoostAt;
+    private DateTimeOffset? _lastAutoBoostAt;
+    private DateTimeOffset? _reboundTrackingUntil;
+    private ulong _baselineAvailableMemoryBytes;
+    private ulong _lastBoostBaselineAvailableMemoryBytes;
+    private long _lastBoostTrimmedBytes;
+    private long _totalTrimmedBytes;
+    private long _lastBoostNetGainBytes;
+    private double _reboundRatePercent;
+    private string _lastPolicyMessage = string.Empty;
+    private bool _isAutoBoostEnabled;
+    private bool _isExitRequested;
+    private bool _hasShownTrayTip;
+    private bool _isDetailPanelVisible;
+
+    public MainWindow()
+    {
+        InitializeComponent();
+
+        _viewModel = new MainWindowViewModel();
+        _processScraperService = new ProcessScraperService();
+        _memoryStatusService = new MemoryStatusService();
+        _memoryPurgeService = new MemoryPurgeService();
+        _purgePolicyService = new PurgePolicyService();
+        _licenseManager = new FluxRAMLicenseManager();
+        _protectedAppsStore = new ProtectedAppsStore();
+        _licenseStatus = _licenseManager.GetStatus();
+        _selectedProfile = OptimizerProfile.Conservative;
+        _optimizerSettings = OptimizerSettingsCatalog.FromProfile(_selectedProfile);
+        _optimizerTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromSeconds(2)
+        };
+        _optimizerTimer.Tick += OptimizerTimer_OnTick;
+
+        _openTrayMenuItem = new Forms.ToolStripMenuItem();
+        _openTrayMenuItem.Click += (_, _) => Dispatcher.Invoke(RestoreFromTray);
+        _boostTrayMenuItem = new Forms.ToolStripMenuItem();
+        _boostTrayMenuItem.Click += (_, _) => Dispatcher.Invoke(() =>
+        {
+            RunBoostPass(true, T("Tray Boost", "托盘 Boost"));
+            UpdateMonitoringState();
+        });
+        _exitTrayMenuItem = new Forms.ToolStripMenuItem();
+        _exitTrayMenuItem.Click += (_, _) => Dispatcher.Invoke(ExitFromTray);
+        var trayMenu = new Forms.ContextMenuStrip();
+        trayMenu.Items.Add(_openTrayMenuItem);
+        trayMenu.Items.Add(_boostTrayMenuItem);
+        trayMenu.Items.Add(new Forms.ToolStripSeparator());
+        trayMenu.Items.Add(_exitTrayMenuItem);
+
+        _trayIcon = new Forms.NotifyIcon
+        {
+            Icon = ResolveTrayIcon(),
+            Visible = true,
+            ContextMenuStrip = trayMenu
+        };
+        _trayIcon.DoubleClick += (_, _) => Dispatcher.Invoke(RestoreFromTray);
+
+        StateChanged += MainWindow_OnStateChanged;
+        Closing += MainWindow_OnClosing;
+        Closed += MainWindow_OnClosed;
+
+        DataContext = _viewModel;
+        ProfileSelector.SelectedIndex = 0;
+        LanguageSelector.SelectedIndex = 0;
+        ApplyEditionUi();
+        ApplyLanguage(UiLanguage.English, false);
+        _viewModel.UpdateRamDelta(0);
+        _viewModel.UpdateAvailableMemory(0);
+        _viewModel.UpdateBoostMetrics(0, 0, 0);
+        _viewModel.UpdateReboundRate(0);
+        LoadProtectedApps();
+        RefreshProtectedEntries();
+        RefreshMetricCards();
+        ApplyDetailPanelState(false);
+        _viewModel.AddEvent(T("Engine initialized in simplified boost mode.", "引擎已按精简 Boost 模式初始化。"));
+    }
+
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+        TryEnableMicaBackdrop();
+        CaptureBaselineMemory();
+        UpdateSelfOverhead();
+    }
+
+    private void BoostNowButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        RunBoostPass(true, T("Boost Now", "立即 Boost"));
+        UpdateMonitoringState();
+    }
+
+    private void AutoBoostToggle_OnChecked(object sender, RoutedEventArgs e)
+    {
+        _isAutoBoostEnabled = true;
+        _viewModel.SetAutoBoost(true);
+        _viewModel.AddEvent(T(
+            "Auto Boost enabled. FluxRAM will boost only when memory pressure is high.",
+            "自动 Boost 已开启。FluxRAM 只会在内存压力高时触发。"));
+        UpdateMonitoringState();
+    }
+
+    private void AutoBoostToggle_OnUnchecked(object sender, RoutedEventArgs e)
+    {
+        _isAutoBoostEnabled = false;
+        _viewModel.SetAutoBoost(false);
+        _viewModel.AddEvent(T("Auto Boost disabled.", "自动 Boost 已关闭。"));
+        UpdateMonitoringState();
+    }
+
+    private void MinimizeButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        WindowState = WindowState.Minimized;
+    }
+
+    private void DetailSettingsButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        ApplyDetailPanelState(!_isDetailPanelVisible);
+    }
+
+    private void CopyMachineIdButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            System.Windows.Clipboard.SetText(_licenseStatus.MachineId);
+            _viewModel.SetStatus(T("Machine ID copied.", "机器标识已复制。"));
+        }
+        catch
+        {
+            _viewModel.SetStatus(T("Unable to copy Machine ID.", "无法复制机器标识。"));
+        }
+    }
+
+    private void ActivateProButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        _licenseStatus = _licenseManager.Activate(LicenseKeyTextBox.Text);
+        if (_licenseStatus.Features.Edition == AppEdition.Pro)
+        {
+            LicenseKeyTextBox.Text = string.Empty;
+            _viewModel.AddEvent(T(
+                "Pro edition activated for this computer.",
+                "此电脑已永久激活专业版。"));
+        }
+        else
+        {
+            _viewModel.AddEvent(T(
+                $"Pro activation failed: {_licenseStatus.Failure}.",
+                $"专业版激活失败：{_licenseStatus.Failure}。"));
+        }
+
+        ApplyEditionUi();
+        ApplyLanguage(_uiLanguage, false);
+        _viewModel.SetStatus(LocalizeLicenseMessage(_licenseStatus.Message, _licenseStatus.Failure));
+    }
+
+    private void AddProtectedAppButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (!_licenseStatus.Features.SupportsProtectList)
+        {
+            _viewModel.SetStatus(T(
+                "App protection is available in Pro edition only.",
+                "应用保护仅在专业版可用。"));
+            return;
+        }
+
+        var dialog = new OpenFileDialog
+        {
+            Filter = "Executable Files (*.exe)|*.exe|All Files (*.*)|*.*",
+            Multiselect = true,
+            Title = T("Select protected applications", "选择受保护应用")
+        };
+
+        if (dialog.ShowDialog(this) != true)
+        {
+            return;
+        }
+
+        var addedCount = 0;
+        foreach (var fileName in dialog.FileNames)
+        {
+            if (TryAddProtectedPath(fileName))
+            {
+                addedCount += 1;
+            }
+        }
+
+        RefreshProtectedEntries();
+        SaveProtectedApps();
+        ProtectedAppsListBox.SelectedIndex = -1;
+        _viewModel.AddEvent(T(
+            $"Protected apps updated: added {addedCount}.",
+            $"受保护应用已更新：新增 {addedCount} 项。"));
+    }
+
+    private void AddRunningProtectedAppButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (!_licenseStatus.Features.SupportsProtectList)
+        {
+            _viewModel.SetStatus(T(
+                "App protection is available in Pro edition only.",
+                "应用保护仅在专业版可用。"));
+            return;
+        }
+
+        var snapshots = _processScraperService.Scrape(_lastPurgeTimesByProcessId);
+        var candidates = ProtectedAppCandidateFactory.FromSnapshots(snapshots, _protectedProcessPaths);
+        if (candidates.Count == 0)
+        {
+            _viewModel.SetStatus(T(
+                "No running applications with readable executable paths are available to add.",
+                "当前没有可添加且路径可读取的运行中应用。"));
+            return;
+        }
+
+        var selectedPaths = ShowRunningAppPicker(candidates);
+        if (selectedPaths.Count == 0)
+        {
+            return;
+        }
+
+        var addedCount = 0;
+        foreach (var selectedPath in selectedPaths)
+        {
+            if (TryAddProtectedPath(selectedPath, requireExistingFile: false))
+            {
+                addedCount += 1;
+            }
+        }
+
+        RefreshProtectedEntries();
+        SaveProtectedApps();
+        ProtectedAppsListBox.SelectedIndex = -1;
+        _viewModel.AddEvent(T(
+            $"Protected apps updated from running apps: added {addedCount}.",
+            $"已从运行中应用更新保护列表：新增 {addedCount} 项。"));
+    }
+
+    private void RemoveProtectedAppButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (ProtectedAppsListBox.SelectedItems.Count == 0)
+        {
+            _viewModel.SetStatus(T(
+                "Select protected apps to remove.",
+                "请先选择要删除的受保护应用。"));
+            return;
+        }
+
+        var selectedEntries = ProtectedAppsListBox.SelectedItems.Cast<string>().ToArray();
+        var removedCount = 0;
+        foreach (var selectedEntry in selectedEntries)
+        {
+            if (RemoveProtectedPath(selectedEntry))
+            {
+                removedCount += 1;
+            }
+        }
+
+        RefreshProtectedEntries();
+        SaveProtectedApps();
+        ProtectedAppsListBox.SelectedIndex = -1;
+        _viewModel.AddEvent(T(
+            $"Protected apps updated: removed {removedCount}.",
+            $"受保护应用已更新：删除 {removedCount} 项。"));
+    }
+
+    private void ProtectedAppsListBox_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        RemoveProtectedAppButton.IsEnabled =
+            _licenseStatus.Features.SupportsProtectList &&
+            ProtectedAppsListBox.SelectedItems.Count > 0;
+    }
+
+    private void LanguageSelector_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (LanguageSelector.SelectedItem is not ComboBoxItem item || item.Tag is not string tag)
+        {
+            return;
+        }
+
+        ApplyLanguage(tag.Equals("zh-CN", StringComparison.OrdinalIgnoreCase)
+            ? UiLanguage.ChineseSimplified
+            : UiLanguage.English);
+    }
+
+    private void ProfileSelector_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (ProfileSelector.SelectedItem is not ComboBoxItem comboBoxItem || comboBoxItem.Tag is not string rawProfile)
+        {
+            return;
+        }
+
+        if (!Enum.TryParse<OptimizerProfile>(rawProfile, true, out var profile))
+        {
+            return;
+        }
+
+        if (profile == OptimizerProfile.Aggressive && !_licenseStatus.Features.SupportsExtremeProfile)
+        {
+            ProfileSelector.SelectedIndex = 1;
+            _viewModel.SetStatus(T(
+                "Extreme Performance is available in Pro edition only.",
+                "极致性能仅在专业版可用。"));
+            return;
+        }
+
+        ApplyProfile(profile);
+    }
+
+    private void OptimizerTimer_OnTick(object? sender, EventArgs e) => RunMonitoringTick();
+
+    private void RunMonitoringTick()
+    {
+        var now = DateTimeOffset.Now;
+        if (!_memoryStatusService.TryGetSnapshot(out var memorySnapshot))
+        {
+            _viewModel.UpdateRamDelta(0);
+            _viewModel.UpdateAvailableMemory(0);
+            _viewModel.TouchLastUpdated(now);
+            UpdateSelfOverhead();
+            RefreshMetricCards();
+            _viewModel.SetStatus(T("Unable to read memory snapshot.", "无法读取内存快照。"));
+            UpdateMonitoringState();
+            return;
+        }
+
+        UpdateStatusMetrics(memorySnapshot, now);
+        var snapshots = _processScraperService.Scrape(_lastPurgeTimesByProcessId);
+        var foreground = snapshots.Where(x => x.IsForeground).Select(x => x.ProcessName).FirstOrDefault() ?? T("Unknown", "未知");
+        _viewModel.UpdateProcessMetrics(snapshots.Count, 0, foreground);
+
+        if (AutoBoostPolicy.CanRun(_isAutoBoostEnabled, _optimizerSettings, _lastAutoBoostAt, now))
+        {
+            var didRun = RunBoostPass(
+                forcePurge: false,
+                trigger: T("Auto Boost", "自动 Boost"),
+                memorySnapshot: memorySnapshot,
+                snapshots: snapshots,
+                now: now);
+            if (didRun)
+            {
+                _lastAutoBoostAt = now;
+            }
+        }
+
+        UpdateMonitoringState();
+    }
+
+    private bool RunBoostPass(
+        bool forcePurge,
+        string trigger,
+        MemorySnapshot? memorySnapshot = null,
+        IReadOnlyList<ProcessSnapshot>? snapshots = null,
+        DateTimeOffset? now = null)
+    {
+        var startedAt = now ?? DateTimeOffset.Now;
+        MemorySnapshot sampled = default;
+        if (!memorySnapshot.HasValue && !_memoryStatusService.TryGetSnapshot(out sampled))
+        {
+            _viewModel.SetStatus(T("Unable to read memory snapshot.", "无法读取内存快照。"));
+            return false;
+        }
+
+        var beforeMemory = memorySnapshot ?? sampled;
+        var sampledSnapshots = snapshots ?? _processScraperService.Scrape(_lastPurgeTimesByProcessId);
+        var foreground = sampledSnapshots.Where(x => x.IsForeground).Select(x => x.ProcessName).FirstOrDefault() ?? T("Unknown", "未知");
+        IReadOnlyCollection<string> protectedProcessNames = _licenseStatus.Features.SupportsProtectList
+            ? _protectedProcessNames
+            : Array.Empty<string>();
+        IReadOnlyCollection<string> protectedProcessPaths = _licenseStatus.Features.SupportsProtectList
+            ? _protectedProcessPaths
+            : Array.Empty<string>();
+        var plan = _purgePolicyService.CreatePlan(
+            sampledSnapshots,
+            beforeMemory,
+            _optimizerSettings,
+            startedAt,
+            _lastPurgeTimesByProcessId,
+            forcePurge,
+            protectedProcessNames,
+            protectedProcessPaths,
+            enableAdvancedProtection: _licenseStatus.Features.SupportsAdvancedProtection);
+
+        _viewModel.UpdateProcessMetrics(sampledSnapshots.Count, plan.Candidates.Count, foreground);
+
+        if (!string.Equals(_lastPolicyMessage, plan.DecisionMessage, StringComparison.Ordinal))
+        {
+            _lastPolicyMessage = plan.DecisionMessage;
+            _viewModel.AddEvent(LocalizePolicyMessage(plan.DecisionMessage));
+        }
+
+        var trimmed = 0L;
+        var success = 0;
+        var details = new List<string>();
+
+        foreach (var candidate in plan.Candidates)
+        {
+            var result = _memoryPurgeService.Purge(candidate.ProcessId);
+            var reason = T(
+                $"cold {candidate.ColdnessScore:0} | cpu {candidate.CpuUsagePercent:0.0}% | io {MainWindowViewModel.FormatBytes((long)candidate.IoBytesPerSecond)}/s",
+                $"冷度 {candidate.ColdnessScore:0} | CPU {candidate.CpuUsagePercent:0.0}% | IO {MainWindowViewModel.FormatBytes((long)candidate.IoBytesPerSecond)}/秒");
+
+            if (result.Success)
+            {
+                var delta = Math.Max(0L, result.DeltaBytes);
+                trimmed += delta;
+                success += 1;
+                _lastPurgeTimesByProcessId[candidate.ProcessId] = startedAt;
+                details.Add(T(
+                    $"{candidate.ProcessName}.exe | {MainWindowViewModel.FormatBytes(result.BeforeWorkingSetBytes)} -> {MainWindowViewModel.FormatBytes(result.AfterWorkingSetBytes)} | trim {MainWindowViewModel.FormatBytes(delta)} | {reason}",
+                    $"{candidate.ProcessName}.exe | {MainWindowViewModel.FormatBytes(result.BeforeWorkingSetBytes)} -> {MainWindowViewModel.FormatBytes(result.AfterWorkingSetBytes)} | 裁剪 {MainWindowViewModel.FormatBytes(delta)} | {reason}"));
+            }
+            else
+            {
+                details.Add(T(
+                    $"{candidate.ProcessName}.exe | failed | {reason} | {result.ErrorMessage}",
+                    $"{candidate.ProcessName}.exe | 失败 | {reason} | {result.ErrorMessage}"));
+            }
+        }
+
+        if (details.Count == 0)
+        {
+            details.Add(T(
+                "No candidate met threshold/coldness/cooldown/protect-list constraints.",
+                "无候选满足阈值/冷度/冷却/保护列表约束。"));
+        }
+
+        _viewModel.UpdateBoostDetails(details);
+        _totalTrimmedBytes += Math.Max(0L, trimmed);
+        _lastBoostAt = startedAt;
+
+        if (_memoryStatusService.TryGetSnapshot(out var after))
+        {
+            _lastBoostBaselineAvailableMemoryBytes = beforeMemory.AvailablePhysicalMemoryBytes;
+            _lastBoostNetGainBytes = checked((long)after.AvailablePhysicalMemoryBytes - (long)beforeMemory.AvailablePhysicalMemoryBytes);
+            UpdateReboundRate(after.AvailablePhysicalMemoryBytes);
+            _reboundTrackingUntil = _lastBoostNetGainBytes > 0 ? startedAt.AddSeconds(120) : null;
+            UpdateStatusMetrics(after, DateTimeOffset.Now);
+        }
+        else
+        {
+            _lastBoostBaselineAvailableMemoryBytes = beforeMemory.AvailablePhysicalMemoryBytes;
+            _lastBoostNetGainBytes = 0;
+            _reboundRatePercent = 0d;
+            _reboundTrackingUntil = null;
+            _viewModel.UpdateReboundRate(0);
+        }
+
+        _viewModel.UpdateBoostMetrics(_lastBoostTrimmedBytes = trimmed, _totalTrimmedBytes, _lastBoostNetGainBytes);
+        RefreshMetricCards();
+        _viewModel.SetStatus(T(
+            $"{trigger} | load {beforeMemory.MemoryLoadPercent}% | trim {MainWindowViewModel.FormatBytes(trimmed)} | net {MainWindowViewModel.FormatBytes(_lastBoostNetGainBytes)}",
+            $"{trigger} | 负载 {beforeMemory.MemoryLoadPercent}% | 裁剪 {MainWindowViewModel.FormatBytes(trimmed)} | 净增 {MainWindowViewModel.FormatBytes(_lastBoostNetGainBytes)}"));
+        _viewModel.AddEvent(T(
+            $"{trigger}: purged {success}/{plan.Candidates.Count}.",
+            $"{trigger}：已处理 {success}/{plan.Candidates.Count}。"));
+        return plan.ShouldPurge;
+    }
+
+    private void UpdateStatusMetrics(MemorySnapshot snapshot, DateTimeOffset now)
+    {
+        var delta = checked((long)snapshot.AvailablePhysicalMemoryBytes - (long)_baselineAvailableMemoryBytes);
+        _viewModel.UpdateRamDelta(delta);
+        _viewModel.UpdateAvailableMemory(snapshot.AvailablePhysicalMemoryBytes);
+        UpdateReboundRate(snapshot.AvailablePhysicalMemoryBytes);
+        _viewModel.TouchLastUpdated(now);
+        UpdateSelfOverhead();
+        RefreshMetricCards();
+    }
+
+    private void UpdateReboundRate(ulong currentAvailableMemoryBytes)
+    {
+        if (!_lastBoostAt.HasValue || _lastBoostNetGainBytes <= 0)
+        {
+            _reboundRatePercent = 0d;
+            _viewModel.UpdateReboundRate(0d);
+            return;
+        }
+
+        var currentGain = checked((long)currentAvailableMemoryBytes - (long)_lastBoostBaselineAvailableMemoryBytes);
+        var reboundBytes = Math.Max(0L, _lastBoostNetGainBytes - Math.Max(0L, currentGain));
+        _reboundRatePercent = Math.Clamp(reboundBytes / (double)_lastBoostNetGainBytes * 100d, 0d, 100d);
+        _viewModel.UpdateReboundRate(_reboundRatePercent);
+    }
+
+    private void ApplyProfile(OptimizerProfile profile)
+    {
+        if (_selectedProfile == profile)
+        {
+            return;
+        }
+
+        _selectedProfile = profile;
+        _optimizerSettings = OptimizerSettingsCatalog.FromProfile(profile);
+        _lastPolicyMessage = string.Empty;
+        _viewModel.AddEvent(T(
+            $"Profile switched to {LocalizeProfileName(profile)}.",
+            $"档位切换为 {LocalizeProfileName(profile)}。"));
+    }
+
+    private void ApplyEditionUi()
+    {
+        var edition = _licenseStatus.Features;
+        AggressiveProfileItem.Visibility = edition.SupportsExtremeProfile ? Visibility.Visible : Visibility.Collapsed;
+        AddProtectedAppButton.Visibility = edition.SupportsProtectList ? Visibility.Visible : Visibility.Collapsed;
+        AddRunningProtectedAppButton.Visibility = edition.SupportsProtectList ? Visibility.Visible : Visibility.Collapsed;
+        RemoveProtectedAppButton.Visibility = edition.SupportsProtectList ? Visibility.Visible : Visibility.Collapsed;
+        ProtectListEditorBorder.Visibility = edition.SupportsProtectList ? Visibility.Visible : Visibility.Collapsed;
+        ProtectListLockedBorder.Visibility = edition.SupportsProtectList ? Visibility.Collapsed : Visibility.Visible;
+
+        if (!edition.SupportsExtremeProfile && _selectedProfile == OptimizerProfile.Aggressive)
+        {
+            _selectedProfile = OptimizerProfile.Balanced;
+            _optimizerSettings = OptimizerSettingsCatalog.FromProfile(_selectedProfile);
+            ProfileSelector.SelectedIndex = 1;
+        }
+
+        RemoveProtectedAppButton.IsEnabled = false;
+        RefreshProtectedEntries();
+        UpdateLicenseUi();
+    }
+
+    private void UpdateLicenseUi()
+    {
+        var isPro = _licenseStatus.Features.Edition == AppEdition.Pro;
+        MachineIdTextBox.Text = _licenseStatus.MachineId;
+        LicenseKeyTextBox.IsEnabled = !isPro;
+        ActivateProButton.IsEnabled = !isPro;
+        LicenseStatusTextBlock.Text = LocalizeLicenseMessage(_licenseStatus.Message, _licenseStatus.Failure);
+    }
+
+    private bool TryAddProtectedPath(string rawPath, bool requireExistingFile = true)
+    {
+        if (string.IsNullOrWhiteSpace(rawPath))
+        {
+            return false;
+        }
+
+        string fullPath;
+        try
+        {
+            fullPath = Path.GetFullPath(rawPath.Trim());
+        }
+        catch
+        {
+            return false;
+        }
+
+        if (requireExistingFile && !File.Exists(fullPath))
+        {
+            return false;
+        }
+
+        var normalizedPath = NormalizePath(fullPath);
+        var processName = NormalizeProcessName(Path.GetFileName(fullPath));
+        var wasAdded = _protectedProcessPaths.Add(normalizedPath);
+        _protectedEntryDisplayByPath[normalizedPath] = fullPath;
+
+        if (processName.Length > 0)
+        {
+            _protectedProcessNames.Add(processName);
+        }
+
+        return wasAdded;
+    }
+
+    private bool RemoveProtectedPath(string selectedEntry)
+    {
+        var normalizedPath = NormalizePath(selectedEntry);
+        if (!_protectedProcessPaths.Remove(normalizedPath))
+        {
+            return false;
+        }
+
+        _protectedEntryDisplayByPath.Remove(normalizedPath);
+        var processName = NormalizeProcessName(Path.GetFileName(selectedEntry));
+        if (processName.Length > 0)
+        {
+            _protectedProcessNames.Remove(processName);
+        }
+
+        return true;
+    }
+
+    private void LoadProtectedApps()
+    {
+        foreach (var storedPath in _protectedAppsStore.Load())
+        {
+            _ = TryAddProtectedPath(storedPath, requireExistingFile: false);
+        }
+    }
+
+    private void SaveProtectedApps()
+    {
+        _protectedAppsStore.Save(_protectedEntryDisplayByPath.Values.ToArray());
+    }
+
+    private void RefreshProtectedEntries()
+    {
+        var entries = _protectedEntryDisplayByPath.Values
+            .OrderBy(x => Path.GetFileName(x), StringComparer.OrdinalIgnoreCase)
+            .ThenBy(x => x, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        _viewModel.UpdateProtectedEntries(entries);
+        _viewModel.UpdateProtectionSummary(entries.Length, _licenseStatus.Features.SupportsProtectList);
+    }
+
+    private IReadOnlyList<string> ShowRunningAppPicker(IReadOnlyList<ProtectedAppCandidate> candidates)
+    {
+        var listBox = new System.Windows.Controls.ListBox
+        {
+            Margin = new Thickness(12),
+            ItemsSource = candidates,
+            DisplayMemberPath = nameof(ProtectedAppCandidate.DisplayText),
+            SelectionMode = System.Windows.Controls.SelectionMode.Extended,
+            FontFamily = new System.Windows.Media.FontFamily("Consolas"),
+            FontSize = 11
+        };
+
+        var addButton = new System.Windows.Controls.Button
+        {
+            Width = 112,
+            Height = 30,
+            Margin = new Thickness(0, 0, 8, 0),
+            IsDefault = true,
+            IsEnabled = false,
+            Content = T("Add Selected", "添加所选")
+        };
+        var cancelButton = new System.Windows.Controls.Button
+        {
+            Width = 88,
+            Height = 30,
+            IsCancel = true,
+            Content = T("Cancel", "取消")
+        };
+
+        var buttonPanel = new StackPanel
+        {
+            Orientation = System.Windows.Controls.Orientation.Horizontal,
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
+            Margin = new Thickness(12, 0, 12, 12)
+        };
+        buttonPanel.Children.Add(addButton);
+        buttonPanel.Children.Add(cancelButton);
+
+        var layout = new DockPanel();
+        DockPanel.SetDock(buttonPanel, Dock.Bottom);
+        layout.Children.Add(buttonPanel);
+        layout.Children.Add(listBox);
+
+        var dialog = new Window
+        {
+            Owner = this,
+            Title = T("Select running apps to protect", "选择要保护的运行中应用"),
+            Width = 720,
+            Height = 420,
+            MinWidth = 560,
+            MinHeight = 320,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Content = layout
+        };
+
+        listBox.SelectionChanged += (_, _) => addButton.IsEnabled = listBox.SelectedItems.Count > 0;
+        addButton.Click += (_, _) =>
+        {
+            dialog.DialogResult = true;
+            dialog.Close();
+        };
+
+        if (dialog.ShowDialog() != true)
+        {
+            return Array.Empty<string>();
+        }
+
+        return listBox.SelectedItems
+            .Cast<ProtectedAppCandidate>()
+            .Select(candidate => candidate.ExecutablePath)
+            .ToArray();
+    }
+
+    private void UpdateMonitoringState()
+    {
+        var hasReboundTracking = _reboundTrackingUntil.HasValue && DateTimeOffset.Now < _reboundTrackingUntil.Value;
+        if ((hasReboundTracking || _isAutoBoostEnabled) && !_optimizerTimer.IsEnabled)
+        {
+            _optimizerTimer.Start();
+        }
+        else if (!hasReboundTracking && !_isAutoBoostEnabled && _optimizerTimer.IsEnabled)
+        {
+            _optimizerTimer.Stop();
+        }
+    }
+
+    private void CaptureBaselineMemory()
+    {
+        if (_memoryStatusService.TryGetSnapshot(out var snapshot))
+        {
+            _baselineAvailableMemoryBytes = snapshot.AvailablePhysicalMemoryBytes;
+            _viewModel.UpdateRamDelta(0);
+            _viewModel.UpdateAvailableMemory(snapshot.AvailablePhysicalMemoryBytes);
+            _viewModel.TouchLastUpdated(DateTimeOffset.Now);
+            RefreshMetricCards();
+            return;
+        }
+
+        _baselineAvailableMemoryBytes = 0;
+        _viewModel.UpdateRamDelta(0);
+        _viewModel.UpdateAvailableMemory(0);
+        _viewModel.TouchLastUpdated(DateTimeOffset.Now);
+        RefreshMetricCards();
+    }
+
+    private void UpdateSelfOverhead()
+    {
+        if (_memoryStatusService.TryGetSelfOverhead(out var overhead))
+        {
+            _viewModel.UpdateSelfOverhead(overhead);
+        }
+    }
+
+    private void ApplyLanguage(UiLanguage language, bool addEvent = true)
+    {
+        _uiLanguage = language;
+        _viewModel.SetLanguage(language);
+
+        var edition = _licenseStatus.Features;
+        Title = edition.ProductTitle;
+        AppTitleTextBlock.Text = edition.ProductTitle;
+        AppSubtitleTextBlock.Text = T(
+            "Simplified boost-first memory tool for local Windows workloads",
+            "面向本地 Windows 负载的精简 Boost 优先内存工具");
+        StatusCaptionTextBlock.Text = T("STATUS", "状态");
+        ProfileCaptionTextBlock.Text = T("PROFILE", "档位");
+        ConservativeProfileItem.Content = T("Light", "轻量");
+        BalancedProfileItem.Content = T("Standard", "标准");
+        AggressiveProfileItem.Content = T("Extreme Performance", "极致性能");
+        LanguageCaptionTextBlock.Text = T("LANGUAGE", "语言");
+        LanguageEnglishItem.Content = "English";
+        LanguageChineseItem.Content = T("Chinese", "中文");
+        EditionCaptionTextBlock.Text = T("EDITION", "版本");
+        EditionValueTextBlock.Text = T(edition.EditionLabelEnglish, edition.EditionLabelChinese);
+        EditionFeatureTextBlock.Text = T(edition.FeatureSummaryEnglish, edition.FeatureSummaryChinese);
+        ProIntroTextBlock.Text = T(edition.ProIntroductionEnglish, edition.ProIntroductionChinese);
+        DetailSettingsButton.Content = _isDetailPanelVisible
+            ? T("Hide Details", "收起详情")
+            : T("Details", "详细设置");
+        MinimizeButton.Content = T("Minimize", "最小化");
+        MachineIdCaptionTextBlock.Text = T("MACHINE ID", "机器标识");
+        CopyMachineIdButton.Content = T("Copy", "复制");
+        LicenseKeyCaptionTextBlock.Text = T("PRO KEY", "专业版 Key");
+        ActivateProButton.Content = T("Activate", "激活");
+        BoostNowButton.Content = T("Boost Now", "立即 Boost");
+        AutoBoostToggle.Content = T("Auto Boost", "自动 Boost");
+        ProtectListTitleTextBlock.Text = T("Protected Apps", "受保护应用");
+        AddProtectedAppButton.Content = T("Add EXE", "添加 EXE");
+        AddRunningProtectedAppButton.Content = T("Running App", "运行中应用");
+        RemoveProtectedAppButton.Content = T("Remove Selected", "删除所选");
+        ProtectListLockedTextBlock.Text = T(
+            "Protected app management is unavailable in this build.",
+            "当前构建不可用应用保护管理。");
+        RamDeltaCaptionTextBlock.Text = T("RAM DELTA", "内存变化");
+        AvailableCaptionTextBlock.Text = T("AVAILABLE", "可用内存");
+        LastBoostTrimmedCaptionTextBlock.Text = T("LAST BOOST TRIMMED", "最近 Boost 裁剪量");
+        TotalTrimmedCaptionTextBlock.Text = T("TOTAL TRIMMED", "累计裁剪量");
+        BoostNetGainCaptionTextBlock.Text = T("BOOST NET GAIN", "Boost 净收益");
+        MemoryMetricsTitleTextBlock.Text = T("Memory Metrics", "内存指标");
+        SelfOverheadCaptionTextBlock.Text = T("SELF OVERHEAD", "自身开销");
+        RuntimeSummaryTitleTextBlock.Text = T("Runtime Summary", "运行摘要");
+        BoostDetailsTitleTextBlock.Text = T("Boost Details", "Boost 明细");
+        RecentActivityTitleTextBlock.Text = T("Recent Activity", "最近活动");
+        LicenseStatusCaptionTextBlock.Text = T("LICENSE STATUS", "授权状态");
+
+        _openTrayMenuItem.Text = T("Open FluxRAM", "打开 FluxRAM");
+        _boostTrayMenuItem.Text = T("Boost Now", "立即 Boost");
+        _exitTrayMenuItem.Text = T("Exit", "退出");
+        _trayIcon.Text = edition.ProductTitle;
+        UpdateLicenseUi();
+        RefreshMetricCards();
+
+        if (addEvent)
+        {
+            _viewModel.AddEvent(T("Language switched to English.", "语言已切换为中文。"));
+        }
+    }
+
+    private static string NormalizePath(string value) => string.IsNullOrWhiteSpace(value)
+        ? string.Empty
+        : Path.GetFullPath(value.Trim()).Replace('/', '\\').ToLowerInvariant();
+
+    private static string NormalizeProcessName(string processName)
+    {
+        if (string.IsNullOrWhiteSpace(processName))
+        {
+            return string.Empty;
+        }
+
+        var normalized = processName.Trim();
+        if (normalized.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+        {
+            normalized = normalized[..^4];
+        }
+
+        return normalized.ToLowerInvariant();
+    }
+
+    private string LocalizeProfileName(OptimizerProfile profile) => profile switch
+    {
+        OptimizerProfile.Conservative => T("Light", "轻量"),
+        OptimizerProfile.Balanced => T("Standard", "标准"),
+        OptimizerProfile.Aggressive => T("Extreme Performance", "极致性能"),
+        _ => T("Light", "轻量")
+    };
+
+    private string LocalizePolicyMessage(string message)
+    {
+        if (_uiLanguage == UiLanguage.English)
+        {
+            return message;
+        }
+
+        return message
+            .Replace("Memory pressure is low; purge skipped.", "内存压力较低，本轮跳过。", StringComparison.Ordinal)
+            .Replace("Boost Now plan with", "Boost Now 计划，候选数：", StringComparison.Ordinal)
+            .Replace("Purge plan ready with", "清理计划已生成，候选数：", StringComparison.Ordinal)
+            .Replace("Extreme Performance bypassed threshold with", "极致性能策略已绕过阈值，候选数：", StringComparison.Ordinal)
+            .Replace("No eligible process met safety criteria.", "没有满足安全条件的候选进程。", StringComparison.Ordinal);
+    }
+
+    private string LocalizeLicenseMessage(string message, LicenseVerificationFailure failure)
+    {
+        if (_uiLanguage == UiLanguage.English)
+        {
+            return failure == LicenseVerificationFailure.None ? message : $"{message} ({failure})";
+        }
+
+        return failure switch
+        {
+            LicenseVerificationFailure.None when _licenseStatus.Features.Edition == AppEdition.Pro =>
+                _licenseStatus.IsActivated ? "此电脑已永久激活专业版。" : "当前构建为专业版。",
+            LicenseVerificationFailure.None => "普通版。输入专业版 Key 可激活 FluxRAM Pro。",
+            LicenseVerificationFailure.MachineMismatch => "Key 不属于当前电脑。",
+            LicenseVerificationFailure.InvalidSignature => "Key 签名无效。",
+            LicenseVerificationFailure.WrongProduct => "Key 不属于 FluxRAM。",
+            LicenseVerificationFailure.WrongEdition => "Key 不是专业版授权。",
+            _ => "Key 格式无效。"
+        };
+    }
+
+    private string T(string english, string chinese) => _uiLanguage == UiLanguage.ChineseSimplified ? chinese : english;
+
+    private void RefreshMetricCards()
+    {
+        RamDeltaValueTextBlock.Text = _viewModel.RamDeltaDisplay;
+        AvailableValueTextBlock.Text = _viewModel.AvailableRamDisplay;
+        LastBoostTrimmedValueTextBlock.Text = _viewModel.LastBoostTrimmedDisplay;
+        TotalTrimmedValueTextBlock.Text = _viewModel.TotalTrimmedDisplay;
+        BoostNetGainValueTextBlock.Text = _viewModel.BoostNetGainDisplay;
+    }
+
+    private void ApplyDetailPanelState(bool isVisible)
+    {
+        _isDetailPanelVisible = isVisible;
+        DetailPanel.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
+        DetailSettingsButton.Content = isVisible
+            ? T("Hide Details", "收起详情")
+            : T("Details", "详细设置");
+
+        if (isVisible)
+        {
+            var workArea = SystemParameters.WorkArea;
+            var targetWidth = Math.Min(DetailWindowWidth, Math.Max(CompactWindowWidth, workArea.Width - 48d));
+            var targetHeight = Math.Min(DetailWindowHeight, Math.Max(CompactWindowHeight, workArea.Height - 72d));
+            MinWidth = Math.Min(DetailMinWindowWidth, targetWidth);
+            MinHeight = Math.Min(DetailMinWindowHeight, targetHeight);
+            Width = targetWidth;
+            Height = targetHeight;
+            return;
+        }
+
+        MinWidth = CompactMinWindowWidth;
+        MinHeight = CompactMinWindowHeight;
+        Width = CompactWindowWidth;
+        Height = CompactWindowHeight;
+    }
+
+    private void MainWindow_OnStateChanged(object? sender, EventArgs e)
+    {
+        if (WindowState == WindowState.Minimized)
+        {
+            HideToTray();
+        }
+    }
+
+    private void MainWindow_OnClosing(object? sender, CancelEventArgs e)
+    {
+        if (_isExitRequested)
+        {
+            return;
+        }
+
+        e.Cancel = true;
+        HideToTray();
+    }
+
+    private void MainWindow_OnClosed(object? sender, EventArgs e)
+    {
+        _optimizerTimer.Stop();
+        _trayIcon.Visible = false;
+        _trayIcon.Dispose();
+    }
+
+    private void HideToTray()
+    {
+        Hide();
+        ShowInTaskbar = false;
+
+        if (_hasShownTrayTip)
+        {
+            return;
+        }
+
+        _trayIcon.BalloonTipTitle = _licenseStatus.Features.ProductTitle;
+        _trayIcon.BalloonTipText = T("FluxRAM is running in system tray.", "FluxRAM 正在系统托盘中运行。");
+        _trayIcon.ShowBalloonTip(1200);
+        _hasShownTrayTip = true;
+    }
+
+    private void RestoreFromTray()
+    {
+        ShowInTaskbar = true;
+        Show();
+        WindowState = WindowState.Normal;
+        Activate();
+    }
+
+    private void ExitFromTray()
+    {
+        _isExitRequested = true;
+        _trayIcon.Visible = false;
+        Close();
+    }
+
+    private static Drawing.Icon ResolveTrayIcon()
+    {
+        try
+        {
+            var filePath = Process.GetCurrentProcess().MainModule?.FileName;
+            if (!string.IsNullOrWhiteSpace(filePath) && File.Exists(filePath))
+            {
+                var icon = Drawing.Icon.ExtractAssociatedIcon(filePath);
+                if (icon is not null)
+                {
+                    return icon;
+                }
+            }
+        }
+        catch
+        {
+        }
+
+        return Drawing.SystemIcons.Application;
+    }
+
+    private void TryEnableMicaBackdrop()
+    {
+        var handle = new WindowInteropHelper(this).Handle;
+        if (handle == IntPtr.Zero)
+        {
+            return;
+        }
+
+        var backdropType = NativeMethods.DWMSBT_MAINWINDOW;
+        _ = NativeMethods.DwmSetWindowAttribute(handle, NativeMethods.DWMWA_SYSTEMBACKDROP_TYPE, ref backdropType, sizeof(int));
+    }
+}

@@ -1,0 +1,8 @@
+bin/
+obj/
+dist/
+.vs/
+.secrets/
+*.private-key.xml
+license-private*.xml
+*.log

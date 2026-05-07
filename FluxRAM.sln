@@ -1,0 +1,50 @@
+﻿Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluxRAM.App", "src\FluxRAM.App\FluxRAM.App.csproj", "{ED8C1D8B-54A5-4E5D-AEF2-BE5626F9A942}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluxRAM.Core", "src\FluxRAM.Core\FluxRAM.Core.csproj", "{C9A4179D-68B3-47FE-B26A-349A36EA0E31}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluxRAM.Core.Tests", "tests\FluxRAM.Core.Tests\FluxRAM.Core.Tests.csproj", "{95AB53FD-89C8-4E93-8446-2587F9F10308}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluxRAM.App.Tests", "tests\FluxRAM.App.Tests\FluxRAM.App.Tests.csproj", "{A3A6E17F-1A24-4138-8ABB-9D30D62FA2F9}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{0362198D-E1E8-499F-B509-7CCEE900EFBF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluxRAM.Keygen", "tools\FluxRAM.Keygen\FluxRAM.Keygen.csproj", "{C09DB2DD-583C-452A-B7D3-13C4B0187990}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{ED8C1D8B-54A5-4E5D-AEF2-BE5626F9A942}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ED8C1D8B-54A5-4E5D-AEF2-BE5626F9A942}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ED8C1D8B-54A5-4E5D-AEF2-BE5626F9A942}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ED8C1D8B-54A5-4E5D-AEF2-BE5626F9A942}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C9A4179D-68B3-47FE-B26A-349A36EA0E31}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C9A4179D-68B3-47FE-B26A-349A36EA0E31}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C9A4179D-68B3-47FE-B26A-349A36EA0E31}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C9A4179D-68B3-47FE-B26A-349A36EA0E31}.Release|Any CPU.Build.0 = Release|Any CPU
+		{95AB53FD-89C8-4E93-8446-2587F9F10308}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{95AB53FD-89C8-4E93-8446-2587F9F10308}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{95AB53FD-89C8-4E93-8446-2587F9F10308}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{95AB53FD-89C8-4E93-8446-2587F9F10308}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A3A6E17F-1A24-4138-8ABB-9D30D62FA2F9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A3A6E17F-1A24-4138-8ABB-9D30D62FA2F9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A3A6E17F-1A24-4138-8ABB-9D30D62FA2F9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A3A6E17F-1A24-4138-8ABB-9D30D62FA2F9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C09DB2DD-583C-452A-B7D3-13C4B0187990}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C09DB2DD-583C-452A-B7D3-13C4B0187990}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C09DB2DD-583C-452A-B7D3-13C4B0187990}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C09DB2DD-583C-452A-B7D3-13C4B0187990}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{C09DB2DD-583C-452A-B7D3-13C4B0187990} = {0362198D-E1E8-499F-B509-7CCEE900EFBF}
+	EndGlobalSection
+EndGlobal

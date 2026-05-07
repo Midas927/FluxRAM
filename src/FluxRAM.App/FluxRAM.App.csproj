@@ -1,0 +1,26 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>..\..\FluxRAM.ico</ApplicationIcon>
+    <RootNamespace>FluxRAM.App</RootNamespace>
+    <AssemblyName>FluxRAM.App</AssemblyName>
+    <FluxRAMEdition Condition="'$(FluxRAMEdition)' == ''">Free</FluxRAMEdition>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(FluxRAMEdition)' == 'Free'">
+    <DefineConstants>$(DefineConstants);FLUXRAM_FREE</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(FluxRAMEdition)' == 'Pro'">
+    <DefineConstants>$(DefineConstants);FLUXRAM_PRO</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="..\..\FluxRAM.ico" Link="FluxRAM.ico" />
+    <ProjectReference Include="..\FluxRAM.Core\FluxRAM.Core.csproj" />
+  </ItemGroup>
+</Project>
