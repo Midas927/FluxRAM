@@ -154,6 +154,18 @@
       <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
     </Style>
 
+    <Style x:Key="IconButtonStyle" TargetType="Button" BasedOn="{StaticResource BaseButtonStyle}">
+      <Setter Property="Width" Value="22" />
+      <Setter Property="Height" Value="22" />
+      <Setter Property="MinWidth" Value="22" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="FontWeight" Value="Bold" />
+      <Setter Property="Background" Value="#101923" />
+      <Setter Property="BorderBrush" Value="#33475E" />
+      <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+    </Style>
+
     <Style TargetType="Button" BasedOn="{StaticResource BaseButtonStyle}" />
 
     <Style x:Key="ToggleBoostStyle" TargetType="ToggleButton">
@@ -589,11 +601,21 @@
               <ColumnDefinition Width="72" />
             </Grid.ColumnDefinitions>
 
-            <TextBlock x:Name="EditionCaptionTextBlock"
-                       Grid.Row="0"
-                       Grid.ColumnSpan="3"
-                       Style="{StaticResource CaptionStyle}"
-                       Text="EDITION" />
+            <StackPanel Grid.Row="0"
+                        Grid.ColumnSpan="3"
+                        Orientation="Horizontal">
+              <TextBlock x:Name="EditionCaptionTextBlock"
+                         VerticalAlignment="Center"
+                         Style="{StaticResource CaptionStyle}"
+                         Text="EDITION" />
+              <Button x:Name="EditionHelpButton"
+                      Margin="6,0,0,0"
+                      VerticalAlignment="Center"
+                      Style="{StaticResource IconButtonStyle}"
+                      Content="?"
+                      ToolTip="Edition details"
+                      Click="EditionHelpButton_OnClick" />
+            </StackPanel>
             <TextBlock x:Name="EditionFeatureTextBlock"
                        Grid.Row="2"
                        Grid.ColumnSpan="3"

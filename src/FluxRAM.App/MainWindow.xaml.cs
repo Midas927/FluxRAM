@@ -17,6 +17,7 @@ using FluxRAM.Core.Models;
 using FluxRAM.Core.Services;
 using Drawing = System.Drawing;
 using Forms = System.Windows.Forms;
+using Media = System.Windows.Media;
 using FluxRAMLicenseManager = FluxRAM.App.Licensing.LicenseManager;
 using OpenFileDialog = Microsoft.Win32.OpenFileDialog;
 
@@ -175,6 +176,26 @@ public partial class MainWindow : Window
     private void DetailSettingsButton_OnClick(object sender, RoutedEventArgs e)
     {
         ApplyDetailPanelState(!_isDetailPanelVisible);
+    }
+
+    private void EditionHelpButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Window
+        {
+            Owner = this,
+            Title = T(EditionDetailsCatalog.DialogTitleEnglish, EditionDetailsCatalog.DialogTitleChinese),
+            Width = 620d,
+            Height = 430d,
+            MinWidth = 560d,
+            MinHeight = 380d,
+            ResizeMode = ResizeMode.NoResize,
+            ShowInTaskbar = false,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Background = CreateDialogBrush(11, 16, 23)
+        };
+
+        dialog.Content = CreateEditionDetailsContent(dialog);
+        dialog.ShowDialog();
     }
 
     private void CopyMachineIdButton_OnClick(object sender, RoutedEventArgs e)
@@ -797,6 +818,7 @@ public partial class MainWindow : Window
         LanguageEnglishItem.Content = "English";
         LanguageChineseItem.Content = T("Chinese", "中文");
         EditionCaptionTextBlock.Text = T("EDITION", "版本");
+        EditionHelpButton.ToolTip = T("Edition details", "版本功能明细");
         EditionValueTextBlock.Text = T(edition.EditionLabelEnglish, edition.EditionLabelChinese);
         EditionFeatureTextBlock.Text = T(edition.FeatureSummaryEnglish, edition.FeatureSummaryChinese);
         ProIntroTextBlock.Text = T(edition.ProIntroductionEnglish, edition.ProIntroductionChinese);
@@ -869,6 +891,114 @@ public partial class MainWindow : Window
         OptimizerProfile.Aggressive => T("Extreme Performance", "极致性能"),
         _ => T("Light", "轻量")
     };
+
+    private UIElement CreateEditionDetailsContent(Window dialog)
+    {
+        var root = new Grid
+        {
+            Margin = new Thickness(18)
+        };
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+        var titleTextBlock = new TextBlock
+        {
+            Text = T(EditionDetailsCatalog.DialogTitleEnglish, EditionDetailsCatalog.DialogTitleChinese),
+            FontSize = 18,
+            FontWeight = FontWeights.Bold,
+            Foreground = CreateDialogBrush(242, 247, 255)
+        };
+        Grid.SetRow(titleTextBlock, 0);
+        root.Children.Add(titleTextBlock);
+
+        var subtitleTextBlock = new TextBlock
+        {
+            Margin = new Thickness(0, 7, 0, 0),
+            Text = T(EditionDetailsCatalog.DialogSubtitleEnglish, EditionDetailsCatalog.DialogSubtitleChinese),
+            TextWrapping = TextWrapping.Wrap,
+            FontSize = 12,
+            LineHeight = 18,
+            Foreground = CreateDialogBrush(150, 168, 190)
+        };
+        Grid.SetRow(subtitleTextBlock, 1);
+        root.Children.Add(subtitleTextBlock);
+
+        var sectionGrid = new Grid
+        {
+            Margin = new Thickness(0, 16, 0, 0)
+        };
+        sectionGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        sectionGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(12) });
+        sectionGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        Grid.SetRow(sectionGrid, 2);
+        root.Children.Add(sectionGrid);
+
+        var freeCard = CreateEditionDetailsCard(EditionDetailsCatalog.Sections[0], CreateDialogBrush(61, 214, 163));
+        Grid.SetColumn(freeCard, 0);
+        sectionGrid.Children.Add(freeCard);
+
+        var proCard = CreateEditionDetailsCard(EditionDetailsCatalog.Sections[1], CreateDialogBrush(255, 202, 73));
+        Grid.SetColumn(proCard, 2);
+        sectionGrid.Children.Add(proCard);
+
+        var closeButton = new System.Windows.Controls.Button
+        {
+            Width = 96,
+            Height = 32,
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
+            Margin = new Thickness(0, 16, 0, 0),
+            Content = T("Close", "关闭"),
+            Style = TryFindResource("QuietButtonStyle") as Style
+        };
+        closeButton.Click += (_, _) => dialog.Close();
+        Grid.SetRow(closeButton, 3);
+        root.Children.Add(closeButton);
+
+        return root;
+    }
+
+    private Border CreateEditionDetailsCard(EditionDetailsSection section, Media.Brush accentBrush)
+    {
+        var panel = new StackPanel();
+        panel.Children.Add(new TextBlock
+        {
+            Text = T(section.TitleEnglish, section.TitleChinese),
+            FontSize = 15,
+            FontWeight = FontWeights.Bold,
+            Foreground = accentBrush
+        });
+        panel.Children.Add(new Border
+        {
+            Height = 1,
+            Margin = new Thickness(0, 10, 0, 12),
+            Background = CreateDialogBrush(40, 55, 73)
+        });
+        panel.Children.Add(new TextBlock
+        {
+            Text = T(section.BodyEnglish, section.BodyChinese),
+            TextWrapping = TextWrapping.Wrap,
+            FontSize = 12,
+            LineHeight = 21,
+            Foreground = CreateDialogBrush(218, 229, 242)
+        });
+
+        return new Border
+        {
+            Padding = new Thickness(15),
+            Background = CreateDialogBrush(15, 22, 31),
+            BorderBrush = CreateDialogBrush(44, 63, 84),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(10),
+            Child = panel
+        };
+    }
+
+    private static Media.Brush CreateDialogBrush(byte red, byte green, byte blue)
+    {
+        return new Media.SolidColorBrush(Media.Color.FromRgb(red, green, blue));
+    }
 
     private string LocalizePolicyMessage(string message)
     {
