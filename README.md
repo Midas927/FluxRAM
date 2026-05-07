@@ -1,173 +1,72 @@
-﻿# FluxRAM
+# FluxRAM
 
-Windows 11 local-first memory Boost tool based on C#/.NET 8 + WPF.
+FluxRAM 是一款面向 Windows 的本地内存 Boost 工具。它的目标不是一直在后台疯狂清理，而是在你需要的时候快速释放冷后台进程占用，并在内存压力升高时自动处理，同时尽量避开游戏、创作软件、本地 AI、直播工具等不该被碰的应用。
 
-## Solution Layout
+## 下载
 
-- `src/FluxRAM.App`: high-privilege desktop shell (`Boost Now`, protected app list, Free/Pro activation, tray lifecycle, bilingual UI).
-- `src/FluxRAM.Core`: native interop + core optimization services.
-- `tests/FluxRAM.Core.Tests`: core unit tests.
-- `tests/FluxRAM.App.Tests`: UI/ViewModel unit tests.
+不会使用 Git 的用户，直接从这里下载最新版：
 
-## Build Requirements
+[下载 FluxRAM 最新版](https://github.com/Midas927/FluxRAM/releases/latest)
 
-- .NET 8 SDK (Windows Desktop workload)
-- .NET 8 Desktop Runtime (for default small publish mode)
-- Windows 11 (for full Mica backdrop behavior)
+推荐下载 `FluxRAM-Portable-Windows-x64.zip`，解压后双击 `FluxRAM.exe` 即可运行。普通版和 Pro 版使用同一个主程序；Pro 功能只能通过当前电脑的机器码 Key 激活。
 
-## Run
+## 核心功能
 
-```powershell
-dotnet restore FluxRAM.sln
-dotnet build FluxRAM.sln
-dotnet test FluxRAM.sln
-dotnet run --project .\src\FluxRAM.App\FluxRAM.App.csproj
-```
+| 功能 | FluxRAM | FluxRAM Pro |
+| --- | --- | --- |
+| 立即 Boost | 支持 | 支持 |
+| 内存压力升高后自动 Boost | 支持 | 支持 |
+| 轻量 / 标准档位 | 支持 | 支持 |
+| 极致性能档位 | 不支持 | 支持 |
+| 托盘常驻与托盘 Boost | 支持 | 支持 |
+| 添加 / 删除受保护应用 | 支持 | 支持 |
+| 从正在运行的进程里选择保护应用 | 支持 | 支持 |
+| 按进程名保护应用 | 支持 | 支持 |
+| 按 EXE 完整路径保护 | 不支持 | 支持 |
+| 子进程关联保护 | 不支持 | 支持 |
+| 窗口识别保护 | 不支持 | 支持 |
 
-## Product Editions
+## FluxRAM 普通版
 
-FluxRAM now ships as a runtime-gated product:
+普通版已经覆盖日常使用的大部分体验：
 
-- `FluxRAM`: Light / Standard profiles, manual Boost, pressure-gated Auto Boost, protected app list, basic tray lifecycle and visible boost metrics.
-- `FluxRAM Pro`: unlocks Extreme Performance and advanced target app protection.
+1. `Boost Now`：需要时立即执行一次内存 Boost。
+2. `Auto Boost`：开启后在内存压力高时自动触发。
+3. `Light` / `Standard`：两个稳妥档位，适合大多数游戏、办公、本地 AI 和创作场景。
+4. 应用保护列表：可以添加、删除，也可以直接从正在运行的进程里选择。
+5. 托盘体验：最小化后继续待命，可从托盘执行 Boost。
+6. 可见指标：显示内存变化、可用内存、最近裁剪量、累计裁剪量、净收益和程序自身开销。
 
-FluxRAM shows a machine ID on launch. To activate FluxRAM Pro permanently on that computer:
+## FluxRAM Pro
 
-```powershell
-.\scripts\generate-pro-key.ps1 -MachineId "FLX-...."
-```
+Pro 面向更重的本地负载和更精细的保护需求：
 
-The script requires either `-PrivateKeyXmlPath` or `FLUXRAM_LICENSE_PRIVATE_KEY_B64`. Generate a signing pair with:
+1. `Extreme Performance` 极致性能档位。
+2. 按 EXE 完整路径保护，减少同名进程误判。
+3. 子进程关联保护，适合启动器、游戏客户端、本地 AI 工具链和创作软件。
+4. 窗口识别保护，适合进程名不稳定或被包装启动的应用。
+5. 当前电脑永久激活，激活后无需联网验证。
 
-```powershell
-.\scripts\new-license-keypair.ps1
-```
+## Pro 激活方式
 
-Keep the private key outside the repo. Replace the public key embedded in `src\FluxRAM.App\Licensing\LicenseKeyVerifier.cs` before production release.
+FluxRAM Pro 只能通过机器码 Key 激活：
 
-There is also an internal GUI key generator:
+1. 打开 FluxRAM。
+2. 在界面中复制当前电脑的机器标识。
+3. 将机器标识发给销售或客服。
+4. 收到专属 Pro Key 后，在 FluxRAM 中输入并激活。
+5. Key 绑定当前电脑；更换电脑后需要重新生成。
 
-```powershell
-.\scripts\publish-keygen-win-x64.ps1
-```
+不会提供通用 Pro 安装包，也不提供公开的 Pro 生成方式。
 
-Output:
+## 本地与安全
 
-- `dist\keygen-win-x64\FluxRAM-Keygen.exe`
+1. FluxRAM 在本机执行，不依赖云端遥测。
+2. Boost 过程主要裁剪冷后台进程的 working set。
+3. 默认策略不会停止系统服务。
+4. 受保护应用会从候选列表中排除，降低误伤概率。
 
-Put `fluxram-license.private-key.xml` next to the keygen exe, or choose the private key file from the UI. Do not send the keygen or private key to customers.
+## 文档
 
-## Safe Optimization Policy (v3)
-
-The product model is now boost-first instead of endless background trimming:
-
-- Primary action is `Boost Now` (single boost cycle)
-- Optional `Auto Boost` keeps a lightweight monitor running and triggers only when the current profile's memory-pressure threshold is reached
-- Tray Boost is available from the system tray menu
-- FluxRAM protected apps are excluded by process name; FluxRAM Pro adds exact path, child-process and window-title recognition
-- Cooldown window after boost (default `120s`) avoids repeated disturbance
-- Candidate selection uses `ColdnessScore` (CPU + foreground + window + recency + working set)
-- `Protect List` excludes user-defined processes from trimming
-- `ServiceKiller` is disabled in all default profiles
-
-### Runtime Profiles
-
-Profiles are now exposed as:
-
-- `Light`: stricter candidate floor and higher coldness requirement
-- `Standard`: balanced reclaim for common gaming / local AI loads
-- `Extreme Performance` (Pro): threshold bypass and broad eligibility, still no service stop by default
-
-### Main Metrics
-
-UI now reports:
-
-- `Last Boost Trimmed`
-- `Total Trimmed`
-- `Boost Net Gain`
-- `Rebound Rate`
-- FluxRAM self overhead (`CPU`, `Working Set`, `Private Bytes`, `Handle Count`)
-
-### Protect List
-
-FluxRAM protect list now supports:
-
-- Add/remove through the UI, no comma-separated typing
-- Adding from currently running applications
-- Persistent storage under common application data
-
-FluxRAM Pro adds advanced protection:
-
-- Exact executable paths (for example `C:\Tools\OBS\obs64.exe`)
-- Child-process association for helpers launched by protected apps
-- Visible window-title recognition for launchers and wrapped apps
-
-## Manuals
-
-- `docs\FluxRAM-Commercial-Manual.zh-CN.md`: product positioning, edition strategy, sales notes and Mem Reduct comparison.
-- `docs\FluxRAM-IT-Technical-Manual.zh-CN.md`: architecture, deployment, build, licensing and IT acceptance notes.
-
-## Package as EXE
-
-Single-file publish (recommended):
-
-```powershell
-.\scripts\publish-win-x64.ps1
-```
-
-Default mode is `Small` (framework-dependent single file, much smaller package size) and publishes both editions.
-If you need a fully portable build that includes the runtime:
-
-```powershell
-.\scripts\publish-win-x64.ps1 -Mode Portable
-```
-
-To publish one edition:
-
-```powershell
-.\scripts\publish-win-x64.ps1 -Edition Free
-.\scripts\publish-win-x64.ps1 -Edition Pro
-```
-
-Output:
-
-- `dist\fluxram-win-x64\FluxRAM.exe`
-- `dist\fluxram-pro-win-x64\FluxRAM-Pro.exe`
-
-Direct command equivalent:
-
-```powershell
-dotnet publish .\src\FluxRAM.App\FluxRAM.App.csproj -c Release -f net8.0-windows -r win-x64 --self-contained false -p:FluxRAMEdition=Free -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=false -p:PublishTrimmed=false -p:DebugType=None -p:DebugSymbols=false -o .\dist\fluxram-win-x64
-```
-
-## Install Runtime on Target PC
-
-If you distribute the `Small` build, run this once on the target Windows machine:
-
-```bat
-scripts\install-dotnet-desktop-runtime-8.bat
-```
-
-This script checks for `.NET 8 Desktop Runtime`, and if missing, downloads the latest 8.0 x64 installer from official .NET release metadata and installs it silently.
-It now auto-requests administrator privileges (UAC) and keeps the window open to avoid "flash close" on double-click.
-
-If you run it from an existing terminal and don't want it to pause at the end:
-
-```bat
-scripts\install-dotnet-desktop-runtime-8.bat --no-pause
-```
-
-Or use one-click launcher (installs runtime if needed, then starts app):
-
-```bat
-scripts\run-fluxram.bat
-```
-
-### Recommended files to send to another PC
-
-Put these in the same folder on the target machine:
-
-- `FluxRAM.exe`
-- or `FluxRAM-Pro.exe`
-- `run-fluxram.bat`
-- `install-dotnet-desktop-runtime-8.bat`
+- [商业说明书](docs/FluxRAM-Commercial-Manual.zh-CN.md)
+- [IT 技术说明书](docs/FluxRAM-IT-Technical-Manual.zh-CN.md)

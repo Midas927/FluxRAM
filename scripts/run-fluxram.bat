@@ -2,9 +2,7 @@
 setlocal EnableExtensions
 
 set "APP_EXE=%~dp0FluxRAM.exe"
-if not exist "%APP_EXE%" set "APP_EXE=%~dp0FluxRAM-Pro.exe"
 if not exist "%APP_EXE%" set "APP_EXE=%~dp0..\dist\fluxram-win-x64\FluxRAM.exe"
-if not exist "%APP_EXE%" set "APP_EXE=%~dp0..\dist\fluxram-pro-win-x64\FluxRAM-Pro.exe"
 
 set "INSTALL_SCRIPT=%~dp0install-dotnet-desktop-runtime-8.bat"
 

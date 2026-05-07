@@ -109,7 +109,7 @@ FluxRAM 要做得更好用，关键是减少用户配置成本：不用手写进
 
 给付费用户：
 
-1. `FluxRAM-Pro.exe`
+1. `FluxRAM.exe`
 2. Pro key
 3. 如使用 Small 包，再附带运行时安装脚本
 

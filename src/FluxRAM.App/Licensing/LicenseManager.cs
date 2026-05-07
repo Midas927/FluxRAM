@@ -14,37 +14,28 @@ public sealed class LicenseManager
     private readonly IHardwareIdentifierProvider _hardwareIdentifierProvider;
     private readonly LicenseKeyVerifier _licenseKeyVerifier;
     private readonly LicenseActivationStore _activationStore;
-    private readonly AppEdition _builtInEdition;
 
     public LicenseManager()
         : this(
             new HardwareIdentifierService(),
             new LicenseKeyVerifier(),
-            new LicenseActivationStore(),
-            AppEditionCatalog.CurrentEdition)
+            new LicenseActivationStore())
     {
     }
 
     public LicenseManager(
         IHardwareIdentifierProvider hardwareIdentifierProvider,
         LicenseKeyVerifier licenseKeyVerifier,
-        LicenseActivationStore activationStore,
-        AppEdition builtInEdition)
+        LicenseActivationStore activationStore)
     {
         _hardwareIdentifierProvider = hardwareIdentifierProvider;
         _licenseKeyVerifier = licenseKeyVerifier;
         _activationStore = activationStore;
-        _builtInEdition = builtInEdition;
     }
 
     public LicenseStatus GetStatus()
     {
         var machineId = _hardwareIdentifierProvider.GetCurrentMachineId();
-        if (_builtInEdition == AppEdition.Pro)
-        {
-            return CreateProStatus(machineId, false, "Built-in Pro edition.");
-        }
-
         var storedLicenseKey = _activationStore.Load();
         if (string.IsNullOrWhiteSpace(storedLicenseKey))
         {
@@ -60,11 +51,6 @@ public sealed class LicenseManager
     public LicenseStatus Activate(string licenseKey)
     {
         var machineId = _hardwareIdentifierProvider.GetCurrentMachineId();
-        if (_builtInEdition == AppEdition.Pro)
-        {
-            return CreateProStatus(machineId, false, "Built-in Pro edition.");
-        }
-
         var verification = _licenseKeyVerifier.Verify(licenseKey, machineId);
         if (!verification.IsValid)
         {

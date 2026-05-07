@@ -8,15 +8,6 @@
     <ApplicationIcon>..\..\FluxRAM.ico</ApplicationIcon>
     <RootNamespace>FluxRAM.App</RootNamespace>
     <AssemblyName>FluxRAM.App</AssemblyName>
-    <FluxRAMEdition Condition="'$(FluxRAMEdition)' == ''">Free</FluxRAMEdition>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(FluxRAMEdition)' == 'Free'">
-    <DefineConstants>$(DefineConstants);FLUXRAM_FREE</DefineConstants>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(FluxRAMEdition)' == 'Pro'">
-    <DefineConstants>$(DefineConstants);FLUXRAM_PRO</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>

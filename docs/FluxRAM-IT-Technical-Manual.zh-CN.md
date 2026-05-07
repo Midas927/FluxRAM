@@ -65,12 +65,7 @@ docs/                  商业说明书和 IT 技术说明书
 | 子进程关联保护 | 不支持 | 支持 |
 | 窗口识别保护 | 不支持 | 支持 |
 
-编译时通过 `FluxRAMEdition` 属性区分版本：
-
-```powershell
-dotnet publish .\src\FluxRAM.App\FluxRAM.App.csproj -p:FluxRAMEdition=Free
-dotnet publish .\src\FluxRAM.App\FluxRAM.App.csproj -p:FluxRAMEdition=Pro
-```
+公开交付只使用一个 `FluxRAM.exe`。程序默认以普通版启动，Pro 功能必须通过当前机器 ID 绑定的 Pro key 激活，不能通过公开构建参数直接生成内置 Pro 版。
 
 ## 5. Boost 执行流程
 
@@ -143,23 +138,10 @@ Pro 高级保护：
 .\scripts\publish-win-x64.ps1
 ```
 
-只发布普通版：
-
-```powershell
-.\scripts\publish-win-x64.ps1 -Edition Free
-```
-
-只发布 Pro 版：
-
-```powershell
-.\scripts\publish-win-x64.ps1 -Edition Pro
-```
-
 输出：
 
 ```text
 dist\fluxram-win-x64\FluxRAM.exe
-dist\fluxram-pro-win-x64\FluxRAM-Pro.exe
 ```
 
 Small 模式为默认模式，依赖目标机器安装 .NET 8 Desktop Runtime。若要包含运行时：
@@ -214,8 +196,9 @@ dist\keygen-win-x64\FluxRAM-Keygen.exe
 安全要求：
 
 1. `fluxram-license.private-key.xml` 只能在内部安全位置保存。
-2. 不要把 `.secrets`、私钥、Keygen 输出或 `dist` 上传 GitHub。
-3. 生产发布前应替换应用内公钥，并对发行 exe 做代码签名。
+2. 不要把 `.secrets`、私钥或 Keygen 输出上传 GitHub。
+3. 公开下载包只通过 GitHub Release 附件分发，不提交到仓库源码树。
+4. 生产发布前应替换应用内公钥，并对发行 exe 做代码签名。
 
 ## 11. Win32 API 范围
 
@@ -236,7 +219,7 @@ dist\keygen-win-x64\FluxRAM-Keygen.exe
 
 1. `dotnet test FluxRAM.sln` 全部通过。
 2. 普通版只能选择 `Light` 和 `Standard`。
-3. Pro 版可选择 `Extreme Performance`。
+3. 输入当前机器 ID 对应的有效 Pro key 后，可选择 `Extreme Performance`。
 4. 普通版可添加、删除保护应用，可从运行进程添加。
 5. Pro 版高级保护说明显示正确。
 6. `Boost Now` 可执行并刷新指标。

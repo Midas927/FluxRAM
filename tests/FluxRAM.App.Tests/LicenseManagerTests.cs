@@ -15,8 +15,7 @@ public sealed class LicenseManagerTests
         var manager = new LicenseManager(
             new StaticHardwareIdentifierProvider("FLX-LOCAL-MACHINE"),
             new LicenseKeyVerifier(ExportPublicKeyPem(rsa)),
-            store,
-            AppEdition.Free);
+            store);
 
         var status = manager.GetStatus();
 
@@ -34,8 +33,7 @@ public sealed class LicenseManagerTests
         var manager = new LicenseManager(
             new StaticHardwareIdentifierProvider("FLX-LOCAL-MACHINE"),
             new LicenseKeyVerifier(ExportPublicKeyPem(rsa)),
-            store,
-            AppEdition.Free);
+            store);
         var licenseKey = LicenseKeyVerifier.CreateSignedLicenseKey(
             new LicensePayload(1, "FluxRAM", "Pro", "FLX-LOCAL-MACHINE", DateTimeOffset.UtcNow),
             rsa);
@@ -58,8 +56,7 @@ public sealed class LicenseManagerTests
         var manager = new LicenseManager(
             new StaticHardwareIdentifierProvider("FLX-LOCAL-MACHINE"),
             new LicenseKeyVerifier(ExportPublicKeyPem(rsa)),
-            store,
-            AppEdition.Free);
+            store);
 
         var status = manager.Activate("not-a-real-key");
 

@@ -6,7 +6,7 @@ namespace FluxRAM.App.Tests;
 public sealed class AppEditionCatalogTests
 {
     [Fact]
-    public void CurrentEdition_DefaultsToFreeForRuntimeActivationBuild()
+    public void CurrentEdition_IsAlwaysRuntimeActivatedFreeShell()
     {
         Assert.Equal(AppEdition.Free, AppEditionCatalog.CurrentEdition);
     }

@@ -59,13 +59,7 @@ public sealed class AppEditionFeatures
 
 public static class AppEditionCatalog
 {
-#if FLUXRAM_FREE
     public static AppEdition CurrentEdition => AppEdition.Free;
-#elif FLUXRAM_PRO
-    public static AppEdition CurrentEdition => AppEdition.Pro;
-#else
-    public static AppEdition CurrentEdition => AppEdition.Free;
-#endif
 
     public static AppEditionFeatures Current => For(CurrentEdition);
 
