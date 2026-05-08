@@ -20,8 +20,8 @@
     <SolidColorBrush x:Key="SurfaceSoftBrush" Color="#0D131A" />
     <SolidColorBrush x:Key="BorderBrushSoft" Color="#243244" />
     <SolidColorBrush x:Key="TextPrimaryBrush" Color="#F4F7FB" />
-    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#B8C4D4" />
-    <SolidColorBrush x:Key="TextMutedBrush" Color="#8EA0B7" />
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#D8E2F0" />
+    <SolidColorBrush x:Key="TextMutedBrush" Color="#C4D0E2" />
     <SolidColorBrush x:Key="AccentBrush" Color="#3DD6A3" />
     <SolidColorBrush x:Key="AccentSoftBrush" Color="#18362B" />
     <SolidColorBrush x:Key="WarningBrush" Color="#F7C873" />
@@ -45,9 +45,9 @@
     </Style>
 
     <Style x:Key="CaptionStyle" TargetType="TextBlock">
-      <Setter Property="FontSize" Value="11" />
-      <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
-      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+      <Setter Property="FontWeight" Value="Bold" />
       <Setter Property="TextWrapping" Value="Wrap" />
       <Setter Property="TextTrimming" Value="CharacterEllipsis" />
     </Style>
@@ -60,8 +60,9 @@
     </Style>
 
     <Style x:Key="BodyTextStyle" TargetType="TextBlock">
-      <Setter Property="FontSize" Value="12" />
+      <Setter Property="FontSize" Value="13" />
       <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+      <Setter Property="FontWeight" Value="Medium" />
       <Setter Property="TextWrapping" Value="Wrap" />
     </Style>
 
@@ -151,7 +152,7 @@
     <Style x:Key="QuietButtonStyle" TargetType="Button" BasedOn="{StaticResource BaseButtonStyle}">
       <Setter Property="Background" Value="#151E29" />
       <Setter Property="BorderBrush" Value="#2D3A49" />
-      <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
     </Style>
 
     <Style x:Key="IconButtonStyle" TargetType="Button" BasedOn="{StaticResource BaseButtonStyle}">
@@ -227,7 +228,7 @@
     <Style TargetType="ListBox">
       <Setter Property="BorderThickness" Value="0" />
       <Setter Property="Background" Value="Transparent" />
-      <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
       <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
       <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto" />
     </Style>
@@ -477,8 +478,9 @@
                          Text="Protected Apps" />
               <TextBlock x:Name="ProtectionModeTextBlock"
                          Margin="0,3,8,0"
-                         FontSize="11"
-                         Foreground="{StaticResource TextMutedBrush}"
+                         FontSize="12"
+                         FontWeight="Medium"
+                         Foreground="{StaticResource TextSecondaryBrush}"
                          TextWrapping="Wrap" />
             </StackPanel>
 
