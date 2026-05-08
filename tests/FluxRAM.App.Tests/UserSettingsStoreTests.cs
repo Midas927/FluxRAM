@@ -25,6 +25,28 @@ public sealed class UserSettingsStoreTests
     }
 
     [Fact]
+    public void SaveTheme_PersistsSelectedTheme()
+    {
+        var store = new UserSettingsStore(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "settings.json"));
+
+        store.SaveTheme(AppTheme.Light);
+
+        Assert.Equal(AppTheme.Light, store.LoadTheme());
+    }
+
+    [Fact]
+    public void SaveTheme_DoesNotOverwriteLanguage()
+    {
+        var store = new UserSettingsStore(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "settings.json"));
+
+        store.SaveLanguage(UiLanguage.Japanese);
+        store.SaveTheme(AppTheme.Light);
+
+        Assert.Equal(UiLanguage.Japanese, store.LoadLanguage());
+        Assert.Equal(AppTheme.Light, store.LoadTheme());
+    }
+
+    [Fact]
     public void LoadLanguage_WhenFileIsMalformed_ReturnsEnglish()
     {
         var path = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"), "settings.json");
@@ -33,5 +55,6 @@ public sealed class UserSettingsStoreTests
         var store = new UserSettingsStore(path);
 
         Assert.Equal(UiLanguage.English, store.LoadLanguage());
+        Assert.Equal(AppTheme.Dark, store.LoadTheme());
     }
 }

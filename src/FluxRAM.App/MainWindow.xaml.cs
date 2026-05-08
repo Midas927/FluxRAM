@@ -57,6 +57,7 @@ public partial class MainWindow : Window
     private OptimizerSettings _optimizerSettings;
     private OptimizerProfile _selectedProfile;
     private UiLanguage _uiLanguage = UiLanguage.English;
+    private AppTheme _uiTheme = AppTheme.Dark;
     private LicenseStatus _licenseStatus;
 
     private DateTimeOffset? _lastBoostAt;
@@ -89,6 +90,7 @@ public partial class MainWindow : Window
         _userSettingsStore = new UserSettingsStore();
         _licenseStatus = _licenseManager.GetStatus();
         var initialLanguage = _userSettingsStore.LoadLanguage();
+        var initialTheme = _userSettingsStore.LoadTheme();
         _selectedProfile = OptimizerProfile.Conservative;
         _optimizerSettings = OptimizerSettingsCatalog.FromProfile(_selectedProfile);
         _optimizerTimer = new DispatcherTimer
@@ -128,6 +130,7 @@ public partial class MainWindow : Window
         DataContext = _viewModel;
         ProfileSelector.SelectedIndex = 0;
         SelectLanguage(initialLanguage);
+        ApplyTheme(initialTheme, false);
         ApplyEditionUi();
         ApplyLanguage(initialLanguage, false);
         _viewModel.UpdateRamDelta(0);
@@ -181,6 +184,13 @@ public partial class MainWindow : Window
     private void DetailSettingsButton_OnClick(object sender, RoutedEventArgs e)
     {
         ApplyDetailPanelState(!_isDetailPanelVisible);
+    }
+
+    private void ThemeToggleButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        var nextTheme = _uiTheme == AppTheme.Dark ? AppTheme.Light : AppTheme.Dark;
+        ApplyTheme(nextTheme);
+        _userSettingsStore.SaveTheme(nextTheme);
     }
 
     private void EditionHelpButton_OnClick(object sender, RoutedEventArgs e)
@@ -887,6 +897,7 @@ public partial class MainWindow : Window
         EditionCaptionTextBlock.Text = T("EDITION", "版本");
         EditionHelpButton.ToolTip = T("Edition details", "版本功能明细");
         EditionValueTextBlock.Text = T(edition.EditionLabelEnglish, edition.EditionLabelChinese);
+        UpdateThemeButtonText();
         DetailSettingsButton.Content = _isDetailPanelVisible
             ? T("Hide Details", "收起详情")
             : T("Details", "详细设置");
@@ -935,6 +946,93 @@ public partial class MainWindow : Window
         {
             _viewModel.AddEvent(T("Language switched.", "语言已切换。"));
         }
+    }
+
+    private void ApplyTheme(AppTheme theme, bool addEvent = true)
+    {
+        _uiTheme = theme;
+        var light = theme == AppTheme.Light;
+        SetThemeBrush("WindowBackgroundBrush", "#0E1117", "#F4F7FB", light);
+        SetThemeBrush("SurfaceBrush", "#121821", "#FFFFFF", light);
+        SetThemeBrush("SurfaceSoftBrush", "#0D131A", "#EEF3F8", light);
+        SetThemeBrush("BorderBrushSoft", "#243244", "#C8D4E3", light);
+        SetThemeBrush("InsetBorderBrush", "#243040", "#D1DCE8", light);
+        SetThemeBrush("TextPrimaryBrush", "#F4F7FB", "#101827", light);
+        SetThemeBrush("TextSecondaryBrush", "#D8E2F0", "#243247", light);
+        SetThemeBrush("TextMutedBrush", "#C4D0E2", "#526174", light);
+        SetThemeBrush("AccentBrush", "#3DD6A3", "#0EAD7C", light);
+        SetThemeBrush("AccentSoftBrush", "#18362B", "#DDF7ED", light);
+        SetThemeBrush("WarningBrush", "#F7C873", "#B7791F", light);
+        SetThemeBrush("TextBoxBackgroundBrush", "#0D141D", "#FFFFFF", light);
+        SetThemeBrush("TextBoxBorderBrush", "#334155", "#9AAABD", light);
+        SetThemeBrush("SelectionBrush", "#516B8D", "#B7D7FF", light);
+        SetThemeBrush("ComboBoxForegroundBrush", "#17202C", "#101827", light);
+        SetThemeBrush("ComboBoxBackgroundBrush", "#EFF5FB", "#FFFFFF", light);
+        SetThemeBrush("ComboBoxBorderBrush", "#CAD5E2", "#9AAABD", light);
+        SetThemeBrush("ButtonBackgroundBrush", "#1B2531", "#EAF0F7", light);
+        SetThemeBrush("ButtonBorderBrush", "#304156", "#B7C5D6", light);
+        SetThemeBrush("ButtonHoverBrush", "#223044", "#DDE7F2", light);
+        SetThemeBrush("ButtonHoverBorderBrush", "#526A84", "#8096AD", light);
+        SetThemeBrush("ButtonPressedBrush", "#192331", "#CEDBEA", light);
+        SetThemeBrush("PrimaryButtonBackgroundBrush", "#3DD6A3", "#18C48F", light);
+        SetThemeBrush("PrimaryButtonBorderBrush", "#7BE8BC", "#0EA574", light);
+        SetThemeBrush("PrimaryButtonTextBrush", "#06130D", "#052016", light);
+        SetThemeBrush("QuietButtonBackgroundBrush", "#151E29", "#EEF3F8", light);
+        SetThemeBrush("QuietButtonBorderBrush", "#2D3A49", "#B7C5D6", light);
+        SetThemeBrush("IconButtonBackgroundBrush", "#101923", "#EEF3F8", light);
+        SetThemeBrush("IconButtonBorderBrush", "#4B6280", "#94A3B8", light);
+        SetThemeBrush("ToggleBackgroundBrush", "#1B2531", "#EAF0F7", light);
+        SetThemeBrush("ToggleBorderBrush", "#304156", "#B7C5D6", light);
+        SetThemeBrush("ToggleHoverBorderBrush", "#5C7087", "#8096AD", light);
+        SetThemeBrush("ListItemSelectedBrush", "#253A31", "#DDF7ED", light);
+        SetThemeBrush("ListItemHoverBrush", "#202B38", "#E8F0F8", light);
+        SetThemeBrush("IconTileBackgroundBrush", "#0D141D", "#FFFFFF", light);
+        SetThemeBrush("IconTileBorderBrush", "#2E3B4C", "#C5D1DE", light);
+        SetThemeBrush("EditionBadgeBorderBrush", "#315E4B", "#86D7B6", light);
+        SetThemeBrush("EditionBadgeTextBrush", "#9FF0C9", "#087A5A", light);
+        Background = ThemeBrush("WindowBackgroundBrush");
+        UpdateThemeButtonText();
+
+        if (addEvent)
+        {
+            _viewModel.AddEvent(theme == AppTheme.Light
+                ? T("Theme switched to light mode.", "主题已切换为亮色模式。")
+                : T("Theme switched to dark mode.", "主题已切换为暗色模式。"));
+        }
+    }
+
+    private void UpdateThemeButtonText()
+    {
+        ThemeToggleButton.Content = _uiTheme == AppTheme.Light
+            ? ThemeLabel("Light", "亮色", "亮色", "ライト", "라이트")
+            : ThemeLabel("Dark", "暗色", "暗色", "ダーク", "다크");
+        ThemeToggleButton.ToolTip = T("Switch light/dark theme", "切换亮色 / 暗色模式");
+    }
+
+    private string ThemeLabel(string english, string chineseSimplified, string chineseTraditional, string japanese, string korean)
+    {
+        return _uiLanguage switch
+        {
+            UiLanguage.ChineseSimplified => chineseSimplified,
+            UiLanguage.ChineseTraditional => chineseTraditional,
+            UiLanguage.Japanese => japanese,
+            UiLanguage.Korean => korean,
+            _ => english
+        };
+    }
+
+    private void SetThemeBrush(string key, string darkColor, string lightColor, bool light)
+    {
+        if (Resources[key] is Media.SolidColorBrush brush &&
+            Media.ColorConverter.ConvertFromString(light ? lightColor : darkColor) is Media.Color color)
+        {
+            brush.Color = color;
+        }
+    }
+
+    private Media.Brush ThemeBrush(string key)
+    {
+        return Resources[key] as Media.Brush ?? Media.Brushes.Transparent;
     }
 
     private static string NormalizePath(string value) => string.IsNullOrWhiteSpace(value)

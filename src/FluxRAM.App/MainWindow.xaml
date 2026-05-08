@@ -16,15 +16,44 @@
         TextOptions.TextRenderingMode="ClearType">
 
   <Window.Resources>
+    <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#0E1117" />
     <SolidColorBrush x:Key="SurfaceBrush" Color="#121821" />
     <SolidColorBrush x:Key="SurfaceSoftBrush" Color="#0D131A" />
     <SolidColorBrush x:Key="BorderBrushSoft" Color="#243244" />
+    <SolidColorBrush x:Key="InsetBorderBrush" Color="#243040" />
     <SolidColorBrush x:Key="TextPrimaryBrush" Color="#F4F7FB" />
     <SolidColorBrush x:Key="TextSecondaryBrush" Color="#D8E2F0" />
     <SolidColorBrush x:Key="TextMutedBrush" Color="#C4D0E2" />
     <SolidColorBrush x:Key="AccentBrush" Color="#3DD6A3" />
     <SolidColorBrush x:Key="AccentSoftBrush" Color="#18362B" />
     <SolidColorBrush x:Key="WarningBrush" Color="#F7C873" />
+    <SolidColorBrush x:Key="TextBoxBackgroundBrush" Color="#0D141D" />
+    <SolidColorBrush x:Key="TextBoxBorderBrush" Color="#334155" />
+    <SolidColorBrush x:Key="SelectionBrush" Color="#516B8D" />
+    <SolidColorBrush x:Key="ComboBoxForegroundBrush" Color="#17202C" />
+    <SolidColorBrush x:Key="ComboBoxBackgroundBrush" Color="#EFF5FB" />
+    <SolidColorBrush x:Key="ComboBoxBorderBrush" Color="#CAD5E2" />
+    <SolidColorBrush x:Key="ButtonBackgroundBrush" Color="#1B2531" />
+    <SolidColorBrush x:Key="ButtonBorderBrush" Color="#304156" />
+    <SolidColorBrush x:Key="ButtonHoverBrush" Color="#223044" />
+    <SolidColorBrush x:Key="ButtonHoverBorderBrush" Color="#526A84" />
+    <SolidColorBrush x:Key="ButtonPressedBrush" Color="#192331" />
+    <SolidColorBrush x:Key="PrimaryButtonBackgroundBrush" Color="#3DD6A3" />
+    <SolidColorBrush x:Key="PrimaryButtonBorderBrush" Color="#7BE8BC" />
+    <SolidColorBrush x:Key="PrimaryButtonTextBrush" Color="#06130D" />
+    <SolidColorBrush x:Key="QuietButtonBackgroundBrush" Color="#151E29" />
+    <SolidColorBrush x:Key="QuietButtonBorderBrush" Color="#2D3A49" />
+    <SolidColorBrush x:Key="IconButtonBackgroundBrush" Color="#101923" />
+    <SolidColorBrush x:Key="IconButtonBorderBrush" Color="#4B6280" />
+    <SolidColorBrush x:Key="ToggleBackgroundBrush" Color="#1B2531" />
+    <SolidColorBrush x:Key="ToggleBorderBrush" Color="#304156" />
+    <SolidColorBrush x:Key="ToggleHoverBorderBrush" Color="#5C7087" />
+    <SolidColorBrush x:Key="ListItemSelectedBrush" Color="#253A31" />
+    <SolidColorBrush x:Key="ListItemHoverBrush" Color="#202B38" />
+    <SolidColorBrush x:Key="IconTileBackgroundBrush" Color="#0D141D" />
+    <SolidColorBrush x:Key="IconTileBorderBrush" Color="#2E3B4C" />
+    <SolidColorBrush x:Key="EditionBadgeBorderBrush" Color="#315E4B" />
+    <SolidColorBrush x:Key="EditionBadgeTextBrush" Color="#9FF0C9" />
 
     <Style x:Key="CardStyle" TargetType="Border">
       <Setter Property="CornerRadius" Value="10" />
@@ -39,7 +68,7 @@
       <Setter Property="CornerRadius" Value="9" />
       <Setter Property="Padding" Value="10" />
       <Setter Property="BorderThickness" Value="1" />
-      <Setter Property="BorderBrush" Value="#243040" />
+      <Setter Property="BorderBrush" Value="{StaticResource InsetBorderBrush}" />
       <Setter Property="Background" Value="{StaticResource SurfaceSoftBrush}" />
       <Setter Property="SnapsToDevicePixels" Value="True" />
     </Style>
@@ -85,19 +114,19 @@
       <Setter Property="Padding" Value="8,0" />
       <Setter Property="VerticalContentAlignment" Value="Center" />
       <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
-      <Setter Property="Background" Value="#0D141D" />
-      <Setter Property="BorderBrush" Value="#334155" />
+      <Setter Property="Background" Value="{StaticResource TextBoxBackgroundBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource TextBoxBorderBrush}" />
       <Setter Property="BorderThickness" Value="1" />
       <Setter Property="CaretBrush" Value="{StaticResource AccentBrush}" />
-      <Setter Property="SelectionBrush" Value="#516B8D" />
+      <Setter Property="SelectionBrush" Value="{StaticResource SelectionBrush}" />
     </Style>
 
     <Style TargetType="ComboBox">
       <Setter Property="Height" Value="30" />
       <Setter Property="Padding" Value="6,0" />
-      <Setter Property="Foreground" Value="#17202C" />
-      <Setter Property="Background" Value="#EFF5FB" />
-      <Setter Property="BorderBrush" Value="#CAD5E2" />
+      <Setter Property="Foreground" Value="{StaticResource ComboBoxForegroundBrush}" />
+      <Setter Property="Background" Value="{StaticResource ComboBoxBackgroundBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource ComboBoxBorderBrush}" />
       <Setter Property="BorderThickness" Value="1" />
       <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
@@ -108,8 +137,8 @@
       <Setter Property="FontSize" Value="12" />
       <Setter Property="FontWeight" Value="SemiBold" />
       <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
-      <Setter Property="Background" Value="#1B2531" />
-      <Setter Property="BorderBrush" Value="#304156" />
+      <Setter Property="Background" Value="{StaticResource ButtonBackgroundBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource ButtonBorderBrush}" />
       <Setter Property="BorderThickness" Value="1" />
       <Setter Property="Cursor" Value="Hand" />
       <Setter Property="Template">
@@ -127,11 +156,11 @@
             </Border>
             <ControlTemplate.Triggers>
               <Trigger Property="IsMouseOver" Value="True">
-                <Setter TargetName="ButtonRoot" Property="Background" Value="#223044" />
-                <Setter TargetName="ButtonRoot" Property="BorderBrush" Value="#526A84" />
+                <Setter TargetName="ButtonRoot" Property="Background" Value="{StaticResource ButtonHoverBrush}" />
+                <Setter TargetName="ButtonRoot" Property="BorderBrush" Value="{StaticResource ButtonHoverBorderBrush}" />
               </Trigger>
               <Trigger Property="IsPressed" Value="True">
-                <Setter TargetName="ButtonRoot" Property="Background" Value="#192331" />
+                <Setter TargetName="ButtonRoot" Property="Background" Value="{StaticResource ButtonPressedBrush}" />
               </Trigger>
               <Trigger Property="IsEnabled" Value="False">
                 <Setter Property="Opacity" Value="0.45" />
@@ -144,14 +173,14 @@
     </Style>
 
     <Style x:Key="PrimaryButtonStyle" TargetType="Button" BasedOn="{StaticResource BaseButtonStyle}">
-      <Setter Property="Background" Value="#3DD6A3" />
-      <Setter Property="BorderBrush" Value="#7BE8BC" />
-      <Setter Property="Foreground" Value="#06130D" />
+      <Setter Property="Background" Value="{StaticResource PrimaryButtonBackgroundBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource PrimaryButtonBorderBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource PrimaryButtonTextBrush}" />
     </Style>
 
     <Style x:Key="QuietButtonStyle" TargetType="Button" BasedOn="{StaticResource BaseButtonStyle}">
-      <Setter Property="Background" Value="#151E29" />
-      <Setter Property="BorderBrush" Value="#2D3A49" />
+      <Setter Property="Background" Value="{StaticResource QuietButtonBackgroundBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource QuietButtonBorderBrush}" />
       <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
     </Style>
 
@@ -162,8 +191,8 @@
       <Setter Property="Padding" Value="0" />
       <Setter Property="FontSize" Value="12" />
       <Setter Property="FontWeight" Value="Bold" />
-      <Setter Property="Background" Value="#101923" />
-      <Setter Property="BorderBrush" Value="#4B6280" />
+      <Setter Property="Background" Value="{StaticResource IconButtonBackgroundBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource IconButtonBorderBrush}" />
       <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
     </Style>
 
@@ -175,8 +204,8 @@
       <Setter Property="FontSize" Value="13" />
       <Setter Property="FontWeight" Value="SemiBold" />
       <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
-      <Setter Property="Background" Value="#1B2531" />
-      <Setter Property="BorderBrush" Value="#304156" />
+      <Setter Property="Background" Value="{StaticResource ToggleBackgroundBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource ToggleBorderBrush}" />
       <Setter Property="BorderThickness" Value="1" />
       <Setter Property="Cursor" Value="Hand" />
       <Setter Property="Template">
@@ -213,7 +242,7 @@
                 <Setter TargetName="ToggleDot" Property="Background" Value="{StaticResource AccentBrush}" />
               </Trigger>
               <Trigger Property="IsMouseOver" Value="True">
-                <Setter TargetName="ToggleRoot" Property="BorderBrush" Value="#5C7087" />
+                <Setter TargetName="ToggleRoot" Property="BorderBrush" Value="{StaticResource ToggleHoverBorderBrush}" />
               </Trigger>
               <Trigger Property="IsEnabled" Value="False">
                 <Setter Property="Opacity" Value="0.45" />
@@ -250,11 +279,11 @@
             </Border>
             <ControlTemplate.Triggers>
               <Trigger Property="IsSelected" Value="True">
-                <Setter TargetName="ItemRoot" Property="Background" Value="#253A31" />
+                <Setter TargetName="ItemRoot" Property="Background" Value="{StaticResource ListItemSelectedBrush}" />
                 <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
               </Trigger>
               <Trigger Property="IsMouseOver" Value="True">
-                <Setter TargetName="ItemRoot" Property="Background" Value="#202B38" />
+                <Setter TargetName="ItemRoot" Property="Background" Value="{StaticResource ListItemHoverBrush}" />
               </Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>
@@ -288,17 +317,19 @@
             <ColumnDefinition Width="10" />
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="8" />
-            <ColumnDefinition Width="96" />
+            <ColumnDefinition Width="78" />
             <ColumnDefinition Width="8" />
-            <ColumnDefinition Width="96" />
+            <ColumnDefinition Width="72" />
+            <ColumnDefinition Width="8" />
+            <ColumnDefinition Width="78" />
           </Grid.ColumnDefinitions>
 
           <Border Grid.Column="0"
                   Width="42"
                   Height="42"
                   CornerRadius="8"
-                  Background="#0D141D"
-                  BorderBrush="#2E3B4C"
+                  Background="{StaticResource IconTileBackgroundBrush}"
+                  BorderBrush="{StaticResource IconTileBorderBrush}"
                   BorderThickness="1">
             <Image Source="FluxRAM.ico"
                    Width="28"
@@ -319,12 +350,12 @@
                       Height="24"
                       CornerRadius="6"
                       Background="{StaticResource AccentSoftBrush}"
-                      BorderBrush="#315E4B"
+                      BorderBrush="{StaticResource EditionBadgeBorderBrush}"
                       BorderThickness="1">
                 <TextBlock x:Name="EditionValueTextBlock"
                            FontSize="11"
                            FontWeight="SemiBold"
-                           Foreground="#9FF0C9"
+                           Foreground="{StaticResource EditionBadgeTextBrush}"
                            VerticalAlignment="Center"
                            Text="FluxRAM" />
               </Border>
@@ -342,8 +373,14 @@
                   Style="{StaticResource QuietButtonStyle}"
                   Content="Details"
                   Click="DetailSettingsButton_OnClick" />
-          <Button x:Name="MinimizeButton"
+          <Button x:Name="ThemeToggleButton"
                   Grid.Column="6"
+                  Height="30"
+                  Style="{StaticResource QuietButtonStyle}"
+                  Content="Light"
+                  Click="ThemeToggleButton_OnClick" />
+          <Button x:Name="MinimizeButton"
+                  Grid.Column="8"
                   Height="30"
                   Style="{StaticResource QuietButtonStyle}"
                   Content="Minimize"
@@ -360,7 +397,8 @@
             <StackPanel>
               <TextBlock x:Name="StatusCaptionTextBlock" Style="{StaticResource CaptionStyle}" Text="STATUS" />
               <TextBlock Margin="0,4,0,0"
-                         FontSize="12"
+                         FontSize="13"
+                         FontWeight="Medium"
                          Foreground="{StaticResource TextPrimaryBrush}"
                          TextWrapping="Wrap"
                          Text="{Binding StatusMessage}" />
