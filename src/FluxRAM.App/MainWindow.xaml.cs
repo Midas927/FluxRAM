@@ -1023,10 +1023,9 @@ public partial class MainWindow : Window
 
     private void SetThemeBrush(string key, string darkColor, string lightColor, bool light)
     {
-        if (Resources[key] is Media.SolidColorBrush brush &&
-            Media.ColorConverter.ConvertFromString(light ? lightColor : darkColor) is Media.Color color)
+        if (Media.ColorConverter.ConvertFromString(light ? lightColor : darkColor) is Media.Color color)
         {
-            brush.Color = color;
+            Resources[key] = new Media.SolidColorBrush(color);
         }
     }
 
