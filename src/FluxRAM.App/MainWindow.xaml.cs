@@ -206,6 +206,7 @@ public partial class MainWindow : Window
             ResizeMode = ResizeMode.NoResize,
             ShowInTaskbar = false,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            FontFamily = UiFontFamily(_uiLanguage),
             Background = CreateDialogBrush(11, 16, 23)
         };
 
@@ -226,6 +227,7 @@ public partial class MainWindow : Window
             ResizeMode = ResizeMode.NoResize,
             ShowInTaskbar = false,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            FontFamily = UiFontFamily(_uiLanguage),
             Background = CreateDialogBrush(11, 16, 23)
         };
 
@@ -810,6 +812,7 @@ public partial class MainWindow : Window
             MinWidth = 560,
             MinHeight = 320,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            FontFamily = UiFontFamily(_uiLanguage),
             Content = layout
         };
 
@@ -874,6 +877,7 @@ public partial class MainWindow : Window
     private void ApplyLanguage(UiLanguage language, bool addEvent = true)
     {
         _uiLanguage = language;
+        ApplyUiFont(language);
         _viewModel.SetLanguage(language);
 
         var edition = _licenseStatus.Features;
@@ -946,6 +950,23 @@ public partial class MainWindow : Window
         {
             _viewModel.AddEvent(T("Language switched.", "语言已切换。"));
         }
+    }
+
+    private void ApplyUiFont(UiLanguage language)
+    {
+        FontFamily = UiFontFamily(language);
+    }
+
+    private static Media.FontFamily UiFontFamily(UiLanguage language)
+    {
+        return language switch
+        {
+            UiLanguage.ChineseSimplified => new Media.FontFamily("Microsoft YaHei UI, Segoe UI"),
+            UiLanguage.ChineseTraditional => new Media.FontFamily("Microsoft JhengHei UI, Microsoft YaHei UI, Segoe UI"),
+            UiLanguage.Japanese => new Media.FontFamily("Yu Gothic UI, Meiryo UI, Segoe UI"),
+            UiLanguage.Korean => new Media.FontFamily("Malgun Gothic, Segoe UI"),
+            _ => new Media.FontFamily("Segoe UI")
+        };
     }
 
     private void ApplyTheme(AppTheme theme, bool addEvent = true)
