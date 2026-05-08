@@ -246,9 +246,19 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private void RefreshProtectionSummary()
     {
-        _protectionSummaryDisplay = _supportsProtectList
-            ? L($"Protected apps: {_protectedAppCount}", $"受保护应用：{_protectedAppCount}")
-            : L("Protected apps: Pro only", "受保护应用：专业版专属");
+        if (_supportsProtectList)
+        {
+            var label = UiLanguageLocalizer.LocalizeLabel(_language, "Protected apps", "受保护应用");
+            var separator = _language is UiLanguage.ChineseSimplified or UiLanguage.ChineseTraditional or UiLanguage.Japanese
+                ? "："
+                : ": ";
+            _protectionSummaryDisplay = $"{label}{separator}{_protectedAppCount}";
+        }
+        else
+        {
+            _protectionSummaryDisplay = L("Protected apps: Pro only", "受保护应用：专业版专属");
+        }
+
         RaisePropertyChanged(nameof(ProtectionSummaryDisplay));
     }
 
@@ -291,14 +301,15 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     private string L(string english, string chinese)
     {
-        return _language == UiLanguage.ChineseSimplified ? chinese : english;
+        return UiLanguageLocalizer.Localize(_language, english, chinese);
     }
 
     private string Metric(string englishLabel, string chineseLabel, string value)
     {
-        return _language == UiLanguage.ChineseSimplified
-            ? $"{chineseLabel}：{value}"
-            : $"{englishLabel}: {value}";
+        var label = UiLanguageLocalizer.LocalizeLabel(_language, englishLabel, chineseLabel);
+        return _language is UiLanguage.ChineseSimplified or UiLanguage.ChineseTraditional or UiLanguage.Japanese
+            ? $"{label}：{value}"
+            : $"{label}: {value}";
     }
 
     private void RaisePropertyChanged([CallerMemberName] string? propertyName = null)

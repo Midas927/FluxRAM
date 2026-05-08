@@ -20,9 +20,8 @@ public sealed class AppEditionCatalogTests
         Assert.False(features.SupportsExtremeProfile);
         Assert.True(features.SupportsProtectList);
         Assert.False(features.SupportsAdvancedProtection);
-        Assert.Contains("Auto Boost", features.FeatureSummaryEnglish);
-        Assert.Contains("FluxRAM Pro", features.ProIntroductionEnglish);
-        Assert.Contains("protected apps", features.ProIntroductionEnglish);
+        Assert.Equal("FluxRAM", features.EditionLabelEnglish);
+        Assert.Equal("普通版", features.EditionLabelChinese);
     }
 
     [Fact]
@@ -34,7 +33,7 @@ public sealed class AppEditionCatalogTests
         Assert.True(features.SupportsExtremeProfile);
         Assert.True(features.SupportsProtectList);
         Assert.True(features.SupportsAdvancedProtection);
-        Assert.Contains("unlocked", features.FeatureSummaryEnglish);
-        Assert.Contains("running processes", features.ProIntroductionEnglish);
+        Assert.Equal("FluxRAM Pro", features.EditionLabelEnglish);
+        Assert.Equal("专业版", features.EditionLabelChinese);
     }
 }

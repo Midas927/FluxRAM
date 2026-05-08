@@ -80,6 +80,22 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
+    public void SetLanguage_SwitchesDisplayToJapaneseAndKorean()
+    {
+        var viewModel = new MainWindowViewModel();
+        viewModel.SetAutoBoost(true);
+        viewModel.UpdateProtectionSummary(2, supportsProtectList: true);
+
+        viewModel.SetLanguage(UiLanguage.Japanese);
+        Assert.Equal("自動 Boost：オン、メモリ圧力で実行", viewModel.AutoBoostDisplay);
+        Assert.Equal("保護アプリ：2", viewModel.ProtectionSummaryDisplay);
+
+        viewModel.SetLanguage(UiLanguage.Korean);
+        Assert.Equal("자동 Boost: 켜짐, 메모리 압력 기준", viewModel.AutoBoostDisplay);
+        Assert.Equal("보호 앱: 2", viewModel.ProtectionSummaryDisplay);
+    }
+
+    [Fact]
     public void UpdateSelfOverhead_FormatsOverheadSummary()
     {
         var viewModel = new MainWindowViewModel();

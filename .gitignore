@@ -3,6 +3,10 @@ obj/
 dist/
 .vs/
 .secrets/
+tools/FluxRAM.Keygen/
+scripts/generate-pro-key.ps1
+scripts/new-license-keypair.ps1
+scripts/publish-keygen-win-x64.ps1
 *.private-key.xml
 license-private*.xml
 *.log

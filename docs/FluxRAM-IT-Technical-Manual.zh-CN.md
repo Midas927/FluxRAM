@@ -27,9 +27,8 @@ FluxRAM 是 Windows 11 本地内存 Boost 工具，基于 C# / .NET 8 / WPF 开�
 ```text
 src/FluxRAM.App        WPF 桌面应用、UI、授权、托盘和运行时编排
 src/FluxRAM.Core       内存快照、进程枚举、策略规划、Win32 调用
-tools/FluxRAM.Keygen   内部 Pro key 生成器
 tests/FluxRAM.*        单元测试
-scripts/               发布、授权 key、运行时安装脚本
+scripts/               发布和运行时安装脚本
 docs/                  商业说明书和 IT 技术说明书
 ```
 
@@ -47,7 +46,7 @@ docs/                  商业说明书和 IT 技术说明书
 1. FluxRAM Pro 使用机器 ID + RSA 签名 key 激活。
 2. 应用内只嵌入公钥用于验签。
 3. 私钥必须保存在仓库外，不能上传 GitHub，也不能发给客户。
-4. Keygen 只用于内部生成 Pro key。
+4. Pro key 由仓库外部的内部授权工具生成，私钥和授权工具不随公开源码分发。
 
 ## 4. 版本与功能开关
 
@@ -167,36 +166,10 @@ scripts\run-fluxram.bat
 4. 在线时从官方 .NET release metadata 获取安装地址。
 5. 安装日志写入 `%TEMP%\fluxram-dotnet-runtime-install.log`。
 
-## 10. 内部授权工具
+## 10. 授权与发布安全
 
-生成密钥对：
-
-```powershell
-.\scripts\new-license-keypair.ps1
-```
-
-命令行生成 Pro key：
-
-```powershell
-.\scripts\generate-pro-key.ps1 -MachineId "FLX-...." -PrivateKeyXmlPath "D:\secure\fluxram-license.private-key.xml"
-```
-
-发布内部 Keygen：
-
-```powershell
-.\scripts\publish-keygen-win-x64.ps1
-```
-
-输出：
-
-```text
-dist\keygen-win-x64\FluxRAM-Keygen.exe
-```
-
-安全要求：
-
-1. `fluxram-license.private-key.xml` 只能在内部安全位置保存。
-2. 不要把 `.secrets`、私钥或 Keygen 输出上传 GitHub。
+1. `fluxram-license.private-key.xml` 只能保存在内部安全位置。
+2. 内部 Pro key 生成器、私钥和授权脚本不进入公开 GitHub 仓库。
 3. 公开下载包只通过 GitHub Release 附件分发，不提交到仓库源码树。
 4. 生产发布前应替换应用内公钥，并对发行 exe 做代码签名。
 

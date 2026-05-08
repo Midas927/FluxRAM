@@ -398,7 +398,10 @@
                       Margin="0,4,0,0"
                       SelectionChanged="LanguageSelector_OnSelectionChanged">
               <ComboBoxItem x:Name="LanguageEnglishItem" Tag="en" Content="English" />
-              <ComboBoxItem x:Name="LanguageChineseItem" Tag="zh-CN" Content="Chinese" />
+              <ComboBoxItem x:Name="LanguageChineseSimplifiedItem" Tag="zh-CN" Content="简体中文" />
+              <ComboBoxItem x:Name="LanguageChineseTraditionalItem" Tag="zh-TW" Content="繁體中文" />
+              <ComboBoxItem x:Name="LanguageJapaneseItem" Tag="ja" Content="日本語" />
+              <ComboBoxItem x:Name="LanguageKoreanItem" Tag="ko" Content="한국어" />
             </ComboBox>
           </StackPanel>
         </Grid>
@@ -455,11 +458,17 @@
               <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
-            <TextBlock x:Name="ProtectListTitleTextBlock"
-                       Grid.Row="0"
-                       Grid.Column="0"
-                       Style="{StaticResource SectionTitleStyle}"
-                       Text="Protected Apps" />
+            <StackPanel Grid.Row="0"
+                        Grid.Column="0">
+              <TextBlock x:Name="ProtectListTitleTextBlock"
+                         Style="{StaticResource SectionTitleStyle}"
+                         Text="Protected Apps" />
+              <TextBlock x:Name="ProtectionModeTextBlock"
+                         Margin="0,3,8,0"
+                         FontSize="10"
+                         Foreground="{StaticResource TextMutedBrush}"
+                         TextWrapping="Wrap" />
+            </StackPanel>
 
             <WrapPanel Grid.Row="0"
                        Grid.Column="1"

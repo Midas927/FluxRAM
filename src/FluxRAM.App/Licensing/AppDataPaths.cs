@@ -19,4 +19,12 @@ public static class AppDataPaths
             "FluxRAM",
             "protected-apps.txt");
     }
+
+    public static string GetUserSettingsPath()
+    {
+        return Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "FluxRAM",
+            "settings.json");
+    }
 }

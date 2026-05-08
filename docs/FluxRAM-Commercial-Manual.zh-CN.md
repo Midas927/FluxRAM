@@ -60,13 +60,13 @@ FluxRAM 启动后会展示当前电脑的机器 ID。
 商业授权流程：
 
 1. 用户把机器 ID 发给销售或客服。
-2. 运营方使用内部 Keygen 生成 Pro key。
+2. 运营方使用仓库外部的内部授权工具生成 Pro key。
 3. 用户在 FluxRAM 内输入 Pro key。
 4. 验证成功后，该电脑永久激活 FluxRAM Pro。
 
 注意：
 
-1. 私钥和 Keygen 只供内部使用，不能发给客户。
+1. 私钥和内部授权工具只供内部使用，不能发给客户。
 2. 客户只应收到 FluxRAM 或 FluxRAM Pro 主程序。
 3. 授权 key 绑定当前电脑，换电脑需要重新生成。
 
@@ -115,5 +115,6 @@ FluxRAM 要做得更好用，关键是减少用户配置成本：不用手写进
 
 内部保管：
 
-1. `FluxRAM-Keygen.exe`
+1. 内部授权工具
 2. `fluxram-license.private-key.xml`
+3. 授权工具和私钥不进入公开 GitHub 仓库，也不发送给客户

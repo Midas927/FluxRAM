@@ -1,5 +1,7 @@
 # FluxRAM
 
+[English](README.en.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [日本語](README.ja.md) | [한국어](README.ko.md)
+
 FluxRAM 是一款面向 Windows 的本地内存 Boost 工具。它的目标不是一直在后台疯狂清理，而是在你需要的时候快速释放冷后台进程占用，并在内存压力升高时自动处理，同时尽量避开游戏、创作软件、本地 AI、直播工具等不该被碰的应用。
 
 ## 下载

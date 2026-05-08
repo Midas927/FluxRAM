@@ -41,6 +41,7 @@ public partial class MainWindow : Window
     private readonly PurgePolicyService _purgePolicyService;
     private readonly FluxRAMLicenseManager _licenseManager;
     private readonly ProtectedAppsStore _protectedAppsStore;
+    private readonly UserSettingsStore _userSettingsStore;
     private readonly DispatcherTimer _optimizerTimer;
     private readonly Forms.NotifyIcon _trayIcon;
     private readonly Forms.ToolStripMenuItem _openTrayMenuItem;
@@ -51,6 +52,7 @@ public partial class MainWindow : Window
     private readonly HashSet<string> _protectedProcessNames = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> _protectedProcessPaths = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, string> _protectedEntryDisplayByPath = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, string> _protectedPathByDisplay = new(StringComparer.Ordinal);
 
     private OptimizerSettings _optimizerSettings;
     private OptimizerProfile _selectedProfile;
@@ -71,6 +73,7 @@ public partial class MainWindow : Window
     private bool _isExitRequested;
     private bool _hasShownTrayTip;
     private bool _isDetailPanelVisible;
+    private bool _isSettingLanguageSelector;
 
     public MainWindow()
     {
@@ -83,7 +86,9 @@ public partial class MainWindow : Window
         _purgePolicyService = new PurgePolicyService();
         _licenseManager = new FluxRAMLicenseManager();
         _protectedAppsStore = new ProtectedAppsStore();
+        _userSettingsStore = new UserSettingsStore();
         _licenseStatus = _licenseManager.GetStatus();
+        var initialLanguage = _userSettingsStore.LoadLanguage();
         _selectedProfile = OptimizerProfile.Conservative;
         _optimizerSettings = OptimizerSettingsCatalog.FromProfile(_selectedProfile);
         _optimizerTimer = new DispatcherTimer
@@ -122,9 +127,9 @@ public partial class MainWindow : Window
 
         DataContext = _viewModel;
         ProfileSelector.SelectedIndex = 0;
-        LanguageSelector.SelectedIndex = 0;
+        SelectLanguage(initialLanguage);
         ApplyEditionUi();
-        ApplyLanguage(UiLanguage.English, false);
+        ApplyLanguage(initialLanguage, false);
         _viewModel.UpdateRamDelta(0);
         _viewModel.UpdateAvailableMemory(0);
         _viewModel.UpdateBoostMetrics(0, 0, 0);
@@ -352,14 +357,19 @@ public partial class MainWindow : Window
 
     private void LanguageSelector_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+        if (_isSettingLanguageSelector)
+        {
+            return;
+        }
+
         if (LanguageSelector.SelectedItem is not ComboBoxItem item || item.Tag is not string tag)
         {
             return;
         }
 
-        ApplyLanguage(tag.Equals("zh-CN", StringComparison.OrdinalIgnoreCase)
-            ? UiLanguage.ChineseSimplified
-            : UiLanguage.English);
+        var language = UiLanguageCatalog.FromCode(tag);
+        ApplyLanguage(language);
+        _userSettingsStore.SaveLanguage(language);
     }
 
     private void ProfileSelector_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -645,14 +655,17 @@ public partial class MainWindow : Window
 
     private bool RemoveProtectedPath(string selectedEntry)
     {
-        var normalizedPath = NormalizePath(selectedEntry);
+        var path = _protectedPathByDisplay.TryGetValue(selectedEntry, out var mappedPath)
+            ? mappedPath
+            : selectedEntry;
+        var normalizedPath = NormalizePath(path);
         if (!_protectedProcessPaths.Remove(normalizedPath))
         {
             return false;
         }
 
         _protectedEntryDisplayByPath.Remove(normalizedPath);
-        var processName = NormalizeProcessName(Path.GetFileName(selectedEntry));
+        var processName = NormalizeProcessName(Path.GetFileName(path));
         if (processName.Length > 0)
         {
             _protectedProcessNames.Remove(processName);
@@ -676,13 +689,43 @@ public partial class MainWindow : Window
 
     private void RefreshProtectedEntries()
     {
-        var entries = _protectedEntryDisplayByPath.Values
-            .OrderBy(x => Path.GetFileName(x), StringComparer.OrdinalIgnoreCase)
-            .ThenBy(x => x, StringComparer.OrdinalIgnoreCase)
-            .ToArray();
+        var entries = ProtectedAppDisplayFormatter.Format(
+            _protectedEntryDisplayByPath.Values.ToArray(),
+            _licenseStatus.Features.SupportsAdvancedProtection,
+            _uiLanguage);
+        _protectedPathByDisplay.Clear();
+        foreach (var entry in entries)
+        {
+            _protectedPathByDisplay[entry.DisplayText] = entry.Path;
+        }
 
-        _viewModel.UpdateProtectedEntries(entries);
-        _viewModel.UpdateProtectionSummary(entries.Length, _licenseStatus.Features.SupportsProtectList);
+        _viewModel.UpdateProtectedEntries(entries.Select(entry => entry.DisplayText).ToArray());
+        _viewModel.UpdateProtectionSummary(entries.Count, _licenseStatus.Features.SupportsProtectList);
+    }
+
+    private void SelectLanguage(UiLanguage language)
+    {
+        var code = UiLanguageCatalog.ToCode(language);
+        var item = LanguageSelector.Items
+            .OfType<ComboBoxItem>()
+            .FirstOrDefault(comboBoxItem =>
+                comboBoxItem.Tag is string tag &&
+                tag.Equals(code, StringComparison.OrdinalIgnoreCase));
+
+        if (item is null)
+        {
+            return;
+        }
+
+        _isSettingLanguageSelector = true;
+        try
+        {
+            LanguageSelector.SelectedItem = item;
+        }
+        finally
+        {
+            _isSettingLanguageSelector = false;
+        }
     }
 
     private IReadOnlyList<string> ShowRunningAppPicker(IReadOnlyList<ProtectedAppCandidate> candidates)
@@ -816,7 +859,10 @@ public partial class MainWindow : Window
         AggressiveProfileItem.Content = T("Extreme Performance", "极致性能");
         LanguageCaptionTextBlock.Text = T("LANGUAGE", "语言");
         LanguageEnglishItem.Content = "English";
-        LanguageChineseItem.Content = T("Chinese", "中文");
+        LanguageChineseSimplifiedItem.Content = "简体中文";
+        LanguageChineseTraditionalItem.Content = "繁體中文";
+        LanguageJapaneseItem.Content = "日本語";
+        LanguageKoreanItem.Content = "한국어";
         EditionCaptionTextBlock.Text = T("EDITION", "版本");
         EditionHelpButton.ToolTip = T("Edition details", "版本功能明细");
         EditionValueTextBlock.Text = T(edition.EditionLabelEnglish, edition.EditionLabelChinese);
@@ -831,6 +877,13 @@ public partial class MainWindow : Window
         BoostNowButton.Content = T("Boost Now", "立即 Boost");
         AutoBoostToggle.Content = T("Auto Boost", "自动 Boost");
         ProtectListTitleTextBlock.Text = T("Protected Apps", "受保护应用");
+        ProtectionModeTextBlock.Text = _licenseStatus.Features.SupportsAdvancedProtection
+            ? T(
+                "Pro advanced protection: exact path, child process and window recognition are active.",
+                "Pro 高级保护：精确路径、子进程与窗口识别已启用。")
+            : T(
+                "Basic protection: process name only. Pro also protects exact paths, child processes and matching windows.",
+                "基础保护：仅按进程名保护。Pro 还可保护精确路径、子进程和匹配窗口。");
         AddProtectedAppButton.Content = T("Add EXE", "添加 EXE");
         AddRunningProtectedAppButton.Content = T("Running App", "运行中应用");
         RemoveProtectedAppButton.Content = T("Remove Selected", "删除所选");
@@ -854,11 +907,12 @@ public partial class MainWindow : Window
         _exitTrayMenuItem.Text = T("Exit", "退出");
         _trayIcon.Text = edition.ProductTitle;
         UpdateLicenseUi();
+        RefreshProtectedEntries();
         RefreshMetricCards();
 
         if (addEvent)
         {
-            _viewModel.AddEvent(T("Language switched to English.", "语言已切换为中文。"));
+            _viewModel.AddEvent(T("Language switched.", "语言已切换。"));
         }
     }
 
@@ -1000,7 +1054,7 @@ public partial class MainWindow : Window
 
     private string LocalizePolicyMessage(string message)
     {
-        if (_uiLanguage == UiLanguage.English)
+        if (_uiLanguage is not (UiLanguage.ChineseSimplified or UiLanguage.ChineseTraditional))
         {
             return message;
         }
@@ -1015,7 +1069,7 @@ public partial class MainWindow : Window
 
     private string LocalizeLicenseMessage(string message, LicenseVerificationFailure failure)
     {
-        if (_uiLanguage == UiLanguage.English)
+        if (_uiLanguage is not (UiLanguage.ChineseSimplified or UiLanguage.ChineseTraditional))
         {
             return failure == LicenseVerificationFailure.None ? message : $"{message} ({failure})";
         }
@@ -1033,7 +1087,7 @@ public partial class MainWindow : Window
         };
     }
 
-    private string T(string english, string chinese) => _uiLanguage == UiLanguage.ChineseSimplified ? chinese : english;
+    private string T(string english, string chinese) => UiLanguageLocalizer.Localize(_uiLanguage, english, chinese);
 
     private void RefreshMetricCards()
     {
