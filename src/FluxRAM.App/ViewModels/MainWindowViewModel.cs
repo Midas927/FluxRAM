@@ -87,7 +87,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public string ReboundRateDisplay => Metric("Rebound Rate", "回弹率", $"{_reboundRatePercent:0.0}%");
 
     public string AutoBoostDisplay => _isAutoBoostEnabled
-        ? L("Auto Boost: on, pressure-gated", "自动 Boost：开启，按压力触发")
+        ? L("Auto Boost: on, pressure-gated", "自动 Boost：开启，按内存压力触发")
         : L("Auto Boost: off", "自动 Boost：关闭");
 
     public string ProcessSummaryDisplay => _processSummaryDisplay;

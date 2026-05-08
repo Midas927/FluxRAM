@@ -20,8 +20,8 @@
     <SolidColorBrush x:Key="SurfaceSoftBrush" Color="#0D131A" />
     <SolidColorBrush x:Key="BorderBrushSoft" Color="#243244" />
     <SolidColorBrush x:Key="TextPrimaryBrush" Color="#F4F7FB" />
-    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#A9B5C6" />
-    <SolidColorBrush x:Key="TextMutedBrush" Color="#748295" />
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#B8C4D4" />
+    <SolidColorBrush x:Key="TextMutedBrush" Color="#8EA0B7" />
     <SolidColorBrush x:Key="AccentBrush" Color="#3DD6A3" />
     <SolidColorBrush x:Key="AccentSoftBrush" Color="#18362B" />
     <SolidColorBrush x:Key="WarningBrush" Color="#F7C873" />
@@ -45,7 +45,7 @@
     </Style>
 
     <Style x:Key="CaptionStyle" TargetType="TextBlock">
-      <Setter Property="FontSize" Value="10" />
+      <Setter Property="FontSize" Value="11" />
       <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
       <Setter Property="FontWeight" Value="SemiBold" />
       <Setter Property="TextWrapping" Value="Wrap" />
@@ -60,7 +60,7 @@
     </Style>
 
     <Style x:Key="BodyTextStyle" TargetType="TextBlock">
-      <Setter Property="FontSize" Value="11" />
+      <Setter Property="FontSize" Value="12" />
       <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
       <Setter Property="TextWrapping" Value="Wrap" />
     </Style>
@@ -162,8 +162,8 @@
       <Setter Property="FontSize" Value="12" />
       <Setter Property="FontWeight" Value="Bold" />
       <Setter Property="Background" Value="#101923" />
-      <Setter Property="BorderBrush" Value="#33475E" />
-      <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+      <Setter Property="BorderBrush" Value="#4B6280" />
+      <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
     </Style>
 
     <Style TargetType="Button" BasedOn="{StaticResource BaseButtonStyle}" />
@@ -379,7 +379,19 @@
             <ColumnDefinition Width="*" />
           </Grid.ColumnDefinitions>
           <StackPanel Grid.Column="0">
-            <TextBlock x:Name="ProfileCaptionTextBlock" Style="{StaticResource CaptionStyle}" Text="PROFILE" />
+            <StackPanel Orientation="Horizontal">
+              <TextBlock x:Name="ProfileCaptionTextBlock"
+                         VerticalAlignment="Center"
+                         Style="{StaticResource CaptionStyle}"
+                         Text="PROFILE" />
+              <Button x:Name="ProfileHelpButton"
+                      Margin="6,0,0,0"
+                      VerticalAlignment="Center"
+                      Style="{StaticResource IconButtonStyle}"
+                      Content="?"
+                      ToolTip="Profile details"
+                      Click="ProfileHelpButton_OnClick" />
+            </StackPanel>
             <ComboBox x:Name="ProfileSelector"
                       Margin="0,4,0,0"
                       SelectionChanged="ProfileSelector_OnSelectionChanged">
@@ -465,7 +477,7 @@
                          Text="Protected Apps" />
               <TextBlock x:Name="ProtectionModeTextBlock"
                          Margin="0,3,8,0"
-                         FontSize="10"
+                         FontSize="11"
                          Foreground="{StaticResource TextMutedBrush}"
                          TextWrapping="Wrap" />
             </StackPanel>
@@ -632,7 +644,7 @@
                      Grid.Column="0"
                      IsReadOnly="True"
                      FontFamily="Consolas"
-                     FontSize="10" />
+                     FontSize="11" />
             <Button x:Name="CopyMachineIdButton"
                     Grid.Row="4"
                     Grid.Column="2"
@@ -648,7 +660,7 @@
                      Grid.Row="8"
                      Grid.Column="0"
                      FontFamily="Consolas"
-                     FontSize="10" />
+                     FontSize="11" />
             <Button x:Name="ActivateProButton"
                     Grid.Row="8"
                     Grid.Column="2"

@@ -51,7 +51,7 @@ public static class UiLanguageLocalizer
         ["Rebound Rate"] = "回彈率",
         ["Protected apps"] = "受保護應用",
         ["Last update"] = "最後更新",
-        ["Auto Boost: on, pressure-gated"] = "自動 Boost：開啟，按壓力觸發",
+        ["Auto Boost: on, pressure-gated"] = "自動 Boost：開啟，按內存壓力觸發",
         ["Auto Boost: off"] = "自動 Boost：關閉",
         ["Protected apps: Pro only"] = "受保護應用：專業版專屬",
         ["Auto Boost"] = "自動 Boost",
@@ -89,7 +89,7 @@ public static class UiLanguageLocalizer
         ["FluxRAM 普通版"] = "FluxRAM 普通版",
         ["FluxRAM Pro 专业版"] = "FluxRAM Pro 專業版",
         ["- Light / Standard profiles\n- Boost Now and pressure-based Auto Boost\n- Tray Boost and minimize-to-tray workflow\n- Add / remove protected apps\n- Choose protected apps from running processes\n- Basic process-name protection and clear memory metrics"] =
-            "- 輕量 / 標準檔位\n- 立即 Boost 與按壓力觸發的自動 Boost\n- 托盤 Boost 與最小化托盤工作流\n- 新增 / 刪除受保護應用\n- 從正在執行的進程中選擇保護應用\n- 基礎進程名保護與清晰內存指標",
+            "- 輕量 / 標準檔位\n- 立即 Boost 與按內存壓力觸發的自動 Boost\n- 托盤 Boost 與最小化托盤工作流\n- 新增 / 刪除受保護應用\n- 從正在執行的進程中選擇保護應用\n- 基礎進程名保護與清晰內存指標",
         ["- Everything in FluxRAM\n- Extreme Performance profile\n- Exact EXE path protection\n- Child-process association protection\n- Visible-window recognition for target apps\n- Permanent activation on the current machine"] =
             "- 包含 FluxRAM 普通版全部功能\n- 極致性能檔位\n- 精確 EXE 路徑保護\n- 子進程關聯保護\n- 目標應用可見視窗識別\n- 當前電腦永久啟用",
         ["Simplified boost-first memory tool for local Windows workloads"] = "面向本機 Windows 負載的精簡 Boost 優先內存工具",

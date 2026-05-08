@@ -75,7 +75,7 @@ public sealed class MainWindowViewModelTests
         viewModel.SetLanguage(UiLanguage.ChineseSimplified);
 
         Assert.Equal("回弹率：20.0%", viewModel.ReboundRateDisplay);
-        Assert.Equal("自动 Boost：开启，按压力触发", viewModel.AutoBoostDisplay);
+        Assert.Equal("自动 Boost：开启，按内存压力触发", viewModel.AutoBoostDisplay);
         Assert.Equal("受保护应用：2", viewModel.ProtectionSummaryDisplay);
     }
 

@@ -203,6 +203,26 @@ public partial class MainWindow : Window
         dialog.ShowDialog();
     }
 
+    private void ProfileHelpButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Window
+        {
+            Owner = this,
+            Title = T("Profile details", "档位说明"),
+            Width = 620d,
+            Height = 470d,
+            MinWidth = 560d,
+            MinHeight = 430d,
+            ResizeMode = ResizeMode.NoResize,
+            ShowInTaskbar = false,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Background = CreateDialogBrush(11, 16, 23)
+        };
+
+        dialog.Content = CreateProfileDetailsContent(dialog);
+        dialog.ShowDialog();
+    }
+
     private void CopyMachineIdButton_OnClick(object sender, RoutedEventArgs e)
     {
         try
@@ -854,6 +874,7 @@ public partial class MainWindow : Window
             "面向本地 Windows 负载的精简 Boost 优先内存工具");
         StatusCaptionTextBlock.Text = T("STATUS", "状态");
         ProfileCaptionTextBlock.Text = T("PROFILE", "档位");
+        ProfileHelpButton.ToolTip = T("Profile details", "档位说明");
         ConservativeProfileItem.Content = T("Light", "轻量");
         BalancedProfileItem.Content = T("Standard", "标准");
         AggressiveProfileItem.Content = T("Extreme Performance", "极致性能");
@@ -1009,6 +1030,108 @@ public partial class MainWindow : Window
         root.Children.Add(closeButton);
 
         return root;
+    }
+
+    private UIElement CreateProfileDetailsContent(Window dialog)
+    {
+        var root = new Grid
+        {
+            Margin = new Thickness(18)
+        };
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+        var titleTextBlock = new TextBlock
+        {
+            Text = T("Profile details", "档位说明"),
+            FontSize = 18,
+            FontWeight = FontWeights.Bold,
+            Foreground = CreateDialogBrush(242, 247, 255)
+        };
+        Grid.SetRow(titleTextBlock, 0);
+        root.Children.Add(titleTextBlock);
+
+        var subtitleTextBlock = new TextBlock
+        {
+            Margin = new Thickness(0, 7, 0, 0),
+            Text = T(
+                "Choose the profile by how much memory pressure you want FluxRAM to respond to.",
+                "根据你希望 FluxRAM 对内存压力的响应强度来选择档位。"),
+            TextWrapping = TextWrapping.Wrap,
+            FontSize = 12,
+            LineHeight = 18,
+            Foreground = CreateDialogBrush(176, 190, 207)
+        };
+        Grid.SetRow(subtitleTextBlock, 1);
+        root.Children.Add(subtitleTextBlock);
+
+        var panel = new StackPanel
+        {
+            Margin = new Thickness(0, 16, 0, 0)
+        };
+        panel.Children.Add(CreateProfileDetailsCard(
+            T("Light", "轻量"),
+            T("Gentlest cleanup. Best for daily office, browsing and gaming when you want low disturbance.", "最温和的清理。适合日常办公、浏览器和游戏场景，优先降低打扰。"),
+            CreateDialogBrush(61, 214, 163)));
+        panel.Children.Add(CreateProfileDetailsCard(
+            T("Standard", "标准"),
+            T("Balanced default. Cleans more when memory pressure rises, while keeping protected apps out of the target list.", "推荐默认档位。内存压力升高时清理更积极，同时避开受保护应用。"),
+            CreateDialogBrush(123, 179, 255)));
+        panel.Children.Add(CreateProfileDetailsCard(
+            T("Extreme Performance", "极致性能"),
+            T("Pro only. More aggressive trimming for heavy local AI, creator tools, games or streaming workloads.", "专业版专属。适合本地 AI、创作软件、游戏或直播等高负载场景，裁剪更积极。"),
+            CreateDialogBrush(255, 202, 73)));
+        Grid.SetRow(panel, 2);
+        root.Children.Add(panel);
+
+        var closeButton = new System.Windows.Controls.Button
+        {
+            Width = 96,
+            Height = 32,
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
+            Margin = new Thickness(0, 16, 0, 0),
+            Content = T("Close", "关闭"),
+            Style = TryFindResource("QuietButtonStyle") as Style
+        };
+        closeButton.Click += (_, _) => dialog.Close();
+        Grid.SetRow(closeButton, 3);
+        root.Children.Add(closeButton);
+
+        return root;
+    }
+
+    private Border CreateProfileDetailsCard(string title, string body, Media.Brush accentBrush)
+    {
+        var panel = new StackPanel();
+        panel.Children.Add(new TextBlock
+        {
+            Text = title,
+            FontSize = 14,
+            FontWeight = FontWeights.Bold,
+            Foreground = accentBrush
+        });
+        panel.Children.Add(new TextBlock
+        {
+            Margin = new Thickness(0, 7, 0, 0),
+            Text = body,
+            TextWrapping = TextWrapping.Wrap,
+            FontSize = 12,
+            LineHeight = 19,
+            Foreground = CreateDialogBrush(224, 234, 246)
+        });
+
+        return new Border
+        {
+            Margin = new Thickness(0, 0, 0, 10),
+            Padding = new Thickness(14),
+            Background = CreateDialogBrush(15, 22, 31),
+            BorderBrush = CreateDialogBrush(49, 70, 92),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(10),
+            Child = panel
+        };
     }
 
     private Border CreateEditionDetailsCard(EditionDetailsSection section, Media.Brush accentBrush)

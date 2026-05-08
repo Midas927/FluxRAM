@@ -51,7 +51,7 @@ public static class EditionDetailsCatalog
                 "- Basic process-name protection and clear memory metrics",
             bodyChinese:
                 "- 轻量 / 标准档位\n" +
-                "- 立即 Boost 与按压力触发的自动 Boost\n" +
+                "- 立即 Boost 与按内存压力触发的自动 Boost\n" +
                 "- 托盘 Boost 与最小化托盘工作流\n" +
                 "- 添加 / 删除受保护应用\n" +
                 "- 从正在运行的进程里选择保护应用\n" +
