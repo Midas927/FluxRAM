@@ -4,6 +4,14 @@ English | [简体中文](README.md)
 
 FluxRAM is a local Windows memory Boost tool. It is not designed to aggressively clean memory all the time. Instead, it frees cold background working sets when you ask it to, or when memory pressure rises, while keeping protected apps such as games, creator tools, local AI workloads and streaming software out of the target list.
 
+## Why FluxRAM Exists
+
+Memory prices have made upgrades harder for many budget-conscious users. A lot of 8GB users want to upgrade, but keep putting it off because of the cost, and end up living with a sluggish PC. My own laptop has 12GB, and I have seen browsers crash when memory pressure climbs, so I built FluxRAM for that very practical pain.
+
+FluxRAM does not magically make 8GB behave like 16GB. It does something more realistic: reclaim memory from cold background processes that are sitting on RAM without doing useful work, so the memory you already have lasts a little longer. Real results depend on your workload. In common browser, office, chat and launcher scenarios, you may see anything from a few hundred MB to around 1-2GB reclaimed. Background-heavy systems may see more, and some memory rebound is normal when apps become active again.
+
+I hope FluxRAM can be a simple, convenient Windows tool for people who are not ready to upgrade RAM yet. Because this is an indie project, Pro activation keys are currently issued manually from machine IDs, so please allow a little time after purchase.
+
 ## Download
 
 [Download the latest FluxRAM release](https://github.com/Midas927/FluxRAM/releases/latest)
