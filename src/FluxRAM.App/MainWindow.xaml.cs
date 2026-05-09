@@ -25,14 +25,14 @@ namespace FluxRAM.App;
 
 public partial class MainWindow : Window
 {
-    private const double CompactWindowWidth = 560d;
-    private const double CompactWindowHeight = 360d;
-    private const double CompactMinWindowWidth = 520d;
-    private const double CompactMinWindowHeight = 330d;
+    private const double CompactWindowWidth = 720d;
+    private const double CompactWindowHeight = 380d;
+    private const double CompactMinWindowWidth = 720d;
+    private const double CompactMinWindowHeight = 380d;
     private const double DetailWindowWidth = 1060d;
     private const double DetailWindowHeight = 690d;
-    private const double DetailMinWindowWidth = 900d;
-    private const double DetailMinWindowHeight = 600d;
+    private const double DetailMinWindowWidth = 860d;
+    private const double DetailMinWindowHeight = 560d;
 
     private readonly MainWindowViewModel _viewModel;
     private readonly ProcessScraperService _processScraperService;
@@ -1007,6 +1007,9 @@ public partial class MainWindow : Window
         SetThemeBrush("ToggleHoverBorderBrush", "#5C7087", "#8096AD", light);
         SetThemeBrush("ListItemSelectedBrush", "#253A31", "#DDF7ED", light);
         SetThemeBrush("ListItemHoverBrush", "#202B38", "#E8F0F8", light);
+        SetThemeBrush("ScrollBarTrackBrush", "#0E1117", "#EEF3F8", light);
+        SetThemeBrush("ScrollBarThumbBrush", "#3A4A5F", "#AEBBCD", light);
+        SetThemeBrush("ScrollBarThumbHoverBrush", "#526A84", "#8096AD", light);
         SetThemeBrush("IconTileBackgroundBrush", "#0D141D", "#FFFFFF", light);
         SetThemeBrush("IconTileBorderBrush", "#2E3B4C", "#C5D1DE", light);
         SetThemeBrush("EditionBadgeBorderBrush", "#315E4B", "#86D7B6", light);
