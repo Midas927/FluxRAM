@@ -1,4 +1,4 @@
-﻿using System.Security.Cryptography;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 
@@ -169,5 +169,5 @@ public sealed class LicenseKeyVerifier
     }
 
     private const string DefaultPublicKey =
-        "<RSAKeyValue><Modulus>nCt2RYUHG08d617d+KqHReIiJ3avzke8tz8/zumJDvi9bw688A0G1MYa7xE0/OUDpKG+6MpfC9+zJ/KKNtYe4XS8GF050tYI4L8aJ8dAEfN/k/0oAo0BjWuKxXBJS0uxb3vIjLeDLcvGo8LAEGlg1dv1lSxTdqgf2ohx3ptjEp19cCC/wVwPMtpLpTb+14khnSMgNKfnWWyvLXx9ZLECSFh19co5BC6u1JhdNT9VxcRGSi7iOY2LkQtXjg2NBqGT4Y0qEFC8Pemza58ktkygnzoXTbbaEngW5H/yCsjbjtDvbetPDjhMU1z4FvxLDH9Ai8LSM5B6NoFeK9b1MOOBKQ==</Modulus><Exponent>AQAB</Exponent></RSAKeyValue>";
+        "<RSAKeyValue><Modulus>xMI0UDL//A536V6Kbi8PfLsBXUE/QChb7839aquXFGGrU+iG/mwAQf4P/DUFI8qDZiof6kvEBd529oap8LaCvo7KwmMOv8zKUCOQthQFsdbk6a8DjRbvPhzm8aB6NM3hYWcRI588KJ0YKcPMtSXYOq5HZwCTJ02EUgwrg3ftMh+7TeBPlFNaqrLBdLy39hL13A/svxSt8iTFgM8ifFgufhTOVcKxV78cayTuziF7GP94pKxAqg23ptrczNXRN/csm5rzztHnSpUicym3r0Gfy5TWZEOlgzT3NUyi1G3kbncsrHnHydxY9JhYlaExXtiOdMEAgNZQvA0/xSq8uxFAGQ==</Modulus><Exponent>AQAB</Exponent></RSAKeyValue>";
 }

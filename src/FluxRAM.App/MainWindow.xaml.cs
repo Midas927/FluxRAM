@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Interop;
@@ -47,6 +48,7 @@ public partial class MainWindow : Window
     private readonly Forms.ToolStripMenuItem _openTrayMenuItem;
     private readonly Forms.ToolStripMenuItem _boostTrayMenuItem;
     private readonly Forms.ToolStripMenuItem _exitTrayMenuItem;
+    private readonly object _processScraperLock = new();
 
     private readonly Dictionary<int, DateTimeOffset> _lastPurgeTimesByProcessId = new();
     private readonly HashSet<string> _protectedProcessNames = new(StringComparer.OrdinalIgnoreCase);
@@ -75,6 +77,7 @@ public partial class MainWindow : Window
     private bool _hasShownTrayTip;
     private bool _isDetailPanelVisible;
     private bool _isSettingLanguageSelector;
+    private bool _isMonitoringTickRunning;
 
     public MainWindow()
     {
@@ -95,7 +98,7 @@ public partial class MainWindow : Window
         _optimizerSettings = OptimizerSettingsCatalog.FromProfile(_selectedProfile);
         _optimizerTimer = new DispatcherTimer
         {
-            Interval = TimeSpan.FromSeconds(2)
+            Interval = TimeSpan.FromSeconds(3)
         };
         _optimizerTimer.Tick += OptimizerTimer_OnTick;
 
@@ -324,7 +327,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        var snapshots = _processScraperService.Scrape(_lastPurgeTimesByProcessId);
+        var snapshots = ScrapeProcesses(_lastPurgeTimesByProcessId);
         var candidates = ProtectedAppCandidateFactory.FromSnapshots(snapshots, _protectedProcessPaths);
         if (candidates.Count == 0)
         {
@@ -433,43 +436,90 @@ public partial class MainWindow : Window
         ApplyProfile(profile);
     }
 
-    private void OptimizerTimer_OnTick(object? sender, EventArgs e) => RunMonitoringTick();
-
-    private void RunMonitoringTick()
+    private async void OptimizerTimer_OnTick(object? sender, EventArgs e)
     {
-        var now = DateTimeOffset.Now;
-        if (!_memoryStatusService.TryGetSnapshot(out var memorySnapshot))
+        await RunMonitoringTickAsync();
+    }
+
+    private async Task RunMonitoringTickAsync()
+    {
+        if (_isMonitoringTickRunning)
         {
-            _viewModel.UpdateRamDelta(0);
-            _viewModel.UpdateAvailableMemory(0);
-            _viewModel.TouchLastUpdated(now);
-            UpdateSelfOverhead();
-            RefreshMetricCards();
-            _viewModel.SetStatus(T("Unable to read memory snapshot.", "无法读取内存快照。"));
-            UpdateMonitoringState();
             return;
         }
 
-        UpdateStatusMetrics(memorySnapshot, now);
-        var snapshots = _processScraperService.Scrape(_lastPurgeTimesByProcessId);
-        var foreground = snapshots.Where(x => x.IsForeground).Select(x => x.ProcessName).FirstOrDefault() ?? T("Unknown", "未知");
-        _viewModel.UpdateProcessMetrics(snapshots.Count, 0, foreground);
-
-        if (AutoBoostPolicy.CanRun(_isAutoBoostEnabled, _optimizerSettings, _lastAutoBoostAt, now))
+        _isMonitoringTickRunning = true;
+        var now = DateTimeOffset.Now;
+        try
         {
-            var didRun = RunBoostPass(
-                forcePurge: false,
-                trigger: T("Auto Boost", "自动 Boost"),
-                memorySnapshot: memorySnapshot,
-                snapshots: snapshots,
-                now: now);
-            if (didRun)
+            var purgeTimesSnapshot = _lastPurgeTimesByProcessId.ToDictionary(
+                pair => pair.Key,
+                pair => pair.Value);
+            var sample = await Task.Run(() => CreateMonitoringSample(purgeTimesSnapshot));
+            if (!sample.HasMemorySnapshot)
             {
-                _lastAutoBoostAt = now;
+                _viewModel.UpdateRamDelta(0);
+                _viewModel.UpdateAvailableMemory(0);
+                _viewModel.TouchLastUpdated(now);
+                UpdateSelfOverhead();
+                RefreshMetricCards();
+                _viewModel.SetStatus(T("Unable to read memory snapshot.", "无法读取内存快照。"));
+                return;
+            }
+
+            var memorySnapshot = sample.MemorySnapshot;
+            UpdateStatusMetrics(memorySnapshot, now);
+            var snapshots = sample.Snapshots;
+            var foreground = snapshots.Where(x => x.IsForeground).Select(x => x.ProcessName).FirstOrDefault() ?? T("Unknown", "未知");
+            _viewModel.UpdateProcessMetrics(snapshots.Count, 0, foreground);
+
+            if (AutoBoostPolicy.CanRun(_isAutoBoostEnabled, _optimizerSettings, _lastAutoBoostAt, now))
+            {
+                var didRun = RunBoostPass(
+                    forcePurge: false,
+                    trigger: T("Auto Boost", "自动 Boost"),
+                    memorySnapshot: memorySnapshot,
+                    snapshots: snapshots,
+                    now: now);
+                if (didRun)
+                {
+                    _lastAutoBoostAt = now;
+                }
             }
         }
+        catch
+        {
+            _viewModel.SetStatus(T(
+                "Background monitoring skipped this cycle.",
+                "后台监控本轮已跳过。"));
+        }
+        finally
+        {
+            _isMonitoringTickRunning = false;
+            UpdateMonitoringState();
+        }
+    }
 
-        UpdateMonitoringState();
+    private MonitoringSample CreateMonitoringSample(IReadOnlyDictionary<int, DateTimeOffset> lastPurgeTimesByProcessId)
+    {
+        if (!_memoryStatusService.TryGetSnapshot(out var memorySnapshot))
+        {
+            return new MonitoringSample(false, default, Array.Empty<ProcessSnapshot>());
+        }
+
+        return new MonitoringSample(
+            true,
+            memorySnapshot,
+            ScrapeProcesses(lastPurgeTimesByProcessId));
+    }
+
+    private IReadOnlyList<ProcessSnapshot> ScrapeProcesses(
+        IReadOnlyDictionary<int, DateTimeOffset>? lastPurgeTimesByProcessId = null)
+    {
+        lock (_processScraperLock)
+        {
+            return _processScraperService.Scrape(lastPurgeTimesByProcessId);
+        }
     }
 
     private bool RunBoostPass(
@@ -488,7 +538,7 @@ public partial class MainWindow : Window
         }
 
         var beforeMemory = memorySnapshot ?? sampled;
-        var sampledSnapshots = snapshots ?? _processScraperService.Scrape(_lastPurgeTimesByProcessId);
+        var sampledSnapshots = snapshots ?? ScrapeProcesses(_lastPurgeTimesByProcessId);
         var foreground = sampledSnapshots.Where(x => x.IsForeground).Select(x => x.ProcessName).FirstOrDefault() ?? T("Unknown", "未知");
         IReadOnlyCollection<string> protectedProcessNames = _licenseStatus.Features.SupportsProtectList
             ? _protectedProcessNames
@@ -1375,6 +1425,11 @@ public partial class MainWindow : Window
     {
         return new Media.SolidColorBrush(Media.Color.FromRgb(red, green, blue));
     }
+
+    private sealed record MonitoringSample(
+        bool HasMemorySnapshot,
+        MemorySnapshot MemorySnapshot,
+        IReadOnlyList<ProcessSnapshot> Snapshots);
 
     private string LocalizePolicyMessage(string message)
     {
