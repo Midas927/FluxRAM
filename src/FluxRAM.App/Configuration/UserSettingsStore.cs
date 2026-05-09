@@ -29,6 +29,11 @@ public sealed class UserSettingsStore
         return AppThemeCatalog.FromCode(LoadSettings().ThemeCode);
     }
 
+    public bool LoadStartupAutoBoost()
+    {
+        return LoadSettings().StartupAutoBoost;
+    }
+
     public void SaveLanguage(UiLanguage language)
     {
         var settings = LoadSettings();
@@ -40,6 +45,13 @@ public sealed class UserSettingsStore
     {
         var settings = LoadSettings();
         settings.ThemeCode = AppThemeCatalog.ToCode(theme);
+        SaveSettings(settings);
+    }
+
+    public void SaveStartupAutoBoost(bool isEnabled)
+    {
+        var settings = LoadSettings();
+        settings.StartupAutoBoost = isEnabled;
         SaveSettings(settings);
     }
 
@@ -82,5 +94,7 @@ public sealed class UserSettingsStore
         public string? LanguageCode { get; set; }
 
         public string? ThemeCode { get; set; }
+
+        public bool StartupAutoBoost { get; set; }
     }
 }

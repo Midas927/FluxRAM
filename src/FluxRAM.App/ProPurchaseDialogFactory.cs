@@ -78,11 +78,11 @@ internal static class ProPurchaseDialogFactory
 
         var imagePanel = new StackPanel();
         imagePanel.Children.Add(CreateSectionLabel("支付宝收款码"));
-        imagePanel.Children.Add(CreatePurchaseImage(PurchaseOptionsCatalog.AlipayQrImagePath, 250d));
+        imagePanel.Children.Add(CreatePurchaseImage(PurchaseOptionsCatalog.AlipayQrImagePath, 220d, 220d));
         imagePanel.Children.Add(CreateSectionLabel("付款流程"));
         foreach (var imagePath in PurchaseOptionsCatalog.PaymentFlowImagePaths)
         {
-            imagePanel.Children.Add(CreatePurchaseImage(imagePath, 660d));
+            imagePanel.Children.Add(CreatePurchaseImage(imagePath, 560d, 380d));
         }
 
         var scrollViewer = new ScrollViewer
@@ -186,12 +186,13 @@ internal static class ProPurchaseDialogFactory
         };
     }
 
-    private static System.Windows.Controls.Image CreatePurchaseImage(string resourcePath, double maxWidth)
+    private static System.Windows.Controls.Image CreatePurchaseImage(string resourcePath, double maxWidth, double maxHeight)
     {
         return new System.Windows.Controls.Image
         {
             Source = LoadResourceImage(resourcePath),
             MaxWidth = maxWidth,
+            MaxHeight = maxHeight,
             Stretch = Media.Stretch.Uniform,
             HorizontalAlignment = System.Windows.HorizontalAlignment.Center,
             Margin = new Thickness(0, 0, 0, 12)

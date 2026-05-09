@@ -37,7 +37,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _processSummaryDisplay = L("Processes: waiting for first scan", "进程：等待首次扫描");
         _foregroundProcessDisplay = L("Foreground: unknown", "前台：未知");
         _protectionSummaryDisplay = L("Protected apps: 0", "受保护应用：0");
-        _selfOverheadDisplay = L("FluxRAM Overhead: pending", "FluxRAM 开销：等待数据");
+        _selfOverheadDisplay = L("App: pending", "自身：等待数据");
         _lastUpdated = DateTimeOffset.Now;
         _recentEvents = Array.Empty<string>();
         _boostDetails = Array.Empty<string>();
@@ -203,11 +203,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         _lastOverheadSnapshot = overheadSnapshot;
         _selfOverheadDisplay = L(
-            $"FluxRAM Overhead: WS {FormatBytes(overheadSnapshot.WorkingSetBytes)} | " +
+            $"App: WS {FormatBytes(overheadSnapshot.WorkingSetBytes)} | " +
             $"CPU {overheadSnapshot.CpuUsagePercent:0.0}% | " +
             $"Private {FormatBytes(overheadSnapshot.PrivateBytes)} | " +
             $"Handles {overheadSnapshot.HandleCount}",
-            $"FluxRAM 开销：工作集 {FormatBytes(overheadSnapshot.WorkingSetBytes)} | " +
+            $"自身：工作集 {FormatBytes(overheadSnapshot.WorkingSetBytes)} | " +
             $"CPU {overheadSnapshot.CpuUsagePercent:0.0}% | " +
             $"私有内存 {FormatBytes(overheadSnapshot.PrivateBytes)} | " +
             $"句柄 {overheadSnapshot.HandleCount}");

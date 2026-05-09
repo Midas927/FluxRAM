@@ -34,6 +34,7 @@ public partial class MainWindow : Window
     private const double DetailWindowHeight = 690d;
     private const double DetailMinWindowWidth = 860d;
     private const double DetailMinWindowHeight = 560d;
+    private const string GitHubRepositoryUrl = "https://github.com/Midas927/FluxRAM";
 
     private readonly MainWindowViewModel _viewModel;
     private readonly ProcessScraperService _processScraperService;
@@ -43,6 +44,7 @@ public partial class MainWindow : Window
     private readonly FluxRAMLicenseManager _licenseManager;
     private readonly ProtectedAppsStore _protectedAppsStore;
     private readonly UserSettingsStore _userSettingsStore;
+    private readonly StartupAutoBoostService _startupAutoBoostService;
     private readonly DispatcherTimer _optimizerTimer;
     private readonly Forms.NotifyIcon _trayIcon;
     private readonly Forms.ToolStripMenuItem _openTrayMenuItem;
@@ -77,6 +79,7 @@ public partial class MainWindow : Window
     private bool _hasShownTrayTip;
     private bool _isDetailPanelVisible;
     private bool _isSettingLanguageSelector;
+    private bool _isSettingStartupAutoBoostCheckBox;
     private bool _isMonitoringTickRunning;
 
     public MainWindow()
@@ -91,9 +94,12 @@ public partial class MainWindow : Window
         _licenseManager = new FluxRAMLicenseManager();
         _protectedAppsStore = new ProtectedAppsStore();
         _userSettingsStore = new UserSettingsStore();
+        _startupAutoBoostService = new StartupAutoBoostService();
         _licenseStatus = _licenseManager.GetStatus();
         var initialLanguage = _userSettingsStore.LoadLanguage();
         var initialTheme = _userSettingsStore.LoadTheme();
+        var initialStartupAutoBoost = _userSettingsStore.LoadStartupAutoBoost();
+        var launchedForAutoBoost = StartupAutoBoostService.WasLaunchedForAutoBoost(Environment.GetCommandLineArgs());
         _selectedProfile = OptimizerProfile.Conservative;
         _optimizerSettings = OptimizerSettingsCatalog.FromProfile(_selectedProfile);
         _optimizerTimer = new DispatcherTimer
@@ -143,7 +149,14 @@ public partial class MainWindow : Window
         LoadProtectedApps();
         RefreshProtectedEntries();
         RefreshMetricCards();
+        SetStartupAutoBoostCheckBox(initialStartupAutoBoost);
+        EnsureStartupAutoBoostRegistration(initialStartupAutoBoost);
         ApplyDetailPanelState(false);
+        if (initialStartupAutoBoost || launchedForAutoBoost)
+        {
+            AutoBoostToggle.IsChecked = true;
+        }
+
         _viewModel.AddEvent(T("Engine initialized in simplified boost mode.", "引擎已按精简 Boost 模式初始化。"));
     }
 
@@ -196,6 +209,31 @@ public partial class MainWindow : Window
         _userSettingsStore.SaveTheme(nextTheme);
     }
 
+    private void GithubButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        OpenGitHubRepository();
+    }
+
+    private void StartupAutoBoostCheckBox_OnChecked(object sender, RoutedEventArgs e)
+    {
+        if (_isSettingStartupAutoBoostCheckBox)
+        {
+            return;
+        }
+
+        ApplyStartupAutoBoostPreference(true);
+    }
+
+    private void StartupAutoBoostCheckBox_OnUnchecked(object sender, RoutedEventArgs e)
+    {
+        if (_isSettingStartupAutoBoostCheckBox)
+        {
+            return;
+        }
+
+        ApplyStartupAutoBoostPreference(false);
+    }
+
     private void EditionHelpButton_OnClick(object sender, RoutedEventArgs e)
     {
         var dialog = new Window
@@ -210,7 +248,7 @@ public partial class MainWindow : Window
             ShowInTaskbar = false,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
             FontFamily = UiFontFamily(_uiLanguage),
-            Background = CreateDialogBrush(11, 16, 23)
+            Background = ThemeBrush("WindowBackgroundBrush")
         };
 
         dialog.Content = CreateEditionDetailsContent(dialog);
@@ -231,7 +269,7 @@ public partial class MainWindow : Window
             ShowInTaskbar = false,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
             FontFamily = UiFontFamily(_uiLanguage),
-            Background = CreateDialogBrush(11, 16, 23)
+            Background = ThemeBrush("WindowBackgroundBrush")
         };
 
         dialog.Content = CreateProfileDetailsContent(dialog);
@@ -253,6 +291,89 @@ public partial class MainWindow : Window
         catch
         {
             _viewModel.SetStatus(T("Unable to copy Machine ID.", "无法复制机器标识。"));
+        }
+    }
+
+    private void ApplyStartupAutoBoostPreference(bool isEnabled)
+    {
+        try
+        {
+            _startupAutoBoostService.SetEnabled(isEnabled);
+            _userSettingsStore.SaveStartupAutoBoost(isEnabled);
+            SetStartupAutoBoostCheckBox(isEnabled);
+
+            if (isEnabled && AutoBoostToggle.IsChecked != true)
+            {
+                AutoBoostToggle.IsChecked = true;
+            }
+
+            _viewModel.SetStatus(isEnabled
+                ? T("Windows startup Auto Boost enabled.", "开机自启自动 Boost 已开启。")
+                : T("Windows startup Auto Boost disabled.", "开机自启自动 Boost 已关闭。"));
+            _viewModel.AddEvent(isEnabled
+                ? T("Startup Auto Boost enabled.", "开机自启自动 Boost 已开启。")
+                : T("Startup Auto Boost disabled.", "开机自启自动 Boost 已关闭。"));
+        }
+        catch (Exception ex)
+        {
+            var savedValue = _userSettingsStore.LoadStartupAutoBoost();
+            SetStartupAutoBoostCheckBox(savedValue);
+            _viewModel.SetStatus(T(
+                $"Startup Auto Boost could not be changed: {ex.Message}",
+                $"开机自启自动 Boost 修改失败：{ex.Message}"));
+        }
+    }
+
+    private void EnsureStartupAutoBoostRegistration(bool isEnabled)
+    {
+        if (!isEnabled)
+        {
+            return;
+        }
+
+        try
+        {
+            _startupAutoBoostService.SetEnabled(true);
+        }
+        catch (Exception ex)
+        {
+            _viewModel.SetStatus(T(
+                $"Startup Auto Boost registration failed: {ex.Message}",
+                $"开机自启自动 Boost 注册失败：{ex.Message}"));
+        }
+    }
+
+    private void SetStartupAutoBoostCheckBox(bool isEnabled)
+    {
+        try
+        {
+            _isSettingStartupAutoBoostCheckBox = true;
+            StartupAutoBoostCheckBox.IsChecked = isEnabled;
+        }
+        finally
+        {
+            _isSettingStartupAutoBoostCheckBox = false;
+        }
+    }
+
+    private void OpenGitHubRepository()
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = GitHubRepositoryUrl,
+                UseShellExecute = true
+            });
+            _viewModel.SetStatus(T("FluxRAM GitHub repository opened.", "已打开 FluxRAM GitHub 仓库。"));
+        }
+        catch
+        {
+            System.Windows.MessageBox.Show(
+                GitHubRepositoryUrl,
+                "FluxRAM GitHub",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
         }
     }
 
@@ -960,11 +1081,16 @@ public partial class MainWindow : Window
         DetailSettingsButton.Content = _isDetailPanelVisible
             ? T("Hide Details", "收起详情")
             : T("Details", "详细设置");
+        GithubButton.Content = "GitHub";
+        GithubButton.ToolTip = T("Open FluxRAM on GitHub", "打开 FluxRAM GitHub 仓库");
         MinimizeButton.Content = T("Minimize", "最小化");
         MachineIdCaptionTextBlock.Text = T("MACHINE ID", "机器标识");
         CopyMachineIdButton.Content = T("Copy", "复制");
         LicenseKeyCaptionTextBlock.Text = T("PRO KEY", "专业版 Key");
         ActivateProButton.Content = T("Activate", "激活");
+        StartupAutoBoostCheckBox.Content = T(
+            "Start with Windows and enable Auto Boost",
+            "开机自启并自动开启 Auto Boost");
         BoostNowButton.Content = T("Boost Now", "立即 Boost");
         AutoBoostToggle.Content = T("Auto Boost", "自动 Boost");
         ProtectListTitleTextBlock.Text = T("Protected Apps", "受保护应用");
@@ -1157,7 +1283,7 @@ public partial class MainWindow : Window
             Text = T(EditionDetailsCatalog.DialogTitleEnglish, EditionDetailsCatalog.DialogTitleChinese),
             FontSize = 18,
             FontWeight = FontWeights.Bold,
-            Foreground = CreateDialogBrush(242, 247, 255)
+            Foreground = ThemeBrush("TextPrimaryBrush")
         };
         Grid.SetRow(titleTextBlock, 0);
         root.Children.Add(titleTextBlock);
@@ -1169,7 +1295,7 @@ public partial class MainWindow : Window
             TextWrapping = TextWrapping.Wrap,
             FontSize = 12,
             LineHeight = 18,
-            Foreground = CreateDialogBrush(150, 168, 190)
+            Foreground = ThemeBrush("TextSecondaryBrush")
         };
         Grid.SetRow(subtitleTextBlock, 1);
         root.Children.Add(subtitleTextBlock);
@@ -1184,11 +1310,11 @@ public partial class MainWindow : Window
         Grid.SetRow(sectionGrid, 2);
         root.Children.Add(sectionGrid);
 
-        var freeCard = CreateEditionDetailsCard(EditionDetailsCatalog.Sections[0], CreateDialogBrush(61, 214, 163));
+        var freeCard = CreateEditionDetailsCard(EditionDetailsCatalog.Sections[0], ThemeBrush("AccentBrush"));
         Grid.SetColumn(freeCard, 0);
         sectionGrid.Children.Add(freeCard);
 
-        var proCard = CreateEditionDetailsCard(EditionDetailsCatalog.Sections[1], CreateDialogBrush(255, 202, 73));
+        var proCard = CreateEditionDetailsCard(EditionDetailsCatalog.Sections[1], ThemeBrush("WarningBrush"));
         Grid.SetColumn(proCard, 2);
         sectionGrid.Children.Add(proCard);
 
@@ -1299,7 +1425,7 @@ public partial class MainWindow : Window
             Text = T("Profile details", "档位说明"),
             FontSize = 18,
             FontWeight = FontWeights.Bold,
-            Foreground = CreateDialogBrush(242, 247, 255)
+            Foreground = ThemeBrush("TextPrimaryBrush")
         };
         Grid.SetRow(titleTextBlock, 0);
         root.Children.Add(titleTextBlock);
@@ -1313,7 +1439,7 @@ public partial class MainWindow : Window
             TextWrapping = TextWrapping.Wrap,
             FontSize = 12,
             LineHeight = 18,
-            Foreground = CreateDialogBrush(176, 190, 207)
+            Foreground = ThemeBrush("TextSecondaryBrush")
         };
         Grid.SetRow(subtitleTextBlock, 1);
         root.Children.Add(subtitleTextBlock);
@@ -1325,7 +1451,7 @@ public partial class MainWindow : Window
         panel.Children.Add(CreateProfileDetailsCard(
             T("Light", "轻量"),
             T("Gentlest cleanup. Best for daily office, browsing and gaming when you want low disturbance.", "最温和的清理。适合日常办公、浏览器和游戏场景，优先降低打扰。"),
-            CreateDialogBrush(61, 214, 163)));
+            ThemeBrush("AccentBrush")));
         panel.Children.Add(CreateProfileDetailsCard(
             T("Standard", "标准"),
             T("Balanced default. Cleans more when memory pressure rises, while keeping protected apps out of the target list.", "推荐默认档位。内存压力升高时清理更积极，同时避开受保护应用。"),
@@ -1333,7 +1459,7 @@ public partial class MainWindow : Window
         panel.Children.Add(CreateProfileDetailsCard(
             T("Extreme Performance", "极致性能"),
             T("Pro only. More aggressive trimming for heavy local AI, creator tools, games or streaming workloads.", "专业版专属。适合本地 AI、创作软件、游戏或直播等高负载场景，裁剪更积极。"),
-            CreateDialogBrush(255, 202, 73)));
+            ThemeBrush("WarningBrush")));
         Grid.SetRow(panel, 2);
         root.Children.Add(panel);
 
@@ -1370,15 +1496,15 @@ public partial class MainWindow : Window
             TextWrapping = TextWrapping.Wrap,
             FontSize = 12,
             LineHeight = 19,
-            Foreground = CreateDialogBrush(224, 234, 246)
+            Foreground = ThemeBrush("TextPrimaryBrush")
         });
 
         return new Border
         {
             Margin = new Thickness(0, 0, 0, 10),
             Padding = new Thickness(14),
-            Background = CreateDialogBrush(15, 22, 31),
-            BorderBrush = CreateDialogBrush(49, 70, 92),
+            Background = ThemeBrush("SurfaceBrush"),
+            BorderBrush = ThemeBrush("BorderBrushSoft"),
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(10),
             Child = panel
@@ -1399,7 +1525,7 @@ public partial class MainWindow : Window
         {
             Height = 1,
             Margin = new Thickness(0, 10, 0, 12),
-            Background = CreateDialogBrush(40, 55, 73)
+            Background = ThemeBrush("InsetBorderBrush")
         });
         panel.Children.Add(new TextBlock
         {
@@ -1407,14 +1533,14 @@ public partial class MainWindow : Window
             TextWrapping = TextWrapping.Wrap,
             FontSize = 12,
             LineHeight = 21,
-            Foreground = CreateDialogBrush(218, 229, 242)
+            Foreground = ThemeBrush("TextPrimaryBrush")
         });
 
         return new Border
         {
             Padding = new Thickness(15),
-            Background = CreateDialogBrush(15, 22, 31),
-            BorderBrush = CreateDialogBrush(44, 63, 84),
+            Background = ThemeBrush("SurfaceBrush"),
+            BorderBrush = ThemeBrush("BorderBrushSoft"),
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(10),
             Child = panel

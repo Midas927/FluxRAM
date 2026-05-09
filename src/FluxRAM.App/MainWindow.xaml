@@ -108,8 +108,17 @@
     </Style>
 
     <Style x:Key="MetricLineStyle" TargetType="TextBlock" BasedOn="{StaticResource ValueStyle}">
-      <Setter Property="FontSize" Value="17" />
-      <Setter Property="Margin" Value="0,0,0,10" />
+      <Setter Property="FontSize" Value="14" />
+      <Setter Property="LineHeight" Value="18" />
+      <Setter Property="Margin" Value="0,0,0,6" />
+    </Style>
+
+    <Style x:Key="SettingsCheckBoxStyle" TargetType="CheckBox">
+      <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
 
     <Style TargetType="TextBox">
@@ -371,6 +380,8 @@
             <ColumnDefinition Width="8" />
             <ColumnDefinition Width="78" />
             <ColumnDefinition Width="8" />
+            <ColumnDefinition Width="70" />
+            <ColumnDefinition Width="8" />
             <ColumnDefinition Width="72" />
             <ColumnDefinition Width="8" />
             <ColumnDefinition Width="78" />
@@ -425,14 +436,20 @@
                   Style="{StaticResource QuietButtonStyle}"
                   Content="Details"
                   Click="DetailSettingsButton_OnClick" />
-          <Button x:Name="ThemeToggleButton"
+          <Button x:Name="GithubButton"
                   Grid.Column="6"
+                  Height="30"
+                  Style="{StaticResource QuietButtonStyle}"
+                  Content="GitHub"
+                  Click="GithubButton_OnClick" />
+          <Button x:Name="ThemeToggleButton"
+                  Grid.Column="8"
                   Height="30"
                   Style="{StaticResource QuietButtonStyle}"
                   Content="Light"
                   Click="ThemeToggleButton_OnClick" />
           <Button x:Name="MinimizeButton"
-                  Grid.Column="8"
+                  Grid.Column="10"
                   Height="30"
                   Style="{StaticResource QuietButtonStyle}"
                   Content="Minimize"
@@ -548,9 +565,9 @@
 
       <Grid Grid.Column="0">
         <Grid.RowDefinitions>
-          <RowDefinition Height="1.05*" />
+          <RowDefinition Height="*" />
           <RowDefinition Height="12" />
-          <RowDefinition Height="0.95*" />
+          <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <Border Grid.Row="0" Style="{StaticResource CardStyle}">
@@ -632,56 +649,75 @@
           <Grid>
             <Grid.RowDefinitions>
               <RowDefinition Height="Auto" />
-              <RowDefinition Height="10" />
-              <RowDefinition Height="*" />
+              <RowDefinition Height="8" />
+              <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
             <TextBlock x:Name="MemoryMetricsTitleTextBlock" Style="{StaticResource SectionTitleStyle}" Text="Memory Metrics" />
 
-            <UniformGrid Grid.Row="2" Columns="2" Rows="3" Margin="0,2,0,0">
-              <StackPanel Margin="0,0,18,0">
-                <TextBlock x:Name="RamDeltaCaptionTextBlock" Visibility="Collapsed" />
-                <TextBlock x:Name="RamDeltaValueTextBlock"
-                           Style="{StaticResource MetricLineStyle}"
-                           Text="N/A" />
-              </StackPanel>
+            <Grid Grid.Row="2" Margin="0,1,0,0">
+              <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+              </Grid.RowDefinitions>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="14" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
 
-              <StackPanel>
-                <TextBlock x:Name="AvailableCaptionTextBlock" Visibility="Collapsed" />
-                <TextBlock x:Name="AvailableValueTextBlock"
-                           Style="{StaticResource MetricLineStyle}"
-                           Text="N/A" />
-              </StackPanel>
+              <TextBlock x:Name="RamDeltaCaptionTextBlock" Visibility="Collapsed" />
+              <TextBlock x:Name="RamDeltaValueTextBlock"
+                         Grid.Row="0"
+                         Grid.Column="0"
+                         Style="{StaticResource MetricLineStyle}"
+                         Text="N/A" />
 
-              <StackPanel Margin="0,0,18,0">
-                <TextBlock x:Name="LastBoostTrimmedCaptionTextBlock" Visibility="Collapsed" />
-                <TextBlock x:Name="LastBoostTrimmedValueTextBlock"
-                           Style="{StaticResource MetricLineStyle}"
-                           Text="N/A" />
-              </StackPanel>
+              <TextBlock x:Name="AvailableCaptionTextBlock" Visibility="Collapsed" />
+              <TextBlock x:Name="AvailableValueTextBlock"
+                         Grid.Row="0"
+                         Grid.Column="2"
+                         Style="{StaticResource MetricLineStyle}"
+                         Text="N/A" />
 
-              <StackPanel>
-                <TextBlock x:Name="TotalTrimmedCaptionTextBlock" Visibility="Collapsed" />
-                <TextBlock x:Name="TotalTrimmedValueTextBlock"
-                           Style="{StaticResource MetricLineStyle}"
-                           Text="N/A" />
-              </StackPanel>
+              <TextBlock x:Name="LastBoostTrimmedCaptionTextBlock" Visibility="Collapsed" />
+              <TextBlock x:Name="LastBoostTrimmedValueTextBlock"
+                         Grid.Row="1"
+                         Grid.Column="0"
+                         Style="{StaticResource MetricLineStyle}"
+                         Text="N/A" />
 
-              <StackPanel Margin="0,0,18,0">
-                <TextBlock x:Name="BoostNetGainCaptionTextBlock" Visibility="Collapsed" />
-                <TextBlock x:Name="BoostNetGainValueTextBlock"
-                           Style="{StaticResource MetricLineStyle}"
-                           Text="N/A" />
-              </StackPanel>
+              <TextBlock x:Name="TotalTrimmedCaptionTextBlock" Visibility="Collapsed" />
+              <TextBlock x:Name="TotalTrimmedValueTextBlock"
+                         Grid.Row="1"
+                         Grid.Column="2"
+                         Style="{StaticResource MetricLineStyle}"
+                         Text="N/A" />
 
-              <StackPanel>
-                <TextBlock x:Name="SelfOverheadCaptionTextBlock" Visibility="Collapsed" />
-                <TextBlock Style="{StaticResource MetricLineStyle}"
-                           TextWrapping="NoWrap"
-                           TextTrimming="CharacterEllipsis"
-                           Text="{Binding SelfOverheadDisplay}" />
-              </StackPanel>
-            </UniformGrid>
+              <TextBlock x:Name="BoostNetGainCaptionTextBlock" Visibility="Collapsed" />
+              <TextBlock x:Name="BoostNetGainValueTextBlock"
+                         Grid.Row="2"
+                         Grid.Column="0"
+                         Style="{StaticResource MetricLineStyle}"
+                         Text="N/A" />
+
+              <TextBlock x:Name="SelfOverheadCaptionTextBlock" Visibility="Collapsed" />
+              <TextBlock Grid.Row="2"
+                         Grid.Column="2"
+                         Style="{StaticResource MetricLineStyle}"
+                         TextWrapping="NoWrap"
+                         TextTrimming="CharacterEllipsis"
+                         Text="{Binding SelfOverheadDisplay}" />
+
+              <TextBlock Grid.Row="3"
+                         Grid.ColumnSpan="3"
+                         Margin="0,2,0,0"
+                         Style="{StaticResource BodyTextStyle}"
+                         FontSize="12"
+                         Text="{Binding LastUpdatedDisplay}" />
+            </Grid>
           </Grid>
         </Border>
       </Grid>
@@ -704,6 +740,8 @@
               <RowDefinition Height="10" />
               <RowDefinition Height="Auto" />
               <RowDefinition Height="5" />
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="10" />
               <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
@@ -760,6 +798,14 @@
                     Grid.Column="2"
                     Content="Activate"
                     Click="ActivateProButton_OnClick" />
+
+            <CheckBox x:Name="StartupAutoBoostCheckBox"
+                      Grid.Row="10"
+                      Grid.ColumnSpan="3"
+                      Style="{StaticResource SettingsCheckBoxStyle}"
+                      Content="Start with Windows and enable Auto Boost"
+                      Checked="StartupAutoBoostCheckBox_OnChecked"
+                      Unchecked="StartupAutoBoostCheckBox_OnUnchecked" />
           </Grid>
         </Border>
 
