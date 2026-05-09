@@ -140,13 +140,19 @@ Pro 高级保护：
 输出：
 
 ```text
-dist\fluxram-win-x64\FluxRAM.exe
+dist\fluxram-small-win-x64\FluxRAM.exe
 ```
 
 Small 模式为默认模式，依赖目标机器安装 .NET 8 Desktop Runtime。若要包含运行时：
 
 ```powershell
 .\scripts\publish-win-x64.ps1 -Mode Portable
+```
+
+Portable 输出：
+
+```text
+dist\fluxram-win-x64\FluxRAM.exe
 ```
 
 ## 9. 目标机器运行时

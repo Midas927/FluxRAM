@@ -1,6 +1,6 @@
 # FluxRAM
 
-[English](README.en.md) | [简体中文](README.zh-CN.md) | [繁體中文](README.zh-TW.md) | [日本語](README.ja.md) | [한국어](README.ko.md)
+[English](README.en.md) | 简体中文
 
 FluxRAM 是一款面向 Windows 的本地内存 Boost 工具。它的目标不是一直在后台疯狂清理，而是在你需要的时候快速释放冷后台进程占用，并在内存压力升高时自动处理，同时尽量避开游戏、创作软件、本地 AI、直播工具等不该被碰的应用。
 
@@ -11,6 +11,8 @@ FluxRAM 是一款面向 Windows 的本地内存 Boost 工具。它的目标不�
 [下载 FluxRAM 最新版](https://github.com/Midas927/FluxRAM/releases/latest)
 
 推荐下载 `FluxRAM-Portable-Windows-x64.zip`，解压后双击 `FluxRAM.exe` 即可运行。普通版和 Pro 版使用同一个主程序；Pro 功能只能通过当前电脑的机器码 Key 激活。
+
+如果你希望安装包更小，也可以下载 Small 版。Small 版功能不缩水，但需要当前电脑已安装 `.NET 8 Desktop Runtime`。
 
 ## 核心功能
 
@@ -71,4 +73,6 @@ FluxRAM Pro 只能通过机器码 Key 激活：
 ## 文档
 
 - [商业说明书](docs/FluxRAM-Commercial-Manual.zh-CN.md)
+- [Commercial Manual](docs/FluxRAM-Commercial-Manual.en.md)
 - [IT 技术说明书](docs/FluxRAM-IT-Technical-Manual.zh-CN.md)
+- [IT Technical Manual](docs/FluxRAM-IT-Technical-Manual.en.md)
