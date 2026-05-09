@@ -203,12 +203,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         _lastOverheadSnapshot = overheadSnapshot;
         _selfOverheadDisplay = L(
-            $"FluxRAM Overhead: CPU {overheadSnapshot.CpuUsagePercent:0.0}% | " +
-            $"WS {FormatBytes(overheadSnapshot.WorkingSetBytes)} | " +
+            $"FluxRAM Overhead: WS {FormatBytes(overheadSnapshot.WorkingSetBytes)} | " +
+            $"CPU {overheadSnapshot.CpuUsagePercent:0.0}% | " +
             $"Private {FormatBytes(overheadSnapshot.PrivateBytes)} | " +
             $"Handles {overheadSnapshot.HandleCount}",
-            $"FluxRAM 开销：CPU {overheadSnapshot.CpuUsagePercent:0.0}% | " +
-            $"工作集 {FormatBytes(overheadSnapshot.WorkingSetBytes)} | " +
+            $"FluxRAM 开销：工作集 {FormatBytes(overheadSnapshot.WorkingSetBytes)} | " +
+            $"CPU {overheadSnapshot.CpuUsagePercent:0.0}% | " +
             $"私有内存 {FormatBytes(overheadSnapshot.PrivateBytes)} | " +
             $"句柄 {overheadSnapshot.HandleCount}");
         RaisePropertyChanged(nameof(SelfOverheadDisplay));
