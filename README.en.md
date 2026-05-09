@@ -63,6 +63,13 @@ FluxRAM Pro can only be activated with a machine-bound key:
 
 Pro Keys are issued officially from the machine ID and are bound to the current computer.
 
+## Purchase
+
+Click `Upgrade Pro` inside the edition help dialog:
+
+- Simplified Chinese opens the in-app Alipay QR and payment steps for RMB 10.
+- Other languages open the Whop purchase page for USD $3.
+
 ## Local And Safe
 
 1. FluxRAM runs locally and does not rely on cloud telemetry.

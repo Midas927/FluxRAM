@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <Resource Include="..\..\FluxRAM.ico" Link="FluxRAM.ico" />
+    <Resource Include="Assets\PurchasePro\*.jpg" />
     <ProjectReference Include="..\FluxRAM.Core\FluxRAM.Core.csproj" />
   </ItemGroup>
 </Project>

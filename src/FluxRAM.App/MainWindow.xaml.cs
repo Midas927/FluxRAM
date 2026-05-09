@@ -199,10 +199,10 @@ public partial class MainWindow : Window
         {
             Owner = this,
             Title = T(EditionDetailsCatalog.DialogTitleEnglish, EditionDetailsCatalog.DialogTitleChinese),
-            Width = 620d,
-            Height = 430d,
-            MinWidth = 560d,
-            MinHeight = 380d,
+            Width = 660d,
+            Height = 500d,
+            MinWidth = 620d,
+            MinHeight = 460d,
             ResizeMode = ResizeMode.NoResize,
             ShowInTaskbar = false,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
@@ -236,6 +236,11 @@ public partial class MainWindow : Window
     }
 
     private void CopyMachineIdButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        CopyMachineIdToClipboard();
+    }
+
+    private void CopyMachineIdToClipboard()
     {
         try
         {
@@ -1137,20 +1142,95 @@ public partial class MainWindow : Window
         Grid.SetColumn(proCard, 2);
         sectionGrid.Children.Add(proCard);
 
+        var buttonPanel = new StackPanel
+        {
+            Orientation = System.Windows.Controls.Orientation.Horizontal,
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
+            Margin = new Thickness(0, 16, 0, 0)
+        };
+
+        var upgradeButton = new System.Windows.Controls.Button
+        {
+            Width = 150,
+            Height = 32,
+            Content = UpgradeProLabel(),
+            ToolTip = PurchaseOptionsCatalog.UsesAlipayFlow(_uiLanguage)
+                ? PurchaseOptionsCatalog.DomesticPriceText
+                : PurchaseOptionsCatalog.InternationalPriceText,
+            Style = TryFindResource("PrimaryButtonStyle") as Style
+        };
+        upgradeButton.Click += (_, _) => UpgradeProButton_OnClick(dialog);
+        buttonPanel.Children.Add(upgradeButton);
+
         var closeButton = new System.Windows.Controls.Button
         {
             Width = 96,
             Height = 32,
-            HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
-            Margin = new Thickness(0, 16, 0, 0),
+            Margin = new Thickness(10, 0, 0, 0),
             Content = T("Close", "关闭"),
             Style = TryFindResource("QuietButtonStyle") as Style
         };
         closeButton.Click += (_, _) => dialog.Close();
-        Grid.SetRow(closeButton, 3);
-        root.Children.Add(closeButton);
+        buttonPanel.Children.Add(closeButton);
+
+        Grid.SetRow(buttonPanel, 3);
+        root.Children.Add(buttonPanel);
 
         return root;
+    }
+
+    private void UpgradeProButton_OnClick(Window owner)
+    {
+        if (PurchaseOptionsCatalog.UsesAlipayFlow(_uiLanguage))
+        {
+            ProPurchaseDialogFactory.ShowAlipayDialog(
+                owner,
+                _uiLanguage,
+                _licenseStatus.MachineId,
+                CopyMachineIdToClipboard);
+            return;
+        }
+
+        OpenWhopPurchaseLink();
+    }
+
+    private void OpenWhopPurchaseLink()
+    {
+        try
+        {
+            CopyMachineIdToClipboard();
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = PurchaseOptionsCatalog.WhopPurchaseUrl,
+                UseShellExecute = true
+            });
+            _viewModel.SetStatus(T(
+                "Whop purchase page opened. Machine ID copied for checkout.",
+                "已打开 Whop 购买页面，并复制机器标识。"));
+        }
+        catch
+        {
+            System.Windows.MessageBox.Show(
+                this,
+                T("Unable to open the Whop purchase page.", "无法打开 Whop 购买页面。") +
+                Environment.NewLine +
+                PurchaseOptionsCatalog.WhopPurchaseUrl,
+                "FluxRAM Pro",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+        }
+    }
+
+    private string UpgradeProLabel()
+    {
+        return _uiLanguage switch
+        {
+            UiLanguage.ChineseSimplified => "升级 Pro",
+            UiLanguage.ChineseTraditional => "升級 Pro",
+            UiLanguage.Japanese => "Pro · $3",
+            UiLanguage.Korean => "Pro · $3",
+            _ => "Upgrade Pro · $3"
+        };
     }
 
     private UIElement CreateProfileDetailsContent(Window dialog)
