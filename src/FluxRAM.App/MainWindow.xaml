@@ -443,8 +443,8 @@
           <Grid>
             <Grid.ColumnDefinitions>
               <ColumnDefinition Width="*" />
-              <ColumnDefinition Width="12" />
-              <ColumnDefinition Width="190" />
+              <ColumnDefinition Width="18" />
+              <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
             <StackPanel>
               <TextBlock x:Name="StatusCaptionTextBlock" Style="{StaticResource CaptionStyle}" Text="STATUS" />
