@@ -61,7 +61,7 @@ FluxRAM Pro can only be activated with a machine-bound key:
 4. Enter the Pro Key you receive inside FluxRAM.
 5. The key is bound to the current computer. A new computer requires a new key.
 
-There is no universal Pro installer and no public Pro key generation flow.
+Pro Keys are issued officially from the machine ID and are bound to the current computer.
 
 ## Local And Safe
 

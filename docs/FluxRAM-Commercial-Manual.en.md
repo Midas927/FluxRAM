@@ -60,15 +60,14 @@ FluxRAM shows a machine ID inside the app.
 Commercial licensing flow:
 
 1. The customer sends the machine ID to sales or support.
-2. The operator uses an internal licensing tool outside the public repository to generate a Pro key.
+2. FluxRAM issues a Pro Key for that specific machine ID.
 3. The customer enters the Pro key in FluxRAM.
 4. After successful verification, FluxRAM Pro is permanently activated on that computer.
 
 Important notes:
 
-1. Private keys and internal licensing tools are for internal use only.
-2. Customers should only receive the FluxRAM main executable and their Pro key.
-3. A Pro key is bound to the current computer. A replacement computer requires a new key.
+1. Customers only need the FluxRAM main executable and their Pro key.
+2. A Pro key is bound to the current computer. A replacement computer requires a new key.
 
 ## 6. Comparison With Mem Reduct
 
@@ -113,8 +112,7 @@ For paid users:
 2. Pro key
 3. If using the Small build, include the runtime helper scripts
 
-Internal only:
+Operations notes:
 
-1. Internal licensing tool
-2. `fluxram-license.private-key.xml`
-3. Licensing tools and private keys must not enter the public GitHub repository and must not be sent to customers
+1. Pro Keys should be issued only through the official sales or support flow.
+2. Do not promise a universal cross-machine license.

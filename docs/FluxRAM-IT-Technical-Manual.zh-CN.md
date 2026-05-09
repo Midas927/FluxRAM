@@ -41,12 +41,11 @@ docs/                  商业说明书和 IT 技术说明书
 5. 正常 Boost 流程不调用云端 API。
 6. 运行时安装脚本只在缺少 .NET Desktop Runtime 时下载官方安装包。
 
-授权安全：
+授权模型：
 
 1. FluxRAM Pro 使用机器 ID + RSA 签名 key 激活。
-2. 应用内只嵌入公钥用于验签。
-3. 私钥必须保存在仓库外，不能上传 GitHub，也不能发给客户。
-4. Pro key 由仓库外部的内部授权工具生成，私钥和授权工具不随公开源码分发。
+2. 激活后由程序在本机完成授权验证。
+3. Pro Key 由官方根据机器标识签发，绑定当前电脑使用。
 
 ## 4. 版本与功能开关
 
@@ -174,10 +173,9 @@ scripts\run-fluxram.bat
 
 ## 10. 授权与发布安全
 
-1. `fluxram-license.private-key.xml` 只能保存在内部安全位置。
-2. 内部 Pro key 生成器、私钥和授权脚本不进入公开 GitHub 仓库。
-3. 公开下载包只通过 GitHub Release 附件分发，不提交到仓库源码树。
-4. 生产发布前应替换应用内公钥，并对发行 exe 做代码签名。
+1. 公开下载包只通过 GitHub Release 附件分发，不提交到仓库源码树。
+2. 生产发布应使用正式授权配置。
+3. 大范围分发前建议对发行 exe 做代码签名。
 
 ## 11. Win32 API 范围
 
@@ -204,4 +202,4 @@ scripts\run-fluxram.bat
 6. `Boost Now` 可执行并刷新指标。
 7. `Auto Boost` 开启后只在压力达到阈值和冷却完成时触发。
 8. 最小化、关闭到托盘、托盘恢复、托盘退出都可用。
-9. GitHub 仓库内不包含 `dist`、`bin`、`obj`、`.secrets`、私钥和日志。
+9. GitHub 仓库内不包含 `dist`、`bin`、`obj`、`.secrets` 和日志。
