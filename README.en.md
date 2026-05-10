@@ -20,7 +20,7 @@ Recommended package: `FluxRAM-Portable-Windows-x64.zip`. Unzip it and run `FluxR
 
 FluxRAM and FluxRAM Pro use the same executable. Pro features can only be activated with a key generated for the current machine ID.
 
-Small builds are also available for users who want a smaller download. The Small build does not remove features, but it requires `.NET 8 Desktop Runtime` to be installed on the computer.
+`FluxRAM-Lite-Windows-x64.zip` is also available for users who want a smaller download. Lite does not remove features; it only requires `.NET 8 Desktop Runtime` to already be installed. If you are unsure, use the Portable package.
 
 ## Demo
 

@@ -20,7 +20,7 @@ FluxRAM 不是把 8GB 变成 16GB 的魔法。它更现实一点：尽量清掉�
 
 推荐下载 `FluxRAM-Portable-Windows-x64.zip`，解压后双击 `FluxRAM.exe` 即可运行。普通版和 Pro 版使用同一个主程序；Pro 功能只能通过当前电脑的机器码 Key 激活。
 
-如果你希望安装包更小，也可以下载 Small 版。Small 版功能不缩水，但需要当前电脑已安装 `.NET 8 Desktop Runtime`。
+如果你希望下载包更小，也可以下载 `FluxRAM-Lite-Windows-x64.zip`。Lite 版不是功能缩水版，只是需要当前电脑已安装 `.NET 8 Desktop Runtime`；如果不确定电脑有没有运行库，就下载 Portable 版。
 
 ## 实际演示
 

@@ -1,16 +1,17 @@
 param(
     [string]$Configuration = "Release",
-    [ValidateSet("Small", "Portable")]
-    [string]$Mode = "Small"
+    [ValidateSet("Lite", "Portable")]
+    [string]$Mode = "Lite"
 )
 
 $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $projectPath = Join-Path $repoRoot "src\FluxRAM.App\FluxRAM.App.csproj"
-$outputFolderName = if ($Mode -eq "Portable") { "fluxram-win-x64" } else { "fluxram-small-win-x64" }
+$outputFolderName = if ($Mode -eq "Portable") { "fluxram-win-x64" } else { "fluxram-lite-win-x64" }
 $outputPath = Join-Path $repoRoot ("dist\" + $outputFolderName)
 $obsoleteOutputPaths = @(
+    (Join-Path $repoRoot "dist\fluxram-small-win-x64"),
     (Join-Path $repoRoot "dist\fluxram-pro-win-x64"),
     (Join-Path $repoRoot "dist\free-win-x64"),
     (Join-Path $repoRoot "dist\pro-win-x64")
