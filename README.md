@@ -22,6 +22,18 @@ FluxRAM 不是把 8GB 变成 16GB 的魔法。它更现实一点：尽量清掉�
 
 如果你希望安装包更小，也可以下载 Small 版。Small 版功能不缩水，但需要当前电脑已安装 `.NET 8 Desktop Runtime`。
 
+## 实际演示
+
+下面是 FluxRAM 与 Windows 任务管理器一起使用的实际截图。不同电脑、不同后台进程数量和当前负载都会影响释放结果，截图只作为界面和效果参考。
+
+<p>
+  <img src="docs/assets/fluxram-demo-main.jpg" alt="FluxRAM 主界面与任务管理器内存变化演示" width="900">
+</p>
+
+<p>
+  <img src="docs/assets/fluxram-demo-details.jpg" alt="FluxRAM 详细界面与任务管理器内存变化演示" width="900">
+</p>
+
 ## 核心功能
 
 | 功能 | FluxRAM | FluxRAM Pro |

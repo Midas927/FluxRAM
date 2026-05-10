@@ -22,6 +22,18 @@ FluxRAM and FluxRAM Pro use the same executable. Pro features can only be activa
 
 Small builds are also available for users who want a smaller download. The Small build does not remove features, but it requires `.NET 8 Desktop Runtime` to be installed on the computer.
 
+## Demo
+
+These screenshots show FluxRAM running next to Windows Task Manager. Results vary by machine, workload and background process count, so treat them as a real-world interface and effect preview rather than a fixed promise.
+
+<p>
+  <img src="docs/assets/fluxram-demo-main.jpg" alt="FluxRAM compact UI with Windows Task Manager memory demo" width="900">
+</p>
+
+<p>
+  <img src="docs/assets/fluxram-demo-details.jpg" alt="FluxRAM detailed UI with Windows Task Manager memory demo" width="900">
+</p>
+
 ## Core Features
 
 | Feature | FluxRAM | FluxRAM Pro |
