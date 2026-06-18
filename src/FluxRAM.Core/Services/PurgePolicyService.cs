@@ -4,6 +4,12 @@ namespace FluxRAM.Core.Services;
 
 public sealed class PurgePolicyService
 {
+    private const double StrictCpuActivityRiskPercent = 8d;
+    private const double HardCpuActivityRiskPercent = 25d;
+    private const double StrictIoActivityRiskBytesPerSecond = 4d * 1024 * 1024;
+    private const double HardIoActivityRiskBytesPerSecond = 16d * 1024 * 1024;
+    private const int MaxAdaptiveTargetLimit = 12;
+
     public PurgePlan CreatePlan(
         IReadOnlyList<ProcessSnapshot> snapshots,
         MemorySnapshot memorySnapshot,
@@ -42,6 +48,7 @@ public sealed class PurgePolicyService
             .Where(snapshot => settings.AllowForegroundProcessPurge || !snapshot.IsForeground)
             .Where(snapshot => snapshot.WorkingSetBytes >= settings.MinimumCandidateWorkingSetBytes)
             .Where(snapshot => snapshot.ColdnessScore >= settings.MinimumColdnessScore)
+            .Where(snapshot => !IsActivityRiskTooHigh(snapshot, settings))
             .Where(snapshot => !IsProtectedSnapshot(
                 snapshot,
                 protectedNames,
@@ -51,14 +58,20 @@ public sealed class PurgePolicyService
                 parentProcessIds,
                 enableAdvancedProtection))
             .Where(snapshot => !IsInCooldown(snapshot.ProcessId, now, cooldown, lastPurgeTimesByProcessId))
-            .OrderByDescending(snapshot => snapshot.ColdnessScore)
+            .OrderByDescending(CalculateCandidatePriorityScore)
             .ThenByDescending(snapshot => snapshot.WorkingSetBytes)
+            .ThenByDescending(snapshot => snapshot.ColdnessScore)
             .ToArray();
 
-        var candidates = settings.MaxPurgeTargetsPerPass <= 0
+        var effectiveCandidateLimit = CalculateEffectiveCandidateLimit(
+            settings,
+            memorySnapshot,
+            effectiveThreshold,
+            orderedCandidates.Length);
+        var candidates = effectiveCandidateLimit <= 0
             ? orderedCandidates
             : orderedCandidates
-                .Take(settings.MaxPurgeTargetsPerPass)
+                .Take(effectiveCandidateLimit)
                 .ToArray();
 
         if (candidates.Length == 0)
@@ -174,6 +187,81 @@ public sealed class PurgePolicyService
         }
 
         return Math.Min(settings.PurgeWhenAvailableMemoryBelowBytes, thresholdByPercent);
+    }
+
+    private static int CalculateEffectiveCandidateLimit(
+        OptimizerSettings settings,
+        MemorySnapshot memorySnapshot,
+        ulong effectiveThreshold,
+        int candidateCount)
+    {
+        if (settings.MaxPurgeTargetsPerPass <= 0)
+        {
+            return 0;
+        }
+
+        var limit = settings.MaxPurgeTargetsPerPass;
+        if (IsSevereMemoryPressure(memorySnapshot, effectiveThreshold, settings))
+        {
+            limit = Math.Min(
+                Math.Max(settings.MaxPurgeTargetsPerPass * 2, settings.MaxPurgeTargetsPerPass + 2),
+                MaxAdaptiveTargetLimit);
+        }
+
+        return Math.Min(limit, candidateCount);
+    }
+
+    private static bool IsSevereMemoryPressure(
+        MemorySnapshot memorySnapshot,
+        ulong effectiveThreshold,
+        OptimizerSettings settings)
+    {
+        if (settings.IgnoreMemoryPressureThreshold || effectiveThreshold == 0)
+        {
+            return false;
+        }
+
+        return memorySnapshot.MemoryLoadPercent >= 90 &&
+            memorySnapshot.AvailablePhysicalMemoryBytes <= effectiveThreshold / 2;
+    }
+
+    private static bool IsActivityRiskTooHigh(ProcessSnapshot snapshot, OptimizerSettings settings)
+    {
+        if (snapshot.CpuUsagePercent >= HardCpuActivityRiskPercent ||
+            snapshot.IoBytesPerSecond >= HardIoActivityRiskBytesPerSecond)
+        {
+            return true;
+        }
+
+        if (settings.AllowForegroundProcessPurge)
+        {
+            return false;
+        }
+
+        if (snapshot.CpuUsagePercent >= StrictCpuActivityRiskPercent ||
+            snapshot.IoBytesPerSecond >= StrictIoActivityRiskBytesPerSecond)
+        {
+            return true;
+        }
+
+        var visibleWindowColdnessFloor = Math.Max(settings.MinimumColdnessScore + 15d, 75d);
+        return snapshot.HasVisibleWindow && snapshot.ColdnessScore < visibleWindowColdnessFloor;
+    }
+
+    private static double CalculateCandidatePriorityScore(ProcessSnapshot snapshot)
+    {
+        var workingSetMegabytes = Math.Max(0d, snapshot.WorkingSetBytes / (1024d * 1024d));
+        var yieldScore = Math.Log(workingSetMegabytes + 1d, 2d) * 10d;
+        var cpuPenalty = Math.Max(0d, snapshot.CpuUsagePercent) * 2.5d;
+        var ioMegabytesPerSecond = Math.Max(0d, snapshot.IoBytesPerSecond / (1024d * 1024d));
+        var ioPenalty = ioMegabytesPerSecond * 4d;
+        var visibleWindowPenalty = snapshot.HasVisibleWindow ? 8d : 0d;
+
+        return snapshot.ColdnessScore * 1.5d +
+            yieldScore -
+            cpuPenalty -
+            ioPenalty -
+            visibleWindowPenalty;
     }
 
     private static bool IsInCooldown(

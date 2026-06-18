@@ -70,6 +70,99 @@ public sealed class PurgePolicyServiceTests
     }
 
     [Fact]
+    public void CreatePlan_PrioritizesHighYieldSafeCandidatesOverTinyColderCandidates()
+    {
+        var service = new PurgePolicyService();
+        var settings = OptimizerSettings.SafeDefaults() with
+        {
+            IgnoreMemoryPressureThreshold = true,
+            MaxPurgeTargetsPerPass = 2,
+            MinimumCandidateWorkingSetBytes = 64L * 1024 * 1024,
+            MinimumColdnessScore = 50
+        };
+        var snapshots = new[]
+        {
+            new ProcessSnapshot(111, "tiny-cold", 180L * 1024 * 1024, false, CpuUsagePercent: 0.1, ColdnessScore: 92),
+            new ProcessSnapshot(112, "large-cold", 1500L * 1024 * 1024, false, CpuUsagePercent: 0.2, ColdnessScore: 80),
+            new ProcessSnapshot(113, "medium-cold", 700L * 1024 * 1024, false, CpuUsagePercent: 0.1, ColdnessScore: 82)
+        };
+
+        var plan = service.CreatePlan(
+            snapshots,
+            new MemorySnapshot(1UL * 1024 * 1024 * 1024, 16UL * 1024 * 1024 * 1024, 92),
+            settings,
+            DateTimeOffset.UtcNow,
+            new Dictionary<int, DateTimeOffset>());
+
+        Assert.True(plan.ShouldPurge);
+        Assert.Equal(new[] { 112, 113 }, plan.Candidates.Select(candidate => candidate.ProcessId));
+    }
+
+    [Fact]
+    public void CreatePlan_SkipsActiveCpuAndIoCandidatesEvenWhenTheyLookLarge()
+    {
+        var service = new PurgePolicyService();
+        var settings = OptimizerSettings.SafeDefaults() with
+        {
+            IgnoreMemoryPressureThreshold = true,
+            MinimumCandidateWorkingSetBytes = 64L * 1024 * 1024,
+            MinimumColdnessScore = 20,
+            AllowForegroundProcessPurge = false
+        };
+        var snapshots = new[]
+        {
+            new ProcessSnapshot(121, "render", 2500L * 1024 * 1024, false, CpuUsagePercent: 18, ColdnessScore: 95),
+            new ProcessSnapshot(122, "sync", 1800L * 1024 * 1024, false, IoBytesPerSecond: 8 * 1024 * 1024, ColdnessScore: 95),
+            new ProcessSnapshot(123, "idle-cache", 600L * 1024 * 1024, false, CpuUsagePercent: 0.2, IoBytesPerSecond: 8 * 1024, ColdnessScore: 72)
+        };
+
+        var plan = service.CreatePlan(
+            snapshots,
+            new MemorySnapshot(1UL * 1024 * 1024 * 1024, 16UL * 1024 * 1024 * 1024, 92),
+            settings,
+            DateTimeOffset.UtcNow,
+            new Dictionary<int, DateTimeOffset>());
+
+        Assert.True(plan.ShouldPurge);
+        Assert.Single(plan.Candidates);
+        Assert.Equal(123, plan.Candidates[0].ProcessId);
+    }
+
+    [Fact]
+    public void CreatePlan_WhenMemoryPressureIsSevere_ExpandsSafeCandidateCount()
+    {
+        var service = new PurgePolicyService();
+        var settings = OptimizerSettings.SafeDefaults() with
+        {
+            MaxPurgeTargetsPerPass = 2,
+            MinimumCandidateWorkingSetBytes = 64L * 1024 * 1024,
+            PurgeWhenAvailableMemoryBelowBytes = 8UL * 1024 * 1024 * 1024,
+            PurgeWhenAvailableMemoryBelowPercentOfTotal = 60,
+            MinimumColdnessScore = 50
+        };
+        var snapshots = new[]
+        {
+            new ProcessSnapshot(131, "cache-a", 900L * 1024 * 1024, false, CpuUsagePercent: 0.1, ColdnessScore: 80),
+            new ProcessSnapshot(132, "cache-b", 800L * 1024 * 1024, false, CpuUsagePercent: 0.1, ColdnessScore: 78),
+            new ProcessSnapshot(133, "cache-c", 700L * 1024 * 1024, false, CpuUsagePercent: 0.1, ColdnessScore: 76),
+            new ProcessSnapshot(134, "cache-d", 600L * 1024 * 1024, false, CpuUsagePercent: 0.1, ColdnessScore: 74)
+        };
+
+        var plan = service.CreatePlan(
+            snapshots,
+            new MemorySnapshot(
+                AvailablePhysicalMemoryBytes: 1UL * 1024 * 1024 * 1024,
+                TotalPhysicalMemoryBytes: 16UL * 1024 * 1024 * 1024,
+                MemoryLoadPercent: 94),
+            settings,
+            DateTimeOffset.UtcNow,
+            new Dictionary<int, DateTimeOffset>());
+
+        Assert.True(plan.ShouldPurge);
+        Assert.Equal(4, plan.Candidates.Count);
+    }
+
+    [Fact]
     public void CreatePlan_RespectsProtectList()
     {
         var service = new PurgePolicyService();

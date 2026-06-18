@@ -39,7 +39,9 @@ docs/                  commercial and IT technical manuals
 3. FluxRAM does not inject code into remote processes.
 4. FluxRAM does not create startup entries by default.
 5. Normal Boost flow does not call cloud APIs.
-6. The runtime installer script only downloads the official .NET installer when `.NET 8 Desktop Runtime` is missing.
+6. Update checks are user-initiated and query the public GitHub latest-release endpoint.
+7. Local diagnostic logs are written to `%LOCALAPPDATA%\FluxRAM\fluxram.log`.
+8. The runtime installer script only downloads the official .NET installer when `.NET 8 Desktop Runtime` is missing.
 
 Licensing model:
 
@@ -79,8 +81,11 @@ Single-pass flow:
 2. Enumerate processes and sample CPU, window, foreground and memory information.
 3. Generate candidates with `PurgePolicyService`.
 4. Exclude system whitelist entries, foreground processes, cooldown processes and protected apps.
-5. Trim candidates with `SetProcessWorkingSetSize(-1, -1)` and `EmptyWorkingSet`.
-6. Update recent trimmed memory, total trimmed memory, net gain, rebound rate, self overhead and recent events.
+5. Exclude high-activity candidates by CPU and I/O hard gates before trimming.
+6. Rank remaining candidates by coldness, working-set yield and activity risk.
+7. Under severe memory pressure, expand the number of safe candidates instead of touching active apps.
+8. Trim candidates with `SetProcessWorkingSetSize(-1, -1)` and `EmptyWorkingSet`.
+9. Update recent trimmed memory, total trimmed memory, net gain, rebound rate, self overhead and recent events.
 
 ## 6. Current Policy Matrix
 
@@ -130,7 +135,7 @@ Build requirements:
 1. Windows 11.
 2. .NET 8 SDK with Windows Desktop workload.
 
-Small build:
+Lite build:
 
 ```powershell
 .\scripts\publish-win-x64.ps1
@@ -139,10 +144,12 @@ Small build:
 Output:
 
 ```text
-dist\fluxram-small-win-x64\FluxRAM.exe
+dist\fluxram-lite-win-x64\FluxRAM.exe
+dist\release-assets\FluxRAM-Lite-Windows-x64.zip
+dist\release-assets\FluxRAM-Lite-Windows-x64.zip.sha256
 ```
 
-Small mode is the default and requires `.NET 8 Desktop Runtime` on the target machine.
+Lite mode is the default and requires `.NET 8 Desktop Runtime` on the target machine.
 
 Portable build with runtime included:
 
@@ -154,13 +161,25 @@ Output:
 
 ```text
 dist\fluxram-win-x64\FluxRAM.exe
+dist\release-assets\FluxRAM-Portable-Windows-x64.zip
+dist\release-assets\FluxRAM-Portable-Windows-x64.zip.sha256
 ```
 
 Portable is larger because it includes the desktop runtime, but it is easier for non-technical users.
 
+Optional code signing:
+
+```powershell
+$env:FLUXRAM_SIGNTOOL_PATH = "C:\Program Files (x86)\Windows Kits\10\bin\x64\signtool.exe"
+$env:FLUXRAM_SIGN_CERT_SHA1 = "<certificate thumbprint>"
+.\scripts\publish-win-x64.ps1 -Mode Portable
+```
+
+When signing variables are configured, the script signs `FluxRAM.exe` before creating the release zip and SHA256 file.
+
 ## 9. Target Runtime
 
-Small packages can include:
+Lite packages can include:
 
 ```bat
 scripts\install-dotnet-desktop-runtime-8.bat
@@ -180,6 +199,7 @@ Script behavior:
 1. Public download packages should be distributed through GitHub Release assets, not committed to the source tree.
 2. Production releases should use the official licensing configuration.
 3. Production executables should be code-signed before broad distribution.
+4. Release assets should include the generated `.sha256` file.
 
 ## 11. Win32 API Surface
 
