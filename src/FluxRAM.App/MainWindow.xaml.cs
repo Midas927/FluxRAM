@@ -7,6 +7,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Threading;
 using FluxRAM.App.Automation;
@@ -279,6 +280,24 @@ public partial class MainWindow : Window
         ToolsMenuButton.ContextMenu.PlacementTarget = ToolsMenuButton;
         ToolsMenuButton.ContextMenu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
         ToolsMenuButton.ContextMenu.IsOpen = true;
+    }
+
+    private void DetailListBox_OnPreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (!_isDetailPanelVisible)
+        {
+            return;
+        }
+
+        e.Handled = true;
+
+        var forwardedEvent = new MouseWheelEventArgs(e.MouseDevice, e.Timestamp, e.Delta)
+        {
+            RoutedEvent = MouseWheelEvent,
+            Source = sender
+        };
+
+        DetailPanel.RaiseEvent(forwardedEvent);
     }
 
     private void ThemeMenuItem_OnClick(object sender, RoutedEventArgs e)

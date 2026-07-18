@@ -860,9 +860,12 @@
                         Click="PreviewBoostCandidatesButton_OnClick" />
               </Grid>
               <Border Grid.Row="2" Style="{StaticResource InsetPanelStyle}" Padding="6">
-                <ListBox ItemsSource="{Binding BoostDetails}"
+                <ListBox x:Name="BoostDetailsListBox"
+                         ItemsSource="{Binding BoostDetails}"
+                         MaxHeight="150"
                          FontFamily="Consolas"
-                         FontSize="11" />
+                         FontSize="11"
+                         PreviewMouseWheel="DetailListBox_OnPreviewMouseWheel" />
               </Border>
             </Grid>
           </Border>
@@ -880,9 +883,12 @@
               </Grid.RowDefinitions>
               <TextBlock x:Name="RecentActivityTitleTextBlock" Grid.Row="0" Style="{StaticResource SectionTitleStyle}" Text="Recent Activity" />
               <Border Grid.Row="2" Style="{StaticResource InsetPanelStyle}" Padding="6">
-                <ListBox ItemsSource="{Binding RecentEvents}"
+                <ListBox x:Name="RecentEventsListBox"
+                         ItemsSource="{Binding RecentEvents}"
+                         MaxHeight="150"
                          FontFamily="Consolas"
-                         FontSize="11" />
+                         FontSize="11"
+                         PreviewMouseWheel="DetailListBox_OnPreviewMouseWheel" />
               </Border>
               <TextBlock x:Name="LicenseStatusCaptionTextBlock"
                          Grid.Row="4"
