@@ -284,7 +284,13 @@ public partial class MainWindow : Window
 
     private void DetailListBox_OnPreviewMouseWheel(object sender, MouseWheelEventArgs e)
     {
-        if (!_isDetailPanelVisible)
+        if (!_isDetailPanelVisible || sender is not System.Windows.Controls.ListBox listBox)
+        {
+            return;
+        }
+
+        var listScrollViewer = FindVisualChild<ScrollViewer>(listBox);
+        if (CanScrollList(listScrollViewer, e.Delta))
         {
             return;
         }
@@ -298,6 +304,39 @@ public partial class MainWindow : Window
         };
 
         DetailPanel.RaiseEvent(forwardedEvent);
+    }
+
+    private static bool CanScrollList(ScrollViewer? scrollViewer, int wheelDelta)
+    {
+        if (scrollViewer is null || scrollViewer.ScrollableHeight <= 0)
+        {
+            return false;
+        }
+
+        return wheelDelta > 0
+            ? scrollViewer.VerticalOffset > 0
+            : scrollViewer.VerticalOffset < scrollViewer.ScrollableHeight;
+    }
+
+    private static T? FindVisualChild<T>(DependencyObject parent)
+        where T : DependencyObject
+    {
+        for (var index = 0; index < Media.VisualTreeHelper.GetChildrenCount(parent); index++)
+        {
+            var child = Media.VisualTreeHelper.GetChild(parent, index);
+            if (child is T result)
+            {
+                return result;
+            }
+
+            var nested = FindVisualChild<T>(child);
+            if (nested is not null)
+            {
+                return nested;
+            }
+        }
+
+        return null;
     }
 
     private void ThemeMenuItem_OnClick(object sender, RoutedEventArgs e)
