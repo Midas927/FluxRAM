@@ -88,11 +88,11 @@ public static class OptimizerSettingsCatalog
     {
         return profile switch
         {
-            OptimizerProfile.Conservative => "Light",
-            OptimizerProfile.Balanced => "Standard",
-            OptimizerProfile.GamingHandheld => "Gaming / Handheld",
-            OptimizerProfile.Aggressive => "Extreme Performance",
-            _ => "Light"
+            OptimizerProfile.Conservative => "Daily",
+            OptimizerProfile.Balanced => "Gaming",
+            OptimizerProfile.GamingHandheld => "Gaming",
+            OptimizerProfile.Aggressive => "Extreme",
+            _ => "Gaming"
         };
     }
 }

@@ -212,10 +212,11 @@ public partial class MainWindow : Window
         IReadOnlyCollection<string> protectedProcessPaths = _licenseStatus.Features.SupportsProtectList
             ? _protectedProcessPaths
             : Array.Empty<string>();
+        var manualSettings = CreateManualBoostSettings(_optimizerSettings);
         var plan = _purgePolicyService.CreatePlan(
             snapshots,
             memorySnapshot,
-            _optimizerSettings,
+            manualSettings,
             now,
             _lastPurgeTimesByProcessId,
             forcePurge: true,
@@ -361,6 +362,45 @@ public partial class MainWindow : Window
         OpenGitHubRepository();
     }
 
+    private void ExtremeCloseMenuItem_OnClick(object sender, RoutedEventArgs e)
+    {
+        var candidates = ExtremeCloseCandidateFactory.FromSnapshots(
+                ScrapeProcesses(_lastPurgeTimesByProcessId),
+                _licenseStatus.Features.SupportsProtectList ? _protectedProcessNames : Array.Empty<string>(),
+                _licenseStatus.Features.SupportsProtectList ? _protectedProcessPaths : Array.Empty<string>(),
+                Environment.ProcessId)
+            .Take(16)
+            .ToArray();
+
+        if (candidates.Length == 0)
+        {
+            var message = T(
+                "Extreme Close found no high-memory app that is safe enough to offer.",
+                "Extreme Close 没有找到适合关闭的高占用应用。");
+            _viewModel.SetStatus(message);
+            _viewModel.UpdateBoostDetails([message]);
+            return;
+        }
+
+        var selectedCandidates = ShowExtremeCloseDialog(candidates);
+        if (selectedCandidates.Count == 0)
+        {
+            _viewModel.SetStatus(T("Extreme Close cancelled.", "Extreme Close 已取消。"));
+            return;
+        }
+
+        var result = CloseExtremeCandidates(selectedCandidates);
+        _viewModel.UpdateBoostDetails(result.Details);
+        _viewModel.SetStatus(T(
+            $"Extreme Close: closed {result.ClosedProcessCount}/{result.TotalProcessCount} process(es).",
+            $"Extreme Close：已关闭 {result.ClosedProcessCount}/{result.TotalProcessCount} 个进程。"));
+        _viewModel.AddEvent(T(
+            $"Extreme Close closed {result.ClosedProcessCount}/{result.TotalProcessCount} process(es).",
+            $"Extreme Close 已关闭 {result.ClosedProcessCount}/{result.TotalProcessCount} 个进程。"));
+        DiagnosticLog.Info($"Extreme Close completed. Closed={result.ClosedProcessCount}, Total={result.TotalProcessCount}.");
+        CaptureBaselineMemory();
+    }
+
     private void DiagnosticLogMenuItem_OnClick(object sender, RoutedEventArgs e)
     {
         try
@@ -474,7 +514,7 @@ public partial class MainWindow : Window
             Height = 470d,
             MinWidth = 560d,
             MinHeight = 430d,
-            ResizeMode = ResizeMode.NoResize,
+            ResizeMode = ResizeMode.CanResize,
             ShowInTaskbar = false,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
             FontFamily = UiFontFamily(_uiLanguage),
@@ -783,12 +823,12 @@ public partial class MainWindow : Window
 
         if (profile == OptimizerProfile.Aggressive && !_licenseStatus.Features.SupportsExtremeProfile)
         {
-            SelectProfile(OptimizerProfile.Balanced);
-            ApplyProfile(OptimizerProfile.Balanced);
-            _userSettingsStore.SaveProfile(OptimizerProfile.Balanced);
+            SelectProfile(OptimizerProfile.GamingHandheld);
+            ApplyProfile(OptimizerProfile.GamingHandheld);
+            _userSettingsStore.SaveProfile(OptimizerProfile.GamingHandheld);
             _viewModel.SetStatus(T(
-                "Extreme Performance is available in Pro edition only.",
-                "极致性能仅在专业版可用。"));
+                "Extreme is available in Pro edition only.",
+                "Extreme 仅在专业版可用。"));
             return;
         }
 
@@ -908,10 +948,13 @@ public partial class MainWindow : Window
         IReadOnlyCollection<string> protectedProcessPaths = _licenseStatus.Features.SupportsProtectList
             ? _protectedProcessPaths
             : Array.Empty<string>();
+        var effectiveSettings = forcePurge
+            ? CreateManualBoostSettings(_optimizerSettings)
+            : _optimizerSettings;
         var plan = _purgePolicyService.CreatePlan(
             sampledSnapshots,
             beforeMemory,
-            _optimizerSettings,
+            effectiveSettings,
             startedAt,
             _lastPurgeTimesByProcessId,
             forcePurge,
@@ -1034,6 +1077,32 @@ public partial class MainWindow : Window
             $"档位切换为 {LocalizeProfileName(profile)}。"));
     }
 
+    private OptimizerSettings CreateManualBoostSettings(OptimizerSettings settings)
+    {
+        if (_selectedProfile == OptimizerProfile.Aggressive)
+        {
+            return settings;
+        }
+
+        var isGaming = _selectedProfile is OptimizerProfile.Balanced or OptimizerProfile.GamingHandheld;
+        var minimumWorkingSetBytes = isGaming
+            ? 64L * 1024 * 1024
+            : 128L * 1024 * 1024;
+        var coldnessFloor = isGaming ? 35d : 52d;
+        var extraTargets = isGaming ? 3 : 1;
+
+        return settings with
+        {
+            MinimumCandidateWorkingSetBytes = Math.Min(settings.MinimumCandidateWorkingSetBytes, minimumWorkingSetBytes),
+            MinimumColdnessScore = Math.Max(coldnessFloor, settings.MinimumColdnessScore - 12d),
+            MaxPurgeTargetsPerPass = settings.MaxPurgeTargetsPerPass <= 0
+                ? 0
+                : Math.Min(settings.MaxPurgeTargetsPerPass + extraTargets, 12),
+            ProcessCooldownSeconds = Math.Min(settings.ProcessCooldownSeconds, 12),
+            LowYieldThresholdBytes = Math.Min(settings.LowYieldThresholdBytes, 24L * 1024 * 1024)
+        };
+    }
+
     private void ApplyEditionUi()
     {
         var edition = _licenseStatus.Features;
@@ -1046,7 +1115,7 @@ public partial class MainWindow : Window
 
         if (!edition.SupportsExtremeProfile && _selectedProfile == OptimizerProfile.Aggressive)
         {
-            _selectedProfile = OptimizerProfile.Balanced;
+            _selectedProfile = OptimizerProfile.GamingHandheld;
             _optimizerSettings = OptimizerSettingsCatalog.FromProfile(_selectedProfile);
             SelectProfile(_selectedProfile);
             _userSettingsStore.SaveProfile(_selectedProfile);
@@ -1311,6 +1380,247 @@ public partial class MainWindow : Window
             .ToArray();
     }
 
+    private IReadOnlyList<ExtremeCloseCandidate> ShowExtremeCloseDialog(IReadOnlyList<ExtremeCloseCandidate> candidates)
+    {
+        var selected = new List<ExtremeCloseCandidate>();
+        var checkBoxes = new List<System.Windows.Controls.CheckBox>();
+        var candidatePanel = new StackPanel();
+
+        foreach (var candidate in candidates)
+        {
+            var checkBox = new System.Windows.Controls.CheckBox
+            {
+                Margin = new Thickness(0, 0, 0, 8),
+                IsChecked = candidate.IsDefaultSelected,
+                Tag = candidate,
+                Content = FormatExtremeCloseCandidate(candidate),
+                Foreground = ThemeBrush(candidate.HasForegroundProcess ? "WarningBrush" : "TextPrimaryBrush"),
+                FontFamily = new System.Windows.Media.FontFamily("Consolas"),
+                FontSize = 11,
+                ToolTip = candidate.HasForegroundProcess
+                    ? T("Foreground app. Select only if you are sure it can be closed.", "前台应用。确认不需要时再勾选。")
+                    : null
+            };
+            checkBoxes.Add(checkBox);
+            candidatePanel.Children.Add(checkBox);
+        }
+
+        var warningTextBlock = new TextBlock
+        {
+            Text = T(
+                "Extreme Close closes selected applications. This is not normal Boost. Unsaved work may be lost. Foreground apps are listed but not selected by default.",
+                "Extreme Close 会关闭你选择的应用，不是普通 Boost。未保存内容可能丢失。前台应用会列出，但默认不会勾选。"),
+            TextWrapping = TextWrapping.Wrap,
+            FontSize = 12,
+            LineHeight = 19,
+            Foreground = ThemeBrush("WarningBrush")
+        };
+
+        var scrollViewer = new ScrollViewer
+        {
+            Margin = new Thickness(0, 14, 0, 0),
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+            Content = candidatePanel
+        };
+
+        var confirmButton = new System.Windows.Controls.Button
+        {
+            Width = 118,
+            Height = 32,
+            IsDefault = true,
+            Content = T("Close Selected", "关闭所选"),
+            Style = TryFindResource("PrimaryButtonStyle") as Style
+        };
+        var cancelButton = new System.Windows.Controls.Button
+        {
+            Width = 88,
+            Height = 32,
+            Margin = new Thickness(8, 0, 0, 0),
+            IsCancel = true,
+            Content = T("Cancel", "取消"),
+            Style = TryFindResource("QuietButtonStyle") as Style
+        };
+
+        void RefreshConfirmState()
+        {
+            confirmButton.IsEnabled = checkBoxes.Any(checkBox => checkBox.IsChecked == true);
+        }
+
+        foreach (var checkBox in checkBoxes)
+        {
+            checkBox.Checked += (_, _) => RefreshConfirmState();
+            checkBox.Unchecked += (_, _) => RefreshConfirmState();
+        }
+
+        RefreshConfirmState();
+
+        var buttonPanel = new StackPanel
+        {
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
+            Orientation = System.Windows.Controls.Orientation.Horizontal,
+            Margin = new Thickness(0, 14, 0, 0)
+        };
+        buttonPanel.Children.Add(confirmButton);
+        buttonPanel.Children.Add(cancelButton);
+
+        var root = new Grid
+        {
+            Margin = new Thickness(18)
+        };
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+        Grid.SetRow(warningTextBlock, 0);
+        root.Children.Add(warningTextBlock);
+        Grid.SetRow(scrollViewer, 1);
+        root.Children.Add(scrollViewer);
+        Grid.SetRow(buttonPanel, 2);
+        root.Children.Add(buttonPanel);
+
+        var dialog = new Window
+        {
+            Owner = this,
+            Title = T("Extreme Close", "Extreme 关闭应用"),
+            Width = 720d,
+            Height = 520d,
+            MinWidth = 620d,
+            MinHeight = 420d,
+            ResizeMode = ResizeMode.CanResize,
+            ShowInTaskbar = false,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            FontFamily = UiFontFamily(_uiLanguage),
+            Background = ThemeBrush("WindowBackgroundBrush"),
+            Content = root
+        };
+
+        confirmButton.Click += (_, _) =>
+        {
+            selected.AddRange(checkBoxes
+                .Where(checkBox => checkBox.IsChecked == true)
+                .Select(checkBox => (ExtremeCloseCandidate)checkBox.Tag));
+            dialog.DialogResult = true;
+            dialog.Close();
+        };
+
+        _ = dialog.ShowDialog();
+        return selected;
+    }
+
+    private ExtremeCloseResult CloseExtremeCandidates(IReadOnlyList<ExtremeCloseCandidate> candidates)
+    {
+        var details = new List<string>();
+        var totalProcessCount = 0;
+        var closedProcessCount = 0;
+
+        foreach (var candidate in candidates)
+        {
+            var processes = candidate.ProcessIds
+                .Distinct()
+                .Select(TryGetProcess)
+                .Where(process => process is not null)
+                .Cast<Process>()
+                .ToArray();
+            totalProcessCount += processes.Length;
+
+            foreach (var process in processes)
+            {
+                try
+                {
+                    if (!process.HasExited && process.MainWindowHandle != IntPtr.Zero)
+                    {
+                        _ = process.CloseMainWindow();
+                    }
+                }
+                catch
+                {
+                }
+            }
+
+            System.Threading.Thread.Sleep(900);
+
+            var closedForCandidate = 0;
+            foreach (var process in processes)
+            {
+                using (process)
+                {
+                    try
+                    {
+                        if (process.HasExited)
+                        {
+                            closedForCandidate += 1;
+                            continue;
+                        }
+
+                        process.Kill(entireProcessTree: false);
+                        if (process.WaitForExit(800))
+                        {
+                            closedForCandidate += 1;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        DiagnosticLog.Warning($"Extreme Close could not close process {process.Id}.", ex);
+                    }
+                }
+            }
+
+            closedProcessCount += closedForCandidate;
+            details.Add(T(
+                $"{candidate.ProcessName}.exe | closed {closedForCandidate}/{processes.Length} | {MainWindowViewModel.FormatBytes(candidate.WorkingSetBytes)}",
+                $"{candidate.ProcessName}.exe | 已关闭 {closedForCandidate}/{processes.Length} | {MainWindowViewModel.FormatBytes(candidate.WorkingSetBytes)}"));
+        }
+
+        return new ExtremeCloseResult(totalProcessCount, closedProcessCount, details);
+    }
+
+    private static Process? TryGetProcess(int processId)
+    {
+        try
+        {
+            return processId == Environment.ProcessId
+                ? null
+                : Process.GetProcessById(processId);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private string FormatExtremeCloseCandidate(ExtremeCloseCandidate candidate)
+    {
+        var flags = new List<string>();
+        if (candidate.HasForegroundProcess)
+        {
+            flags.Add(T("FOREGROUND", "前台"));
+        }
+
+        if (candidate.HasVisibleWindow)
+        {
+            flags.Add(T("WINDOW", "有窗口"));
+        }
+
+        if (candidate.CpuUsagePercent >= 20d)
+        {
+            flags.Add(T("HIGH CPU", "高 CPU"));
+        }
+
+        if (candidate.IoBytesPerSecond >= 16d * 1024 * 1024)
+        {
+            flags.Add(T("HIGH IO", "高 IO"));
+        }
+
+        var flagText = flags.Count == 0 ? T("background", "后台") : string.Join(", ", flags);
+        return $"{candidate.ProcessName}.exe | " +
+            $"{MainWindowViewModel.FormatBytes(candidate.WorkingSetBytes)} | " +
+            $"{candidate.ProcessIds.Count} proc | " +
+            $"CPU {candidate.CpuUsagePercent:0.0}% | " +
+            $"IO {MainWindowViewModel.FormatBytes((long)candidate.IoBytesPerSecond)}/s | " +
+            flagText;
+    }
+
     private void UpdateMonitoringState()
     {
         var hasReboundTracking = _reboundTrackingUntil.HasValue && DateTimeOffset.Now < _reboundTrackingUntil.Value;
@@ -1364,10 +1674,9 @@ public partial class MainWindow : Window
         StatusCaptionTextBlock.Text = T("STATUS", "状态");
         ProfileCaptionTextBlock.Text = T("PROFILE", "档位");
         ProfileHelpButton.ToolTip = T("Profile details", "档位说明");
-        ConservativeProfileItem.Content = T("Light", "轻量");
-        BalancedProfileItem.Content = T("Standard", "标准");
-        GamingHandheldProfileItem.Content = T("Gaming / Handheld", "游戏 / 掌机");
-        AggressiveProfileItem.Content = T("Extreme Performance", "极致性能");
+        ConservativeProfileItem.Content = T("Daily", "日常");
+        GamingHandheldProfileItem.Content = T("Gaming", "游戏");
+        AggressiveProfileItem.Content = T("Extreme", "极致");
         LanguageCaptionTextBlock.Text = T("LANGUAGE", "语言");
         LanguageEnglishItem.Content = "English";
         LanguageChineseSimplifiedItem.Content = "简体中文";
@@ -1516,6 +1825,7 @@ public partial class MainWindow : Window
         ThemeMenuItem.Header = _uiTheme == AppTheme.Light
             ? T("Switch to Dark", "切换到暗色")
             : T("Switch to Light", "切换到亮色");
+        ExtremeCloseMenuItem.Header = T("Extreme Close", "Extreme 关闭应用");
         DiagnosticLogMenuItem.Header = T("Diagnostic Log", "诊断日志");
         GithubMenuItem.Header = "GitHub";
     }
@@ -1555,18 +1865,23 @@ public partial class MainWindow : Window
 
     private static OptimizerProfile NormalizeProfileForEdition(OptimizerProfile profile, AppEditionFeatures features)
     {
+        if (profile == OptimizerProfile.Balanced)
+        {
+            return OptimizerProfile.GamingHandheld;
+        }
+
         return profile == OptimizerProfile.Aggressive && !features.SupportsExtremeProfile
-            ? OptimizerProfile.Balanced
+            ? OptimizerProfile.GamingHandheld
             : profile;
     }
 
     private string LocalizeProfileName(OptimizerProfile profile) => profile switch
     {
-        OptimizerProfile.Conservative => T("Light", "轻量"),
-        OptimizerProfile.Balanced => T("Standard", "标准"),
-        OptimizerProfile.GamingHandheld => T("Gaming / Handheld", "游戏 / 掌机"),
-        OptimizerProfile.Aggressive => T("Extreme Performance", "极致性能"),
-        _ => T("Light", "轻量")
+        OptimizerProfile.Conservative => T("Daily", "日常"),
+        OptimizerProfile.Balanced => T("Gaming", "游戏"),
+        OptimizerProfile.GamingHandheld => T("Gaming", "游戏"),
+        OptimizerProfile.Aggressive => T("Extreme", "极致"),
+        _ => T("Gaming", "游戏")
     };
 
     private string FormatCandidateSignals(ProcessSnapshot candidate)
@@ -1852,26 +2167,29 @@ public partial class MainWindow : Window
 
         var panel = new StackPanel
         {
-            Margin = new Thickness(0, 16, 0, 0)
+            Margin = new Thickness(0)
         };
         panel.Children.Add(CreateProfileDetailsCard(
-            T("Light", "轻量"),
-            T("Gentlest cleanup. Best for daily office, browsing and gaming when you want low disturbance.", "最温和的清理。适合日常办公、浏览器和游戏场景，优先降低打扰。"),
+            T("Daily", "日常"),
+            T("Lowest disturbance. Best for office, browsing and general daily work when stability matters more than visible cleanup numbers.", "最低打扰。适合办公、浏览器和日常使用，优先稳定性，不追求好看的释放数字。"),
             ThemeBrush("AccentBrush")));
         panel.Children.Add(CreateProfileDetailsCard(
-            T("Standard", "标准"),
-            T("Balanced default. Cleans more when memory pressure rises, while keeping protected apps out of the target list.", "推荐默认档位。内存压力升高时清理更积极，同时避开受保护应用。"),
-            CreateDialogBrush(123, 179, 255)));
-        panel.Children.Add(CreateProfileDetailsCard(
-            T("Gaming / Handheld", "游戏 / 掌机"),
-            T("For Windows handhelds and gaming sessions. More willing to clear cold background apps before games, while still avoiding foreground, high CPU and high I/O processes.", "适合 Windows 掌机和游戏前清理。比标准档更愿意处理冷后台程序，但仍避开前台、高 CPU 和高 I/O 进程。"),
+            T("Gaming", "游戏"),
+            T("Recommended. For gaming PCs and Windows handhelds. More willing to clear cold background apps before games, while protecting foreground, high CPU/I/O, game launcher and device-control processes.", "推荐默认。适合游戏 PC 和 Windows 掌机。更愿意清理冷后台程序，同时保护前台、高 CPU/I/O、游戏平台和掌机控制中心。"),
             CreateDialogBrush(90, 214, 191)));
         panel.Children.Add(CreateProfileDetailsCard(
-            T("Extreme Performance", "极致性能"),
-            T("Pro only. More aggressive trimming for heavy local AI, creator tools, games or streaming workloads.", "专业版专属。适合本地 AI、创作软件、游戏或直播等高负载场景，裁剪更积极。"),
+            T("Extreme", "极致"),
+            T("Pro only. Aggressive trimming for heavy local AI, creator tools, games or streaming workloads. Use when you want stronger cleanup and accept more risk.", "专业版专属。适合本地 AI、创作软件、游戏或直播等高负载场景。清理更强，风险也更高。"),
             ThemeBrush("WarningBrush")));
-        Grid.SetRow(panel, 2);
-        root.Children.Add(panel);
+        var scrollViewer = new ScrollViewer
+        {
+            Margin = new Thickness(0, 16, 0, 0),
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+            Content = panel
+        };
+        Grid.SetRow(scrollViewer, 2);
+        root.Children.Add(scrollViewer);
 
         var closeButton = new System.Windows.Controls.Button
         {
@@ -1967,6 +2285,11 @@ public partial class MainWindow : Window
         MemorySnapshot MemorySnapshot,
         IReadOnlyList<ProcessSnapshot> Snapshots);
 
+    private sealed record ExtremeCloseResult(
+        int TotalProcessCount,
+        int ClosedProcessCount,
+        IReadOnlyList<string> Details);
+
     private string LocalizePolicyMessage(string message)
     {
         if (_uiLanguage is not (UiLanguage.ChineseSimplified or UiLanguage.ChineseTraditional))
@@ -1980,7 +2303,7 @@ public partial class MainWindow : Window
             .Replace("is above threshold", "高于阈值", StringComparison.Ordinal)
             .Replace("Boost Now plan with", "Boost Now 计划，候选数：", StringComparison.Ordinal)
             .Replace("Purge plan ready with", "清理计划已生成，候选数：", StringComparison.Ordinal)
-            .Replace("Extreme Performance bypassed threshold with", "极致性能策略已绕过阈值，候选数：", StringComparison.Ordinal)
+            .Replace("Extreme bypassed threshold with", "Extreme 策略已绕过阈值，候选数：", StringComparison.Ordinal)
             .Replace("No eligible process met safety criteria", "没有满足安全条件的候选进程", StringComparison.Ordinal)
             .Replace("no user processes could be scanned", "没有可扫描的用户进程", StringComparison.Ordinal)
             .Replace("no safe background candidate remained", "没有剩余安全后台候选", StringComparison.Ordinal)

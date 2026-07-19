@@ -48,9 +48,9 @@ public sealed class OptimizerSettingsCatalogTests
     [Fact]
     public void ToDisplayName_MapsProfiles()
     {
-        Assert.Equal("Light", OptimizerSettingsCatalog.ToDisplayName(OptimizerProfile.Conservative));
-        Assert.Equal("Standard", OptimizerSettingsCatalog.ToDisplayName(OptimizerProfile.Balanced));
-        Assert.Equal("Gaming / Handheld", OptimizerSettingsCatalog.ToDisplayName(OptimizerProfile.GamingHandheld));
-        Assert.Equal("Extreme Performance", OptimizerSettingsCatalog.ToDisplayName(OptimizerProfile.Aggressive));
+        Assert.Equal("Daily", OptimizerSettingsCatalog.ToDisplayName(OptimizerProfile.Conservative));
+        Assert.Equal("Gaming", OptimizerSettingsCatalog.ToDisplayName(OptimizerProfile.Balanced));
+        Assert.Equal("Gaming", OptimizerSettingsCatalog.ToDisplayName(OptimizerProfile.GamingHandheld));
+        Assert.Equal("Extreme", OptimizerSettingsCatalog.ToDisplayName(OptimizerProfile.Aggressive));
     }
 }

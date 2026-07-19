@@ -43,9 +43,14 @@ public sealed class UserSettingsStore
 
     public OptimizerProfile LoadProfile()
     {
-        return Enum.TryParse<OptimizerProfile>(LoadSettings().ProfileCode, true, out var profile)
-            ? profile
-            : OptimizerProfile.Conservative;
+        if (!Enum.TryParse<OptimizerProfile>(LoadSettings().ProfileCode, true, out var profile))
+        {
+            return OptimizerProfile.GamingHandheld;
+        }
+
+        return profile == OptimizerProfile.Balanced
+            ? OptimizerProfile.GamingHandheld
+            : profile;
     }
 
     public void SaveLanguage(UiLanguage language)

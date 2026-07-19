@@ -9,31 +9,6 @@ public sealed class PurgePolicyService
     private const double StrictIoActivityRiskBytesPerSecond = 4d * 1024 * 1024;
     private const double HardIoActivityRiskBytesPerSecond = 16d * 1024 * 1024;
     private const int MaxAdaptiveTargetLimit = 12;
-    private static readonly HashSet<string> GamingProtectedProcessNames = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "steam",
-        "steamwebhelper",
-        "epicgameslauncher",
-        "eadesktop",
-        "battle.net",
-        "riotclientservices",
-        "xboxapp",
-        "gamingservices",
-        "gamingservicesnet",
-        "armourycrate",
-        "armourycrateservice",
-        "legionspace",
-        "ayaspace",
-        "gpdassistant",
-        "onexconsole",
-        "amdsoftware",
-        "radeonsoftware",
-        "nvidiaapp",
-        "nvidia container",
-        "nvcontainer",
-        "intelgraphicscommandcenter"
-    };
-
     public PurgePlan CreatePlan(
         IReadOnlyList<ProcessSnapshot> snapshots,
         MemorySnapshot memorySnapshot,
@@ -59,7 +34,7 @@ public sealed class PurgePolicyService
         var protectedNames = BuildProtectedNameSet(protectedProcessNames);
         if (settings.EnableGamingProcessProtection)
         {
-            protectedNames.UnionWith(GamingProtectedProcessNames);
+            protectedNames.UnionWith(GamingProcessProtectionCatalog.ProcessNames);
         }
 
         var protectedPaths = BuildProtectedPathSet(protectedProcessPaths);
@@ -127,7 +102,7 @@ public sealed class PurgePolicyService
             forcePurge
                 ? $"Boost Now plan with {candidates.Length} candidate(s)."
                 : shouldBypassThreshold
-                    ? $"Extreme Performance bypassed threshold with {candidates.Length} candidate(s)."
+                    ? $"Extreme bypassed threshold with {candidates.Length} candidate(s)."
                 : $"Purge plan ready with {candidates.Length} candidate(s), coldness >= {settings.MinimumColdnessScore:0}.",
             candidates);
     }

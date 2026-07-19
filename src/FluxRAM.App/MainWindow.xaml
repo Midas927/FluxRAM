@@ -449,6 +449,10 @@
                           Header="Light Theme"
                           Click="ThemeMenuItem_OnClick" />
                 <Separator />
+                <MenuItem x:Name="ExtremeCloseMenuItem"
+                          Header="Extreme Close"
+                          Click="ExtremeCloseMenuItem_OnClick" />
+                <Separator />
                 <MenuItem x:Name="DiagnosticLogMenuItem"
                           Header="Diagnostic Log"
                           Click="DiagnosticLogMenuItem_OnClick" />
@@ -513,12 +517,11 @@
             <ComboBox x:Name="ProfileSelector"
                       Margin="0,4,0,0"
                       SelectionChanged="ProfileSelector_OnSelectionChanged">
-              <ComboBoxItem x:Name="ConservativeProfileItem" Tag="Conservative" Content="Light" />
-              <ComboBoxItem x:Name="BalancedProfileItem" Tag="Balanced" Content="Standard" />
-              <ComboBoxItem x:Name="GamingHandheldProfileItem" Tag="GamingHandheld" Content="Gaming / Handheld" />
+              <ComboBoxItem x:Name="ConservativeProfileItem" Tag="Conservative" Content="Daily" />
+              <ComboBoxItem x:Name="GamingHandheldProfileItem" Tag="GamingHandheld" Content="Gaming" />
               <ComboBoxItem x:Name="AggressiveProfileItem"
                             Tag="Aggressive"
-                            Content="Extreme Performance"
+                            Content="Extreme"
                             Visibility="Collapsed" />
             </ComboBox>
           </StackPanel>
