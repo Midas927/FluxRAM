@@ -450,7 +450,7 @@
                           Click="ThemeMenuItem_OnClick" />
                 <Separator />
                 <MenuItem x:Name="ExtremeCloseMenuItem"
-                          Header="Extreme Close"
+                           Header="Deep Release"
                           Click="ExtremeCloseMenuItem_OnClick" />
                 <Separator />
                 <MenuItem x:Name="DiagnosticLogMenuItem"
@@ -590,6 +590,8 @@
               <RowDefinition Height="Auto" />
               <RowDefinition Height="10" />
               <RowDefinition Height="Auto" />
+              <RowDefinition Height="8" />
+              <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
               <ColumnDefinition Width="*" />
@@ -658,6 +660,16 @@
                          VerticalAlignment="Center"
                          Text="Pro edition unlocks app protection." />
             </Border>
+
+            <TextBlock x:Name="ProProtectionSummaryTextBlock"
+                       Grid.Row="4"
+                       Grid.ColumnSpan="2"
+                       FontSize="12"
+                       FontWeight="SemiBold"
+                       Foreground="{DynamicResource AccentBrush}"
+                       Text="{Binding ProProtectionSummaryDisplay}"
+                       TextWrapping="Wrap"
+                       Visibility="Collapsed" />
           </Grid>
         </Border>
 

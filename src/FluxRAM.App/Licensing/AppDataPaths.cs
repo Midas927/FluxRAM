@@ -35,4 +35,12 @@ public static class AppDataPaths
             "FluxRAM",
             "fluxram.log");
     }
+
+    public static string GetUpdatesDirectory()
+    {
+        return Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "FluxRAM",
+            "Updates");
+    }
 }

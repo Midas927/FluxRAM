@@ -62,18 +62,17 @@ public static class EditionDetailsCatalog
             bodyEnglish:
                 "- Everything in FluxRAM\n" +
                 "- Extreme profile\n" +
-                "- Extreme Close with user confirmation\n" +
+                "- Deep Release with app selection and confirmation\n" +
                 "- Exact EXE path protection\n" +
                 "- Child-process association protection\n" +
-                "- Visible-window recognition for target apps\n" +
+                "- Smart association protection for related apps\n" +
                 "- Permanent activation on the current machine",
             bodyChinese:
                 "- 包含 FluxRAM 普通版全部功能\n" +
                 "- Extreme 模式\n" +
-                "- 用户确认后执行的 Extreme Close\n" +
+                "- 选择应用并确认执行的深度释放\n" +
                 "- 精确 EXE 路径保护\n" +
-                "- 子进程关联保护\n" +
-                "- 目标应用可见窗口识别\n" +
+                "- 子进程与关联应用的智能关联保护\n" +
                 "- 当前电脑永久激活")
     };
 }

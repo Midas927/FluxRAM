@@ -37,6 +37,16 @@ public sealed class MainWindowLayoutContractTests
         Assert.Equal("None", (string?)selfOverhead.Attribute("TextTrimming"));
     }
 
+    [Fact]
+    public void ProProtectionSummary_IsVisibleInsideTheProtectionCard()
+    {
+        var document = LoadMainWindowXaml();
+        var summary = FindNamedElement(document, "ProProtectionSummaryTextBlock");
+
+        Assert.Equal("Wrap", (string?)summary.Attribute("TextWrapping"));
+        Assert.Equal("{Binding ProProtectionSummaryDisplay}", (string?)summary.Attribute("Text"));
+    }
+
     private static XDocument LoadMainWindowXaml()
     {
         var current = new DirectoryInfo(AppContext.BaseDirectory);

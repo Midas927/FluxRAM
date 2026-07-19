@@ -1,17 +1,45 @@
 param(
     [string]$Configuration = "Release",
     [ValidateSet("Lite", "Portable")]
-    [string]$Mode = "Lite"
+    [string]$Mode = "Lite",
+    [ValidateSet("Stable", "Beta")]
+    [string]$Channel = "Stable"
 )
 
 $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $projectPath = Join-Path $repoRoot "src\FluxRAM.App\FluxRAM.App.csproj"
+if (-not (Test-Path $projectPath)) {
+    throw "Project file not found: $projectPath"
+}
+
+$projectXml = [xml](Get-Content -Path $projectPath -Raw)
+$version = [string]($projectXml.Project.PropertyGroup.Version | Select-Object -First 1)
+if ([string]::IsNullOrWhiteSpace($version)) {
+    throw "Unable to read the FluxRAM version from $projectPath"
+}
+
+$isBeta = $Channel -eq "Beta"
+if ($isBeta -and -not $version.Contains("-")) {
+    throw "Beta packaging requires a prerelease version. Current version: $version"
+}
+
+if (-not $isBeta -and $version.Contains("-")) {
+    throw "Prerelease version $version must be packaged with -Channel Beta"
+}
+
 $outputFolderName = if ($Mode -eq "Portable") { "fluxram-win-x64" } else { "fluxram-lite-win-x64" }
-$outputPath = Join-Path $repoRoot ("dist\" + $outputFolderName)
-$releaseAssetsPath = Join-Path $repoRoot "dist\release-assets"
-$releaseAssetName = if ($Mode -eq "Portable") { "FluxRAM-Portable-Windows-x64.zip" } else { "FluxRAM-Lite-Windows-x64.zip" }
+$distributionRoot = if ($isBeta) { Join-Path $repoRoot "dist\beta" } else { Join-Path $repoRoot "dist" }
+$outputPath = Join-Path $distributionRoot $outputFolderName
+$releaseAssetsPath = Join-Path $distributionRoot "release-assets"
+$releaseAssetName = if ($isBeta) {
+    "FluxRAM-" + $version + "-" + $Mode + "-Windows-x64.zip"
+} elseif ($Mode -eq "Portable") {
+    "FluxRAM-Portable-Windows-x64.zip"
+} else {
+    "FluxRAM-Lite-Windows-x64.zip"
+}
 $releaseAssetPath = Join-Path $releaseAssetsPath $releaseAssetName
 $releaseAssetHashPath = $releaseAssetPath + ".sha256"
 $obsoleteOutputPaths = @(
@@ -23,10 +51,6 @@ $obsoleteOutputPaths = @(
 $isSelfContained = $Mode -eq "Portable"
 $selfContainedValue = if ($isSelfContained) { "true" } else { "false" }
 $enableCompressionInSingleFile = if ($isSelfContained) { "true" } else { "false" }
-
-if (-not (Test-Path $projectPath)) {
-    throw "Project file not found: $projectPath"
-}
 
 if (Test-Path $outputPath) {
     Remove-Item -Path $outputPath -Recurse -Force
@@ -42,7 +66,7 @@ foreach ($obsoleteOutputPath in $obsoleteOutputPaths) {
     }
 }
 
-Write-Host ("Publishing FluxRAM (" + $Mode + " mode, single-file exe)...") -ForegroundColor Cyan
+Write-Host ("Publishing FluxRAM " + $version + " (" + $Channel + ", " + $Mode + ", single-file exe)...") -ForegroundColor Cyan
 
 dotnet publish $projectPath `
     -c $Configuration `
@@ -53,6 +77,7 @@ dotnet publish $projectPath `
     -p:IncludeNativeLibrariesForSelfExtract=true `
     -p:EnableCompressionInSingleFile=$enableCompressionInSingleFile `
     -p:PublishTrimmed=false `
+    -p:FluxRAMDistributionMode=$Mode `
     -p:DebugType=None `
     -p:DebugSymbols=false `
     -o $outputPath

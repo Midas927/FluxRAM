@@ -69,4 +69,25 @@ public sealed class ExtremeCloseCandidateFactoryTests
 
         Assert.Equal("chrome", candidate.ProcessName);
     }
+
+    [Fact]
+    public void FromSnapshots_AdvancedProtectionExcludesChildrenAndRelatedWindows()
+    {
+        var snapshots = new[]
+        {
+            new ProcessSnapshot(50, "game", 700L * 1024 * 1024, false, ExecutablePath: @"D:\Games\FluxQuest\FluxQuest.exe"),
+            new ProcessSnapshot(51, "helper", 500L * 1024 * 1024, false, ParentProcessId: 50),
+            new ProcessSnapshot(52, "launcher", 450L * 1024 * 1024, false, HasVisibleWindow: true, MainWindowTitle: "Flux Quest Settings"),
+            new ProcessSnapshot(53, "discord", 400L * 1024 * 1024, false)
+        };
+
+        var candidates = ExtremeCloseCandidateFactory.FromSnapshots(
+            snapshots,
+            protectedProcessNames: new[] { "FluxQuest" },
+            protectedProcessPaths: new[] { @"D:\Games\FluxQuest\FluxQuest.exe" },
+            enableAdvancedProtection: true);
+
+        var candidate = Assert.Single(candidates);
+        Assert.Equal("discord", candidate.ProcessName);
+    }
 }

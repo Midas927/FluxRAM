@@ -24,12 +24,15 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private string _processSummaryDisplay;
     private string _foregroundProcessDisplay;
     private string _protectionSummaryDisplay;
+    private string _proProtectionSummaryDisplay;
     private string _selfOverheadDisplay;
     private DateTimeOffset _lastUpdated;
     private IReadOnlyList<string> _recentEvents;
     private IReadOnlyList<string> _boostDetails;
     private IReadOnlyList<string> _protectedEntries;
     private AppOverheadSnapshot? _lastOverheadSnapshot;
+    private ProcessProtectionSummary _proProtectionSummary;
+    private bool _isProProtectionEnabled;
 
     public MainWindowViewModel()
     {
@@ -37,6 +40,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         _processSummaryDisplay = L("Processes: waiting for first scan", "进程：等待首次扫描");
         _foregroundProcessDisplay = L("Foreground: unknown", "前台：未知");
         _protectionSummaryDisplay = L("Protected apps: 0", "受保护应用：0");
+        _proProtectionSummaryDisplay = string.Empty;
         _selfOverheadDisplay = L("App: pending", "自身：等待数据");
         _lastUpdated = DateTimeOffset.Now;
         _recentEvents = Array.Empty<string>();
@@ -96,6 +100,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
 
     public string ProtectionSummaryDisplay => _protectionSummaryDisplay;
 
+    public string ProProtectionSummaryDisplay => _proProtectionSummaryDisplay;
+
     public string SelfOverheadDisplay => _selfOverheadDisplay;
 
     public string LastUpdatedDisplay => Metric("Last update", "最后更新", $"{_lastUpdated:HH:mm:ss}");
@@ -124,6 +130,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         RaisePropertyChanged(nameof(ReboundRateDisplay));
         RaisePropertyChanged(nameof(AutoBoostDisplay));
         RefreshProtectionSummary();
+        RefreshProProtectionSummary();
         RaisePropertyChanged(nameof(LastUpdatedDisplay));
 
         if (_lastOverheadSnapshot.HasValue)
@@ -199,6 +206,13 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         RaisePropertyChanged(nameof(ProtectedEntries));
     }
 
+    public void UpdateProProtectionSummary(ProcessProtectionSummary summary, bool isPro)
+    {
+        _proProtectionSummary = summary;
+        _isProProtectionEnabled = isPro;
+        RefreshProProtectionSummary();
+    }
+
     public void UpdateSelfOverhead(AppOverheadSnapshot overheadSnapshot)
     {
         _lastOverheadSnapshot = overheadSnapshot;
@@ -260,6 +274,52 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         }
 
         RaisePropertyChanged(nameof(ProtectionSummaryDisplay));
+    }
+
+    private void RefreshProProtectionSummary()
+    {
+        if (!_isProProtectionEnabled)
+        {
+            _proProtectionSummaryDisplay = string.Empty;
+            RaisePropertyChanged(nameof(ProProtectionSummaryDisplay));
+            return;
+        }
+
+        if (_proProtectionSummary.TotalCount == 0)
+        {
+            _proProtectionSummaryDisplay = L(
+                "Pro Guard ready: exact path, child and related app protection.",
+                "Pro 守护已就绪：精确路径、子进程与关联应用保护。");
+            RaisePropertyChanged(nameof(ProProtectionSummaryDisplay));
+            return;
+        }
+
+        var englishParts = new List<string>();
+        var chineseParts = new List<string>();
+        AddProtectionPart(englishParts, chineseParts, _proProtectionSummary.ProcessNameCount, "name", "名称");
+        AddProtectionPart(englishParts, chineseParts, _proProtectionSummary.ExactPathCount, "exact path", "精确路径");
+        AddProtectionPart(englishParts, chineseParts, _proProtectionSummary.ChildProcessCount, "child", "子进程");
+        AddProtectionPart(englishParts, chineseParts, _proProtectionSummary.RelatedWindowCount, "related window", "关联窗口");
+        _proProtectionSummaryDisplay = L(
+            $"Pro Guard: protected {_proProtectionSummary.TotalCount} processes ({string.Join(", ", englishParts)}).",
+            $"Pro 守护：已保护 {_proProtectionSummary.TotalCount} 个进程（{string.Join("、", chineseParts)}）。");
+        RaisePropertyChanged(nameof(ProProtectionSummaryDisplay));
+    }
+
+    private static void AddProtectionPart(
+        ICollection<string> englishParts,
+        ICollection<string> chineseParts,
+        int count,
+        string englishLabel,
+        string chineseLabel)
+    {
+        if (count <= 0)
+        {
+            return;
+        }
+
+        englishParts.Add($"{englishLabel} {count}");
+        chineseParts.Add($"{chineseLabel} {count}");
     }
 
     public static string FormatBytes(long bytes)

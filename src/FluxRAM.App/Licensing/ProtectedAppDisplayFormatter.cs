@@ -13,10 +13,10 @@ public static class ProtectedAppDisplayFormatter
         UiLanguage language)
     {
         var mode = enableAdvancedProtection
-            ? UiLanguageLocalizer.Localize(language, "Pro advanced protection", "Pro 高级保护")
+            ? UiLanguageLocalizer.Localize(language, "Smart association protection", "智能关联保护")
             : UiLanguageLocalizer.Localize(language, "Basic name protection", "基础进程名保护");
         var detail = enableAdvancedProtection
-            ? UiLanguageLocalizer.Localize(language, "path + child + window", "路径 + 子进程 + 窗口")
+            ? UiLanguageLocalizer.Localize(language, "exact path + child + related app", "精确路径 + 子进程 + 关联应用")
             : UiLanguageLocalizer.Localize(language, "process name only", "仅进程名");
 
         return protectedPaths

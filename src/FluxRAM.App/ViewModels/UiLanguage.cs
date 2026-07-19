@@ -84,21 +84,22 @@ public static class UiLanguageLocalizer
         ["Close"] = "關閉",
         ["Open FluxRAM"] = "開啟 FluxRAM",
         ["Exit"] = "退出",
+        ["Deep Release"] = "深度釋放",
         ["FluxRAM editions"] = "FluxRAM 版本功能",
-        ["FluxRAM keeps the everyday workflow generous. Pro adds precision controls for heavier local workloads."] = "FluxRAM 保留日常夠用的核心體驗，Pro 提供更精確的高負載保護能力。",
+        ["FluxRAM keeps the everyday workflow generous. Pro adds stronger controls for heavier local workloads."] = "FluxRAM 保留日常夠用的核心體驗，Pro 提供更強的高負載控制能力。",
         ["FluxRAM 普通版"] = "FluxRAM 普通版",
         ["FluxRAM Pro 专业版"] = "FluxRAM Pro 專業版",
-        ["- Light / Standard profiles\n- Boost Now and pressure-based Auto Boost\n- Tray Boost and minimize-to-tray workflow\n- Add / remove protected apps\n- Choose protected apps from running processes\n- Basic process-name protection and clear memory metrics"] =
-            "- 輕量 / 標準檔位\n- 立即 Boost 與按內存壓力觸發的自動 Boost\n- 托盤 Boost 與最小化托盤工作流\n- 新增 / 刪除受保護應用\n- 從正在執行的進程中選擇保護應用\n- 基礎進程名保護與清晰內存指標",
-        ["- Everything in FluxRAM\n- Extreme Performance profile\n- Exact EXE path protection\n- Child-process association protection\n- Visible-window recognition for target apps\n- Permanent activation on the current machine"] =
-            "- 包含 FluxRAM 普通版全部功能\n- 極致性能檔位\n- 精確 EXE 路徑保護\n- 子進程關聯保護\n- 目標應用可見視窗識別\n- 當前電腦永久啟用",
+        ["- Daily and Gaming profiles\n- Boost Now and pressure-based Auto Boost\n- Tray Boost and minimize-to-tray workflow\n- Add / remove protected apps\n- Choose protected apps from running processes\n- Basic process-name protection and clear memory metrics"] =
+            "- 日常 / 遊戲檔位\n- 立即 Boost 與按內存壓力觸發的自動 Boost\n- 托盤 Boost 與最小化托盤工作流\n- 新增 / 刪除受保護應用\n- 從正在執行的進程中選擇保護應用\n- 基礎進程名保護與清晰內存指標",
+        ["- Everything in FluxRAM\n- Extreme profile\n- Deep Release with app selection and confirmation\n- Exact EXE path protection\n- Child-process association protection\n- Smart association protection for related apps\n- Permanent activation on the current machine"] =
+            "- 包含 FluxRAM 普通版全部功能\n- 極致檔位\n- 選擇應用並確認執行的深度釋放\n- 精確 EXE 路徑保護\n- 子進程與關聯應用的智能關聯保護\n- 當前電腦永久啟用",
         ["Simplified boost-first memory tool for local Windows workloads"] = "面向本機 Windows 負載的精簡 Boost 優先內存工具",
         ["Basic name protection"] = "基礎進程名保護",
         ["process name only"] = "僅進程名",
-        ["Pro advanced protection"] = "Pro 高級保護",
-        ["path + child + window"] = "路徑 + 子進程 + 視窗",
-        ["Pro advanced protection: exact path, child process and window recognition are active."] = "Pro 高級保護：精確路徑、子進程與視窗識別已啟用。",
-        ["Basic protection: process name only. Pro also protects exact paths, child processes and matching windows."] = "基礎保護：僅按進程名保護。Pro 另可保護精確路徑、子進程和匹配視窗。",
+        ["Smart association protection"] = "智能關聯保護",
+        ["exact path + child + related app"] = "精確路徑 + 子進程 + 關聯應用",
+        ["Smart association protection: exact path, child process and related app protection are active."] = "智能關聯保護：精確路徑、子進程與關聯應用保護已啟用。",
+        ["Basic protection: process name only. Pro also protects exact paths, child processes and related apps."] = "基礎保護：僅按進程名保護。Pro 另可保護精確路徑、子進程和關聯應用。",
         ["Language switched."] = "語言已切換。"
     };
 
@@ -150,21 +151,22 @@ public static class UiLanguageLocalizer
         ["Close"] = "閉じる",
         ["Open FluxRAM"] = "FluxRAM を開く",
         ["Exit"] = "終了",
+        ["Deep Release"] = "ディープリリース",
         ["FluxRAM editions"] = "FluxRAM エディション",
-        ["FluxRAM keeps the everyday workflow generous. Pro adds precision controls for heavier local workloads."] = "FluxRAM は日常利用に十分な機能を提供し、Pro は重いローカル作業向けに精密な制御を追加します。",
+        ["FluxRAM keeps the everyday workflow generous. Pro adds stronger controls for heavier local workloads."] = "FluxRAM は日常利用に十分な機能を提供し、Pro は重いローカル作業向けに強力な制御を追加します。",
         ["FluxRAM 普通版"] = "FluxRAM 通常版",
         ["FluxRAM Pro 专业版"] = "FluxRAM Pro",
-        ["- Light / Standard profiles\n- Boost Now and pressure-based Auto Boost\n- Tray Boost and minimize-to-tray workflow\n- Add / remove protected apps\n- Choose protected apps from running processes\n- Basic process-name protection and clear memory metrics"] =
-            "- 軽量 / 標準モード\n- 今すぐ Boost とメモリ圧力による自動 Boost\n- トレイ Boost と最小化トレイ運用\n- 保護アプリの追加 / 削除\n- 実行中プロセスから保護アプリを選択\n- 基本のプロセス名保護と明確なメモリ指標",
-        ["- Everything in FluxRAM\n- Extreme Performance profile\n- Exact EXE path protection\n- Child-process association protection\n- Visible-window recognition for target apps\n- Permanent activation on the current machine"] =
-            "- FluxRAM 通常版の全機能\n- 極限性能モード\n- 正確な EXE パス保護\n- 子プロセス関連保護\n- 対象アプリの可視ウィンドウ認識\n- 現在の PC で永続的に有効化",
+        ["- Daily and Gaming profiles\n- Boost Now and pressure-based Auto Boost\n- Tray Boost and minimize-to-tray workflow\n- Add / remove protected apps\n- Choose protected apps from running processes\n- Basic process-name protection and clear memory metrics"] =
+            "- 日常 / ゲームモード\n- 今すぐ Boost とメモリ圧力による自動 Boost\n- トレイ Boost と最小化トレイ運用\n- 保護アプリの追加 / 削除\n- 実行中プロセスから保護アプリを選択\n- 基本のプロセス名保護と明確なメモリ指標",
+        ["- Everything in FluxRAM\n- Extreme profile\n- Deep Release with app selection and confirmation\n- Exact EXE path protection\n- Child-process association protection\n- Smart association protection for related apps\n- Permanent activation on the current machine"] =
+            "- FluxRAM 通常版の全機能\n- 極限モード\n- アプリを選択して確認するディープリリース\n- 正確な EXE パス保護\n- 子プロセスと関連アプリのスマート関連保護\n- 現在の PC で永続的に有効化",
         ["Simplified boost-first memory tool for local Windows workloads"] = "ローカル Windows ワークロード向けの Boost 優先メモリツール",
         ["Basic name protection"] = "基本のプロセス名保護",
         ["process name only"] = "プロセス名のみ",
-        ["Pro advanced protection"] = "Pro 高度保護",
-        ["path + child + window"] = "パス + 子プロセス + ウィンドウ",
-        ["Pro advanced protection: exact path, child process and window recognition are active."] = "Pro 高度保護：正確なパス、子プロセス、ウィンドウ認識が有効です。",
-        ["Basic protection: process name only. Pro also protects exact paths, child processes and matching windows."] = "基本保護：プロセス名のみ。Pro は正確なパス、子プロセス、一致するウィンドウも保護します。",
+        ["Smart association protection"] = "スマート関連保護",
+        ["exact path + child + related app"] = "正確なパス + 子プロセス + 関連アプリ",
+        ["Smart association protection: exact path, child process and related app protection are active."] = "スマート関連保護：正確なパス、子プロセス、関連アプリの保護が有効です。",
+        ["Basic protection: process name only. Pro also protects exact paths, child processes and related apps."] = "基本保護：プロセス名のみ。Pro は正確なパス、子プロセス、関連アプリも保護します。",
         ["Language switched."] = "言語を切り替えました。"
     };
 
@@ -216,21 +218,22 @@ public static class UiLanguageLocalizer
         ["Close"] = "닫기",
         ["Open FluxRAM"] = "FluxRAM 열기",
         ["Exit"] = "종료",
+        ["Deep Release"] = "딥 릴리스",
         ["FluxRAM editions"] = "FluxRAM 에디션",
-        ["FluxRAM keeps the everyday workflow generous. Pro adds precision controls for heavier local workloads."] = "FluxRAM은 일상 사용에 충분한 기능을 제공하고, Pro는 무거운 로컬 작업을 위한 정밀 제어를 추가합니다.",
+        ["FluxRAM keeps the everyday workflow generous. Pro adds stronger controls for heavier local workloads."] = "FluxRAM은 일상 사용에 충분한 기능을 제공하고, Pro는 무거운 로컬 작업을 위한 더 강력한 제어를 추가합니다.",
         ["FluxRAM 普通版"] = "FluxRAM 일반판",
         ["FluxRAM Pro 专业版"] = "FluxRAM Pro",
-        ["- Light / Standard profiles\n- Boost Now and pressure-based Auto Boost\n- Tray Boost and minimize-to-tray workflow\n- Add / remove protected apps\n- Choose protected apps from running processes\n- Basic process-name protection and clear memory metrics"] =
-            "- 가벼움 / 표준 모드\n- 즉시 Boost 및 메모리 압력 기반 자동 Boost\n- 트레이 Boost 및 최소화 트레이 흐름\n- 보호 앱 추가 / 삭제\n- 실행 중 프로세스에서 보호 앱 선택\n- 기본 프로세스 이름 보호와 명확한 메모리 지표",
-        ["- Everything in FluxRAM\n- Extreme Performance profile\n- Exact EXE path protection\n- Child-process association protection\n- Visible-window recognition for target apps\n- Permanent activation on the current machine"] =
-            "- FluxRAM 일반판의 모든 기능\n- 극한 성능 모드\n- 정확한 EXE 경로 보호\n- 자식 프로세스 연관 보호\n- 대상 앱의 보이는 창 인식\n- 현재 PC에서 영구 활성화",
+        ["- Daily and Gaming profiles\n- Boost Now and pressure-based Auto Boost\n- Tray Boost and minimize-to-tray workflow\n- Add / remove protected apps\n- Choose protected apps from running processes\n- Basic process-name protection and clear memory metrics"] =
+            "- 일상 / 게임 모드\n- 즉시 Boost 및 메모리 압력 기반 자동 Boost\n- 트레이 Boost 및 최소화 트레이 흐름\n- 보호 앱 추가 / 삭제\n- 실행 중 프로세스에서 보호 앱 선택\n- 기본 프로세스 이름 보호와 명확한 메모리 지표",
+        ["- Everything in FluxRAM\n- Extreme profile\n- Deep Release with app selection and confirmation\n- Exact EXE path protection\n- Child-process association protection\n- Smart association protection for related apps\n- Permanent activation on the current machine"] =
+            "- FluxRAM 일반판의 모든 기능\n- 극한 모드\n- 앱을 선택하고 확인하는 딥 릴리스\n- 정확한 EXE 경로 보호\n- 자식 프로세스와 연관 앱의 스마트 연관 보호\n- 현재 PC에서 영구 활성화",
         ["Simplified boost-first memory tool for local Windows workloads"] = "로컬 Windows 작업을 위한 Boost 우선 메모리 도구",
         ["Basic name protection"] = "기본 프로세스 이름 보호",
         ["process name only"] = "프로세스 이름만",
-        ["Pro advanced protection"] = "Pro 고급 보호",
-        ["path + child + window"] = "경로 + 자식 프로세스 + 창",
-        ["Pro advanced protection: exact path, child process and window recognition are active."] = "Pro 고급 보호: 정확한 경로, 자식 프로세스, 창 인식이 활성화되었습니다.",
-        ["Basic protection: process name only. Pro also protects exact paths, child processes and matching windows."] = "기본 보호: 프로세스 이름만 보호합니다. Pro는 정확한 경로, 자식 프로세스, 일치하는 창도 보호합니다.",
+        ["Smart association protection"] = "스마트 연관 보호",
+        ["exact path + child + related app"] = "정확한 경로 + 자식 프로세스 + 연관 앱",
+        ["Smart association protection: exact path, child process and related app protection are active."] = "스마트 연관 보호: 정확한 경로, 자식 프로세스, 연관 앱 보호가 활성화되었습니다.",
+        ["Basic protection: process name only. Pro also protects exact paths, child processes and related apps."] = "기본 보호: 프로세스 이름만 보호합니다. Pro는 정확한 경로, 자식 프로세스, 연관 앱도 보호합니다.",
         ["Language switched."] = "언어가 변경되었습니다."
     };
 

@@ -34,4 +34,13 @@ public sealed class UiLanguageCatalogTests
 
         Assert.Equal("自動 Boost", text);
     }
+
+    [Theory]
+    [InlineData(UiLanguage.ChineseTraditional, "深度釋放")]
+    [InlineData(UiLanguage.Japanese, "ディープリリース")]
+    [InlineData(UiLanguage.Korean, "딥 릴리스")]
+    public void Localize_TranslatesDeepRelease(UiLanguage language, string expected)
+    {
+        Assert.Equal(expected, UiLanguageLocalizer.Localize(language, "Deep Release", "深度释放"));
+    }
 }
