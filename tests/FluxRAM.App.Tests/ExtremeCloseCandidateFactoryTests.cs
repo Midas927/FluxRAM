@@ -54,4 +54,19 @@ public sealed class ExtremeCloseCandidateFactoryTests
         var candidate = Assert.Single(candidates);
         Assert.Equal("kook", candidate.ProcessName);
     }
+
+    [Fact]
+    public void FromSnapshots_ExcludesWindowsSystemProcesses()
+    {
+        var snapshots = new[]
+        {
+            new ProcessSnapshot(40, "explorer", 700L * 1024 * 1024, false, HasVisibleWindow: true),
+            new ProcessSnapshot(41, "dwm", 600L * 1024 * 1024, false),
+            new ProcessSnapshot(42, "chrome", 500L * 1024 * 1024, false, HasVisibleWindow: true)
+        };
+
+        var candidate = Assert.Single(ExtremeCloseCandidateFactory.FromSnapshots(snapshots));
+
+        Assert.Equal("chrome", candidate.ProcessName);
+    }
 }

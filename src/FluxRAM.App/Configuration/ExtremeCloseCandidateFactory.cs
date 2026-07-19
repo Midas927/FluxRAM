@@ -21,6 +21,7 @@ public static class ExtremeCloseCandidateFactory
 
         return snapshots
             .Where(snapshot => !IsCurrentProcess(snapshot, currentProcessId))
+            .Where(snapshot => !SystemProcessWhitelist.Contains(snapshot.ProcessName))
             .Where(snapshot => !GamingProcessProtectionCatalog.Contains(snapshot.ProcessName))
             .Where(snapshot => !protectedNames.Contains(NormalizeProcessName(snapshot.ProcessName)))
             .Where(snapshot => !IsProtectedByPath(snapshot.ExecutablePath, protectedPaths))

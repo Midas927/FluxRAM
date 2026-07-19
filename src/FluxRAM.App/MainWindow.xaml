@@ -579,17 +579,17 @@
 
       <Grid Grid.Column="0">
         <Grid.RowDefinitions>
-          <RowDefinition Height="*" />
+          <RowDefinition Height="Auto" />
           <RowDefinition Height="12" />
           <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0" Style="{StaticResource CardStyle}">
+        <Border x:Name="ProtectedAppsCard" Grid.Row="0" Style="{StaticResource CardStyle}">
           <Grid>
             <Grid.RowDefinitions>
               <RowDefinition Height="Auto" />
               <RowDefinition Height="10" />
-              <RowDefinition Height="*" />
+              <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
               <ColumnDefinition Width="*" />
@@ -637,8 +637,10 @@
                        ItemsSource="{Binding ProtectedEntries}"
                        SelectionMode="Extended"
                        SelectionChanged="ProtectedAppsListBox_OnSelectionChanged"
+                       MaxHeight="150"
                        FontFamily="Consolas"
-                       FontSize="11" />
+                       FontSize="11"
+                       PreviewMouseWheel="DetailListBox_OnPreviewMouseWheel" />
             </Border>
 
             <Border x:Name="ProtectListLockedBorder"
@@ -671,6 +673,7 @@
 
             <Grid Grid.Row="2" Margin="0,1,0,0">
               <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
@@ -718,14 +721,15 @@
                          Text="N/A" />
 
               <TextBlock x:Name="SelfOverheadCaptionTextBlock" Visibility="Collapsed" />
-              <TextBlock Grid.Row="2"
-                         Grid.Column="2"
+              <TextBlock x:Name="SelfOverheadValueTextBlock"
+                         Grid.Row="3"
+                         Grid.ColumnSpan="3"
                          Style="{StaticResource MetricLineStyle}"
-                         TextWrapping="NoWrap"
-                         TextTrimming="CharacterEllipsis"
+                         TextWrapping="Wrap"
+                         TextTrimming="None"
                          Text="{Binding SelfOverheadDisplay}" />
 
-              <TextBlock Grid.Row="3"
+              <TextBlock Grid.Row="4"
                          Grid.ColumnSpan="3"
                          Margin="0,2,0,0"
                          Style="{StaticResource BodyTextStyle}"
