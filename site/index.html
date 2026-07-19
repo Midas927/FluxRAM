@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0e1117">
+  <meta name="description" content="FluxRAM 是面向 Windows 游戏与日常负载的本地内存 Boost 工具，提供手动 Boost、压力触发的 Auto Boost 和可确认的 Extreme Close。">
+  <meta property="og:title" content="FluxRAM | Windows 本地内存 Boost 工具">
+  <meta property="og:description" content="释放冷后台占用，避开活跃程序。需要时更强力，决定权仍在你手里。">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://midas927.github.io/FluxRAM/">
+  <meta property="og:image" content="https://midas927.github.io/FluxRAM/assets/fluxram-app.png">
+  <link rel="canonical" href="https://midas927.github.io/FluxRAM/">
+  <link rel="icon" href="assets/FluxRAM.ico">
+  <link rel="stylesheet" href="styles.css">
+  <title>FluxRAM | Windows 本地内存 Boost 工具</title>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "FluxRAM",
+    "applicationCategory": "UtilitiesApplication",
+    "operatingSystem": "Windows 11 x64",
+    "softwareVersion": "0.3.6",
+    "downloadUrl": "https://github.com/Midas927/FluxRAM/releases/latest",
+    "codeRepository": "https://github.com/Midas927/FluxRAM"
+  }
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#main">跳到主要内容</a>
+
+  <header class="site-header">
+    <div class="nav-shell">
+      <a class="brand" href="#top" aria-label="FluxRAM 首页">
+        <img src="assets/FluxRAM.ico" width="30" height="30" alt="">
+        <span>FluxRAM</span>
+      </a>
+      <nav class="primary-nav" aria-label="主要导航">
+        <a href="#modes">模式</a>
+        <a href="#safety">安全边界</a>
+        <a href="#faq">常见问题</a>
+        <a href="https://github.com/Midas927/FluxRAM" target="_blank" rel="noreferrer">GitHub</a>
+      </nav>
+      <a class="button button-small button-primary" href="https://github.com/Midas927/FluxRAM/releases/latest/download/FluxRAM-Portable-Windows-x64.zip" data-download="portable">下载</a>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero" id="top" aria-labelledby="hero-title">
+      <div class="hero-inner">
+        <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span>v0.3.6 正式版</p>
+        <h1 id="hero-title">FluxRAM</h1>
+        <p class="hero-lead">面向 Windows 游戏与日常负载的本地内存 Boost 工具。</p>
+        <p class="hero-copy">释放冷后台占用，避开活跃程序。需要时更强力，决定权仍在你手里。</p>
+        <div class="hero-actions">
+          <a class="button button-primary" href="https://github.com/Midas927/FluxRAM/releases/latest/download/FluxRAM-Portable-Windows-x64.zip" data-download="portable">下载 Portable</a>
+          <a class="text-link text-link-light" href="https://github.com/Midas927/FluxRAM/releases/tag/v0.3.6" target="_blank" rel="noreferrer">查看本次更新 <span aria-hidden="true">→</span></a>
+        </div>
+        <p class="hero-note">Windows 11 x64 · 解压即用 · 当前版本暂未代码签名</p>
+      </div>
+    </section>
+
+    <section class="proof-strip" aria-label="产品特点">
+      <div class="proof-inner">
+        <span>本地执行</span>
+        <span>普通 Boost 不关闭应用</span>
+        <span>自动压力触发</span>
+        <span>源码公开可审查</span>
+      </div>
+    </section>
+
+    <section class="section section-light" id="modes">
+      <div class="section-inner">
+        <div class="section-heading">
+          <p class="kicker">简单选择</p>
+          <h2>三种档位，够用就好</h2>
+          <p>不要求你理解一堆参数。按当前场景选择，FluxRAM 决定候选阈值和保护强度。</p>
+        </div>
+        <div class="mode-grid">
+          <article class="mode-card">
+            <div class="mode-index">01</div>
+            <h3>Daily</h3>
+            <p class="mode-label">日常与办公</p>
+            <p>最低打扰，优先保护正在使用的软件，适合浏览器、文档和普通多任务。</p>
+          </article>
+          <article class="mode-card mode-card-featured">
+            <div class="mode-badge">默认推荐</div>
+            <div class="mode-index">02</div>
+            <h3>Gaming</h3>
+            <p class="mode-label">游戏 PC 与 Windows 掌机</p>
+            <p>比 Daily 更积极，同时保护游戏、启动器、掌机控制中心和活跃进程。</p>
+          </article>
+          <article class="mode-card">
+            <div class="mode-index">03</div>
+            <h3>Extreme</h3>
+            <p class="mode-label">重负载与 Pro 场景</p>
+            <p>面向本地 AI、剪辑、直播与重负载游戏，并提供可确认的 Extreme Close。</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section process-section" id="workflow">
+      <div class="section-inner process-layout">
+        <div class="section-heading section-heading-left">
+          <p class="kicker">Boost-first</p>
+          <h2>每次操作都有边界</h2>
+          <p>FluxRAM 不以“清得越多越好”为目标。一次 Boost 先判断压力和风险，再对合适的冷后台进程收缩工作集。</p>
+        </div>
+        <ol class="process-list">
+          <li><span>1</span><div><strong>检查内存压力</strong><p>Auto Boost 只在达到当前档位阈值且冷却完成后触发。</p></div></li>
+          <li><span>2</span><div><strong>筛选低风险候选</strong><p>综合前后台状态、CPU、I/O、冷度和保护名单决定是否处理。</p></div></li>
+          <li><span>3</span><div><strong>裁剪并解释结果</strong><p>展示裁剪量、净收益、回弹率，以及为什么执行或跳过。</p></div></li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="section safety-section" id="safety">
+      <div class="section-inner safety-layout">
+        <div>
+          <p class="kicker kicker-dark">强力，但由你确认</p>
+          <h2>Boost 不替你关前台应用</h2>
+          <p class="safety-lead">普通 Boost 只做工作集裁剪，不直接关闭软件。需要释放真正不再使用的高占用应用时，Pro 的 Extreme Close 会先列出候选，再由你勾选确认。</p>
+          <a class="text-link text-link-light" href="https://github.com/Midas927/FluxRAM/blob/main/docs/FluxRAM-IT-Technical-Manual.zh-CN.md" target="_blank" rel="noreferrer">阅读技术手册 <span aria-hidden="true">→</span></a>
+        </div>
+        <ul class="boundary-list">
+          <li><strong>系统进程</strong><span>内置白名单，不进入关闭候选</span></li>
+          <li><strong>游戏相关</strong><span>Gaming 模式保护游戏与掌机关键进程</span></li>
+          <li><strong>你的保护名单</strong><span>支持按应用路径和进程关系识别</span></li>
+          <li><strong>当前前台应用</strong><span>可显示，但默认不勾选</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="section download-section" id="download">
+      <div class="section-inner">
+        <div class="section-heading">
+          <p class="kicker">立即使用</p>
+          <h2>下载 FluxRAM</h2>
+          <p>两个包功能相同。大多数用户直接选择 Portable，无需另装 .NET 运行库。</p>
+        </div>
+        <div class="download-grid">
+          <article class="download-card download-card-primary">
+            <div>
+              <p class="download-meta">推荐 · Windows x64</p>
+              <h3>Portable</h3>
+              <p>包含 .NET 8 Desktop Runtime，解压后运行 FluxRAM.exe。</p>
+            </div>
+            <a class="button button-primary" href="https://github.com/Midas927/FluxRAM/releases/latest/download/FluxRAM-Portable-Windows-x64.zip" data-download="portable">下载 Portable</a>
+          </article>
+          <article class="download-card">
+            <div>
+              <p class="download-meta">更小的下载包</p>
+              <h3>Lite</h3>
+              <p>适合已经安装 .NET 8 Desktop Runtime 的电脑，功能并未缩水。</p>
+            </div>
+            <a class="button button-secondary" href="https://github.com/Midas927/FluxRAM/releases/latest/download/FluxRAM-Lite-Windows-x64.zip" data-download="lite">下载 Lite</a>
+          </article>
+        </div>
+        <div class="pro-row">
+          <div>
+            <p class="download-meta">FluxRAM Pro</p>
+            <h3>普通版够用，重负载再升级</h3>
+            <p>免费版包含手动与自动 Boost、保护应用和托盘功能。Pro 解锁 Extreme、Extreme Close 与高级应用保护。</p>
+          </div>
+          <div class="pro-action">
+            <strong>¥10 / $3</strong>
+            <a class="button button-secondary" href="https://whop.com/fluxram/" target="_blank" rel="noreferrer">国际版购买</a>
+            <span>简体中文用户可在软件内使用支付宝</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section faq-section" id="faq">
+      <div class="section-inner faq-layout">
+        <div class="section-heading section-heading-left">
+          <p class="kicker">常见问题</p>
+          <h2>先把疑虑说清楚</h2>
+        </div>
+        <div class="faq-list">
+          <details>
+            <summary>会用固态硬盘寿命换内存空间吗？</summary>
+            <p>FluxRAM 的核心操作是请求 Windows 收缩候选进程的工作集，不会主动把内存内容写成自己的磁盘缓存，也不会刻意增加 SSD 写入。被裁剪页面之后若再次访问，Windows 可能重新从文件或页面文件载入，所以频繁、无差别裁剪反而可能让应用变慢；这正是 FluxRAM 要筛选冷后台并限制 Auto Boost 频率的原因。</p>
+          </details>
+          <details>
+            <summary>能提升 FPS 吗？</summary>
+            <p>FluxRAM 不承诺直接提高 FPS。它解决的是内存压力和冷后台占用问题；当卡顿确实来自内存紧张时可能改善体验，CPU、GPU 或网络瓶颈则不在它的处理范围内。</p>
+          </details>
+          <details>
+            <summary>为什么有时 Boost 释放得不多？</summary>
+            <p>可能是当前内存压力不高，或高占用进程仍然活跃、属于游戏/系统进程、已被保护。FluxRAM 会在详细界面给出候选预览和跳过原因，不会为了数字好看而处理高风险目标。</p>
+          </details>
+          <details>
+            <summary>Windows 为什么提示“未知发布者”？</summary>
+            <p>当前公开版本尚未购买代码签名证书，因此 Windows 可能显示未知发布者。安装包发布在本项目 GitHub Releases，并附带 SHA256 校验文件；源代码也可公开审查。</p>
+          </details>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <img src="assets/FluxRAM.ico" width="28" height="28" alt="">
+        <div><strong>FluxRAM</strong><span>本地、克制、可解释的 Windows 内存 Boost。</span></div>
+      </div>
+      <div class="footer-links">
+        <a href="https://github.com/Midas927/FluxRAM" target="_blank" rel="noreferrer">源代码</a>
+        <a href="https://github.com/Midas927/FluxRAM/releases" target="_blank" rel="noreferrer">版本记录</a>
+        <a href="https://github.com/Midas927/FluxRAM/issues" target="_blank" rel="noreferrer">反馈问题</a>
+      </div>
+      <p>© <span id="current-year">2026</span> FluxRAM.App</p>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
