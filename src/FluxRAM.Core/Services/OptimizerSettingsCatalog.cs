@@ -22,6 +22,7 @@ public static class OptimizerSettingsCatalog
                 LowYieldPassesBeforeBackoff: 2,
                 EnablePriorityAdjustment: false,
                 EnableServiceKiller: false,
+                EnableGamingProcessProtection: false,
                 MinimumColdnessScore: 65d,
                 BoostCooldownSeconds: 120),
 
@@ -39,8 +40,27 @@ public static class OptimizerSettingsCatalog
                 LowYieldPassesBeforeBackoff: 4,
                 EnablePriorityAdjustment: false,
                 EnableServiceKiller: false,
+                EnableGamingProcessProtection: false,
                 MinimumColdnessScore: 55d,
                 BoostCooldownSeconds: 120),
+
+            OptimizerProfile.GamingHandheld => new OptimizerSettings(
+                MaxPurgeTargetsPerPass: 7,
+                MinimumCandidateWorkingSetBytes: 96L * 1024 * 1024,
+                PurgeWhenAvailableMemoryBelowBytes: 12UL * 1024 * 1024 * 1024,
+                PurgeWhenAvailableMemoryBelowPercentOfTotal: 48,
+                IgnoreMemoryPressureThreshold: false,
+                AllowForegroundProcessPurge: false,
+                ProcessCooldownSeconds: 18,
+                NormalIntervalSeconds: 4,
+                BackoffIntervalSeconds: 10,
+                LowYieldThresholdBytes: 24L * 1024 * 1024,
+                LowYieldPassesBeforeBackoff: 5,
+                EnablePriorityAdjustment: false,
+                EnableServiceKiller: false,
+                EnableGamingProcessProtection: true,
+                MinimumColdnessScore: 45d,
+                BoostCooldownSeconds: 90),
 
             OptimizerProfile.Aggressive => new OptimizerSettings(
                 MaxPurgeTargetsPerPass: 0,
@@ -56,6 +76,7 @@ public static class OptimizerSettingsCatalog
                 LowYieldPassesBeforeBackoff: int.MaxValue,
                 EnablePriorityAdjustment: false,
                 EnableServiceKiller: false,
+                EnableGamingProcessProtection: false,
                 MinimumColdnessScore: 20d,
                 BoostCooldownSeconds: 120),
 
@@ -69,6 +90,7 @@ public static class OptimizerSettingsCatalog
         {
             OptimizerProfile.Conservative => "Light",
             OptimizerProfile.Balanced => "Standard",
+            OptimizerProfile.GamingHandheld => "Gaming / Handheld",
             OptimizerProfile.Aggressive => "Extreme Performance",
             _ => "Light"
         };

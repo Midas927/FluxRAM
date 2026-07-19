@@ -4,5 +4,6 @@ public enum OptimizerProfile
 {
     Conservative = 0,
     Balanced = 1,
-    Aggressive = 2
+    GamingHandheld = 2,
+    Aggressive = 3
 }

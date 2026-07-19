@@ -29,6 +29,8 @@ public sealed class PurgePolicyServiceTests
 
         Assert.False(plan.ShouldPurge);
         Assert.Empty(plan.Candidates);
+        Assert.Contains("Memory pressure is low", plan.DecisionMessage);
+        Assert.Contains("above threshold", plan.DecisionMessage);
     }
 
     [Fact]
@@ -160,6 +162,65 @@ public sealed class PurgePolicyServiceTests
 
         Assert.True(plan.ShouldPurge);
         Assert.Equal(4, plan.Candidates.Count);
+    }
+
+    [Fact]
+    public void CreatePlan_GamingHandheldProfile_ProtectsCommonGamingProcesses()
+    {
+        var service = new PurgePolicyService();
+        var settings = OptimizerSettingsCatalog.FromProfile(OptimizerProfile.GamingHandheld) with
+        {
+            IgnoreMemoryPressureThreshold = true
+        };
+        var snapshots = new[]
+        {
+            new ProcessSnapshot(141, "steam", 900L * 1024 * 1024, false, CpuUsagePercent: 0.1, ColdnessScore: 92),
+            new ProcessSnapshot(142, "discord", 700L * 1024 * 1024, false, CpuUsagePercent: 0.1, ColdnessScore: 88)
+        };
+
+        var plan = service.CreatePlan(
+            snapshots,
+            new MemorySnapshot(12UL * 1024 * 1024 * 1024, 32UL * 1024 * 1024 * 1024, 62),
+            settings,
+            DateTimeOffset.UtcNow,
+            new Dictionary<int, DateTimeOffset>());
+
+        Assert.True(plan.ShouldPurge);
+        Assert.Single(plan.Candidates);
+        Assert.Equal(142, plan.Candidates[0].ProcessId);
+    }
+
+    [Fact]
+    public void CreatePlan_WhenNoCandidateQualifies_ExplainsBlockingReasons()
+    {
+        var service = new PurgePolicyService();
+        var settings = OptimizerSettings.SafeDefaults() with
+        {
+            IgnoreMemoryPressureThreshold = true,
+            MinimumCandidateWorkingSetBytes = 300L * 1024 * 1024,
+            MinimumColdnessScore = 60
+        };
+        var snapshots = new[]
+        {
+            new ProcessSnapshot(151, "foreground-game", 900L * 1024 * 1024, true, ColdnessScore: 90),
+            new ProcessSnapshot(152, "tiny-helper", 100L * 1024 * 1024, false, ColdnessScore: 90),
+            new ProcessSnapshot(153, "busy-cache", 700L * 1024 * 1024, false, CpuUsagePercent: 18, ColdnessScore: 92),
+            new ProcessSnapshot(154, "warm-window", 650L * 1024 * 1024, false, ColdnessScore: 30)
+        };
+
+        var plan = service.CreatePlan(
+            snapshots,
+            new MemorySnapshot(12UL * 1024 * 1024 * 1024, 32UL * 1024 * 1024 * 1024, 62),
+            settings,
+            DateTimeOffset.UtcNow,
+            new Dictionary<int, DateTimeOffset>());
+
+        Assert.False(plan.ShouldPurge);
+        Assert.Empty(plan.Candidates);
+        Assert.Contains("foreground", plan.DecisionMessage);
+        Assert.Contains("below size threshold", plan.DecisionMessage);
+        Assert.Contains("active CPU/I/O", plan.DecisionMessage);
+        Assert.Contains("not cold enough", plan.DecisionMessage);
     }
 
     [Fact]

@@ -178,6 +178,16 @@ public partial class MainWindow : Window
         UpdateSelfOverhead();
     }
 
+    public void StartInTray()
+    {
+        ShowInTaskbar = false;
+        _hasShownTrayTip = true;
+        Hide();
+        CaptureBaselineMemory();
+        UpdateSelfOverhead();
+        DiagnosticLog.Info("FluxRAM started silently in system tray for startup Auto Boost.");
+    }
+
     private void BoostNowButton_OnClick(object sender, RoutedEventArgs e)
     {
         RunBoostPass(true, T("Boost Now", "立即 Boost"));
@@ -226,16 +236,16 @@ public partial class MainWindow : Window
 
         if (details.Length == 0)
         {
-            details = [T(
-                "Preview: no manual Boost candidates meet safety criteria.",
-                "预览：没有满足安全条件的手动 Boost 候选。")];
+            details = [$"PREVIEW | {LocalizePolicyMessage(plan.DecisionMessage)}"];
         }
 
         _viewModel.UpdateProcessMetrics(snapshots.Count, plan.Candidates.Count, foreground);
         _viewModel.UpdateBoostDetails(details);
-        _viewModel.SetStatus(T(
-            $"Preview ready: {plan.Candidates.Count} manual Boost candidate(s).",
-            $"预览完成：{plan.Candidates.Count} 个手动 Boost 候选。"));
+        _viewModel.SetStatus(plan.Candidates.Count == 0
+            ? LocalizePolicyMessage(plan.DecisionMessage)
+            : T(
+                $"Preview ready: {plan.Candidates.Count} manual Boost candidate(s).",
+                $"预览完成：{plan.Candidates.Count} 个手动 Boost 候选。"));
         _viewModel.AddEvent(T("Manual Boost candidates previewed.", "已预览手动 Boost 候选。"));
         DiagnosticLog.Info($"Boost candidate preview completed. Candidates={plan.Candidates.Count}.");
     }
@@ -946,9 +956,7 @@ public partial class MainWindow : Window
 
         if (details.Count == 0)
         {
-            details.Add(T(
-                "No candidate met threshold/coldness/cooldown/protect-list constraints.",
-                "无候选满足阈值/冷度/冷却/保护列表约束。"));
+            details.Add(LocalizePolicyMessage(plan.DecisionMessage));
         }
 
         _viewModel.UpdateBoostDetails(details);
@@ -1358,6 +1366,7 @@ public partial class MainWindow : Window
         ProfileHelpButton.ToolTip = T("Profile details", "档位说明");
         ConservativeProfileItem.Content = T("Light", "轻量");
         BalancedProfileItem.Content = T("Standard", "标准");
+        GamingHandheldProfileItem.Content = T("Gaming / Handheld", "游戏 / 掌机");
         AggressiveProfileItem.Content = T("Extreme Performance", "极致性能");
         LanguageCaptionTextBlock.Text = T("LANGUAGE", "语言");
         LanguageEnglishItem.Content = "English";
@@ -1555,6 +1564,7 @@ public partial class MainWindow : Window
     {
         OptimizerProfile.Conservative => T("Light", "轻量"),
         OptimizerProfile.Balanced => T("Standard", "标准"),
+        OptimizerProfile.GamingHandheld => T("Gaming / Handheld", "游戏 / 掌机"),
         OptimizerProfile.Aggressive => T("Extreme Performance", "极致性能"),
         _ => T("Light", "轻量")
     };
@@ -1853,6 +1863,10 @@ public partial class MainWindow : Window
             T("Balanced default. Cleans more when memory pressure rises, while keeping protected apps out of the target list.", "推荐默认档位。内存压力升高时清理更积极，同时避开受保护应用。"),
             CreateDialogBrush(123, 179, 255)));
         panel.Children.Add(CreateProfileDetailsCard(
+            T("Gaming / Handheld", "游戏 / 掌机"),
+            T("For Windows handhelds and gaming sessions. More willing to clear cold background apps before games, while still avoiding foreground, high CPU and high I/O processes.", "适合 Windows 掌机和游戏前清理。比标准档更愿意处理冷后台程序，但仍避开前台、高 CPU 和高 I/O 进程。"),
+            CreateDialogBrush(90, 214, 191)));
+        panel.Children.Add(CreateProfileDetailsCard(
             T("Extreme Performance", "极致性能"),
             T("Pro only. More aggressive trimming for heavy local AI, creator tools, games or streaming workloads.", "专业版专属。适合本地 AI、创作软件、游戏或直播等高负载场景，裁剪更积极。"),
             ThemeBrush("WarningBrush")));
@@ -1962,10 +1976,20 @@ public partial class MainWindow : Window
 
         return message
             .Replace("Memory pressure is low; purge skipped.", "内存压力较低，本轮跳过。", StringComparison.Ordinal)
+            .Replace("Available", "可用内存", StringComparison.Ordinal)
+            .Replace("is above threshold", "高于阈值", StringComparison.Ordinal)
             .Replace("Boost Now plan with", "Boost Now 计划，候选数：", StringComparison.Ordinal)
             .Replace("Purge plan ready with", "清理计划已生成，候选数：", StringComparison.Ordinal)
             .Replace("Extreme Performance bypassed threshold with", "极致性能策略已绕过阈值，候选数：", StringComparison.Ordinal)
-            .Replace("No eligible process met safety criteria.", "没有满足安全条件的候选进程。", StringComparison.Ordinal);
+            .Replace("No eligible process met safety criteria", "没有满足安全条件的候选进程", StringComparison.Ordinal)
+            .Replace("no user processes could be scanned", "没有可扫描的用户进程", StringComparison.Ordinal)
+            .Replace("no safe background candidate remained", "没有剩余安全后台候选", StringComparison.Ordinal)
+            .Replace("foreground", "前台进程", StringComparison.Ordinal)
+            .Replace("below size threshold", "低于大小阈值", StringComparison.Ordinal)
+            .Replace("not cold enough", "冷度不足", StringComparison.Ordinal)
+            .Replace("active CPU/I/O", "CPU/I/O 活跃", StringComparison.Ordinal)
+            .Replace("protected", "受保护", StringComparison.Ordinal)
+            .Replace("cooldown", "冷却期", StringComparison.Ordinal);
     }
 
     private string LocalizeLicenseMessage(string message, LicenseVerificationFailure failure)

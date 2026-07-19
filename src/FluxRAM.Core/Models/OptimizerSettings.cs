@@ -14,6 +14,7 @@ public sealed record OptimizerSettings(
     int LowYieldPassesBeforeBackoff,
     bool EnablePriorityAdjustment,
     bool EnableServiceKiller,
+    bool EnableGamingProcessProtection = false,
     double MinimumColdnessScore = 55d,
     int BoostCooldownSeconds = 120)
 {
@@ -33,6 +34,7 @@ public sealed record OptimizerSettings(
             LowYieldPassesBeforeBackoff: 3,
             EnablePriorityAdjustment: false,
             EnableServiceKiller: false,
+            EnableGamingProcessProtection: false,
             MinimumColdnessScore: 55d,
             BoostCooldownSeconds: 120);
     }

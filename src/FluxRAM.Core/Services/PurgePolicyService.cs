@@ -9,6 +9,30 @@ public sealed class PurgePolicyService
     private const double StrictIoActivityRiskBytesPerSecond = 4d * 1024 * 1024;
     private const double HardIoActivityRiskBytesPerSecond = 16d * 1024 * 1024;
     private const int MaxAdaptiveTargetLimit = 12;
+    private static readonly HashSet<string> GamingProtectedProcessNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "steam",
+        "steamwebhelper",
+        "epicgameslauncher",
+        "eadesktop",
+        "battle.net",
+        "riotclientservices",
+        "xboxapp",
+        "gamingservices",
+        "gamingservicesnet",
+        "armourycrate",
+        "armourycrateservice",
+        "legionspace",
+        "ayaspace",
+        "gpdassistant",
+        "onexconsole",
+        "amdsoftware",
+        "radeonsoftware",
+        "nvidiaapp",
+        "nvidia container",
+        "nvcontainer",
+        "intelgraphicscommandcenter"
+    };
 
     public PurgePlan CreatePlan(
         IReadOnlyList<ProcessSnapshot> snapshots,
@@ -27,12 +51,17 @@ public sealed class PurgePolicyService
         {
             return new PurgePlan(
                 false,
-                "Memory pressure is low; purge skipped.",
+                $"Memory pressure is low; purge skipped. Available {FormatBytes(memorySnapshot.AvailablePhysicalMemoryBytes)} is above threshold {FormatBytes(effectiveThreshold)}.",
                 Array.Empty<ProcessSnapshot>());
         }
 
         var cooldown = TimeSpan.FromSeconds(settings.ProcessCooldownSeconds);
         var protectedNames = BuildProtectedNameSet(protectedProcessNames);
+        if (settings.EnableGamingProcessProtection)
+        {
+            protectedNames.UnionWith(GamingProtectedProcessNames);
+        }
+
         var protectedPaths = BuildProtectedPathSet(protectedProcessPaths);
         var protectedTitleTokens = enableAdvancedProtection
             ? BuildProtectedTitleTokens(protectedNames, protectedPaths)
@@ -78,7 +107,18 @@ public sealed class PurgePolicyService
         {
             return new PurgePlan(
                 false,
-                "No eligible process met safety criteria.",
+                BuildNoEligibleProcessMessage(
+                    snapshots,
+                    settings,
+                    now,
+                    cooldown,
+                    protectedNames,
+                    protectedPaths,
+                    protectedTitleTokens,
+                    protectedRootProcessIds,
+                    parentProcessIds,
+                    lastPurgeTimesByProcessId,
+                    enableAdvancedProtection),
                 candidates);
         }
 
@@ -276,6 +316,104 @@ public sealed class PurgePolicyService
         }
 
         return now - lastPurgeAt < cooldown;
+    }
+
+    private static string BuildNoEligibleProcessMessage(
+        IReadOnlyList<ProcessSnapshot> snapshots,
+        OptimizerSettings settings,
+        DateTimeOffset now,
+        TimeSpan cooldown,
+        IReadOnlySet<string> protectedNames,
+        IReadOnlySet<string> protectedPaths,
+        IReadOnlySet<string> protectedTitleTokens,
+        IReadOnlySet<int> protectedRootProcessIds,
+        IReadOnlyDictionary<int, int?> parentProcessIds,
+        IReadOnlyDictionary<int, DateTimeOffset> lastPurgeTimesByProcessId,
+        bool enableAdvancedProtection)
+    {
+        if (snapshots.Count == 0)
+        {
+            return "No eligible process met safety criteria: no user processes could be scanned.";
+        }
+
+        var foreground = 0;
+        var tooSmall = 0;
+        var notCold = 0;
+        var active = 0;
+        var protectedCount = 0;
+        var cooldownCount = 0;
+
+        foreach (var snapshot in snapshots)
+        {
+            if (!settings.AllowForegroundProcessPurge && snapshot.IsForeground)
+            {
+                foreground += 1;
+                continue;
+            }
+
+            if (snapshot.WorkingSetBytes < settings.MinimumCandidateWorkingSetBytes)
+            {
+                tooSmall += 1;
+                continue;
+            }
+
+            if (snapshot.ColdnessScore < settings.MinimumColdnessScore)
+            {
+                notCold += 1;
+                continue;
+            }
+
+            if (IsActivityRiskTooHigh(snapshot, settings))
+            {
+                active += 1;
+                continue;
+            }
+
+            if (IsProtectedSnapshot(
+                snapshot,
+                protectedNames,
+                protectedPaths,
+                protectedTitleTokens,
+                protectedRootProcessIds,
+                parentProcessIds,
+                enableAdvancedProtection))
+            {
+                protectedCount += 1;
+                continue;
+            }
+
+            if (IsInCooldown(snapshot.ProcessId, now, cooldown, lastPurgeTimesByProcessId))
+            {
+                cooldownCount += 1;
+            }
+        }
+
+        var reasons = new List<string>();
+        AddReason(reasons, foreground, "foreground");
+        AddReason(reasons, tooSmall, "below size threshold");
+        AddReason(reasons, notCold, "not cold enough");
+        AddReason(reasons, active, "active CPU/I/O");
+        AddReason(reasons, protectedCount, "protected");
+        AddReason(reasons, cooldownCount, "cooldown");
+
+        return reasons.Count == 0
+            ? "No eligible process met safety criteria: no safe background candidate remained."
+            : $"No eligible process met safety criteria: {string.Join(", ", reasons)}.";
+    }
+
+    private static void AddReason(ICollection<string> reasons, int count, string label)
+    {
+        if (count > 0)
+        {
+            reasons.Add($"{count} {label}");
+        }
+    }
+
+    private static string FormatBytes(ulong bytes)
+    {
+        return bytes >= 1024UL * 1024 * 1024
+            ? $"{bytes / (1024d * 1024d * 1024d):0.0} GB"
+            : $"{bytes / (1024d * 1024d):0.0} MB";
     }
 
     private static string NormalizeProcessName(string processName)
