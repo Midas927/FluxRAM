@@ -15,6 +15,7 @@ public sealed class AppEditionFeatures
         string editionLabelChinese,
         bool supportsProtectList,
         bool supportsAdvancedProtection,
+        bool supportsExtremeClose,
         bool supportsExtremeProfile)
     {
         Edition = edition;
@@ -23,6 +24,7 @@ public sealed class AppEditionFeatures
         EditionLabelChinese = editionLabelChinese;
         SupportsProtectList = supportsProtectList;
         SupportsAdvancedProtection = supportsAdvancedProtection;
+        SupportsExtremeClose = supportsExtremeClose;
         SupportsExtremeProfile = supportsExtremeProfile;
     }
 
@@ -37,6 +39,8 @@ public sealed class AppEditionFeatures
     public bool SupportsProtectList { get; }
 
     public bool SupportsAdvancedProtection { get; }
+
+    public bool SupportsExtremeClose { get; }
 
     public bool SupportsExtremeProfile { get; }
 }
@@ -58,6 +62,7 @@ public static class AppEditionCatalog
                 editionLabelChinese: "普通版",
                 supportsProtectList: true,
                 supportsAdvancedProtection: false,
+                supportsExtremeClose: false,
                 supportsExtremeProfile: false),
             AppEdition.Pro => new AppEditionFeatures(
                 edition: AppEdition.Pro,
@@ -66,6 +71,7 @@ public static class AppEditionCatalog
                 editionLabelChinese: "专业版",
                 supportsProtectList: true,
                 supportsAdvancedProtection: true,
+                supportsExtremeClose: true,
                 supportsExtremeProfile: true),
             _ => For(AppEdition.Pro)
         };

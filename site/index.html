@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0a0e13">
-  <meta name="description" content="FluxRAM 是面向 Windows 游戏与日常负载的本地内存 Boost 工具，提供手动 Boost、压力触发的 Auto Boost 和可确认的 Extreme Close。">
+  <meta name="description" content="FluxRAM 是面向 Windows 游戏与日常负载的本地内存 Boost 工具，提供手动 Boost、压力触发的 Auto Boost；Pro 提供可确认的 Extreme Close。">
   <meta property="og:title" content="FluxRAM | Windows 本地内存 Boost 工具">
   <meta property="og:description" content="释放冷后台占用，避开活跃程序。需要时更强力，决定权仍在你手里。">
   <meta property="og:type" content="website">
@@ -64,7 +64,6 @@
             <a class="button button-primary button-wide" href="https://github.com/Midas927/FluxRAM/releases/latest/download/FluxRAM-Portable-Windows-x64.zip">下载 Portable</a>
             <a class="text-link text-link-light" href="https://github.com/Midas927/FluxRAM/releases/tag/v0.3.6" target="_blank" rel="noreferrer">查看 v0.3.6 更新 <span aria-hidden="true">→</span></a>
           </div>
-          <p class="hero-note">解压即用 · 本地执行 · 当前版本暂未代码签名</p>
         </div>
 
         <aside class="hero-telemetry" aria-label="Gaming 策略模拟">
@@ -166,7 +165,7 @@
         <div class="safety-copy reveal" data-reveal>
           <p class="kicker kicker-dark">强力，但由你确认</p>
           <h2>Boost 不替你关闭应用</h2>
-          <p>普通 Boost 只做工作集裁剪。真正需要关闭 Chrome、Discord 或其他高占用应用时，Pro 的 Extreme Close 会先列出候选，再由你勾选确认。</p>
+          <p>普通 Boost 只做工作集裁剪。升级 Pro 后，Extreme Close 会先列出 Chrome、Discord 等高占用候选，再由你勾选确认。</p>
           <a class="text-link text-link-light" href="https://github.com/Midas927/FluxRAM/blob/main/docs/product-positioning.zh-CN.md" target="_blank" rel="noreferrer">了解产品边界 <span aria-hidden="true">→</span></a>
         </div>
         <div class="boundary-matrix reveal" data-reveal>
@@ -201,10 +200,48 @@
             <a class="button button-secondary" href="https://github.com/Midas927/FluxRAM/releases/latest/download/FluxRAM-Lite-Windows-x64.zip">下载 Lite</a>
           </article>
         </div>
-        <div class="pro-band reveal" data-reveal>
-          <div><span>FluxRAM Pro</span><strong>重负载场景需要更明确的控制权</strong></div>
-          <p>免费版已包含手动与自动 Boost、保护应用和托盘功能。Pro 解锁 Extreme、Extreme Close 与高级应用保护。</p>
-          <div class="pro-action"><strong>$3</strong><a class="button button-dark" href="https://whop.com/fluxram/" target="_blank" rel="noreferrer">国际版购买</a><small>支付宝用户可在软件内按流程付款。</small></div>
+        <div class="edition-comparison reveal" data-reveal>
+          <div class="edition-intro">
+            <div><span>版本区别</span><h3 id="edition-comparison-title">普通版和 Pro，一眼看清</h3></div>
+            <p>普通版已经覆盖完整的日常 Boost 流程；Pro 面向 Extreme 档位和需要精确识别保护目标的重负载用户。</p>
+          </div>
+          <div class="edition-table" role="table" aria-labelledby="edition-comparison-title">
+            <div class="edition-row edition-row-head" role="row">
+              <div class="edition-feature" role="columnheader">功能</div>
+              <div class="edition-value" role="columnheader"><span>普通版</span><strong>免费</strong></div>
+              <div class="edition-value edition-pro" role="columnheader"><span>Pro</span><strong>$3</strong></div>
+            </div>
+            <div class="edition-row" role="row">
+              <div class="edition-feature" role="rowheader">手动 / Auto Boost</div>
+              <div class="edition-value edition-included" role="cell">包含</div>
+              <div class="edition-value edition-included" role="cell">包含</div>
+            </div>
+            <div class="edition-row" role="row">
+              <div class="edition-feature" role="rowheader">Daily / Gaming 档位</div>
+              <div class="edition-value edition-included" role="cell">包含</div>
+              <div class="edition-value edition-included" role="cell">包含</div>
+            </div>
+            <div class="edition-row" role="row">
+              <div class="edition-feature" role="rowheader">Extreme Close</div>
+              <div class="edition-value edition-muted" role="cell">不包含</div>
+              <div class="edition-value edition-included" role="cell">包含</div>
+            </div>
+            <div class="edition-row" role="row">
+              <div class="edition-feature" role="rowheader">应用保护</div>
+              <div class="edition-value" role="cell">进程名保护</div>
+              <div class="edition-value edition-pro" role="cell">路径 / 子进程 / 窗口识别</div>
+            </div>
+            <div class="edition-row" role="row">
+              <div class="edition-feature" role="rowheader">Extreme 档位</div>
+              <div class="edition-value edition-muted" role="cell">不包含</div>
+              <div class="edition-value edition-included" role="cell">包含</div>
+            </div>
+            <div class="edition-row edition-row-action" role="row">
+              <div class="edition-feature" role="rowheader">开始使用</div>
+              <div class="edition-value" role="cell"><strong>下载后直接使用</strong></div>
+              <div class="edition-value edition-purchase" role="cell"><a class="button button-dark" href="https://whop.com/fluxram/" target="_blank" rel="noreferrer">购买 Pro</a><small>支付宝用户可在软件内按流程付款。</small></div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -239,7 +276,7 @@
 
   <footer class="site-footer">
     <div class="footer-inner">
-      <div class="footer-brand"><img src="assets/FluxRAM.ico" width="28" height="28" alt=""><div><strong>FluxRAM</strong><span>需要时帮你腾出内存，不该动的程序不会乱碰。</span></div></div>
+      <div class="footer-brand"><img src="assets/FluxRAM.ico" width="28" height="28" alt=""><div><strong>FluxRAM</strong><span>本地、轻巧、放心的 Windows 内存 Boost。</span></div></div>
       <div class="footer-links"><a href="https://github.com/Midas927/FluxRAM" target="_blank" rel="noreferrer">源代码</a><a href="https://github.com/Midas927/FluxRAM/releases" target="_blank" rel="noreferrer">版本记录</a><a href="https://github.com/Midas927/FluxRAM/issues" target="_blank" rel="noreferrer">反馈问题</a></div>
       <p>© <span id="current-year">2026</span> FluxRAM.App</p>
     </div>
