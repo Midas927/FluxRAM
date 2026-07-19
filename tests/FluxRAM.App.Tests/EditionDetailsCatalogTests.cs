@@ -12,9 +12,10 @@ public sealed class EditionDetailsCatalogTests
         Assert.Contains(EditionDetailsCatalog.Sections, section =>
             section.TitleEnglish == "FluxRAM" &&
             section.BodyEnglish.Contains("Daily and Gaming", StringComparison.Ordinal) &&
-            section.BodyEnglish.Contains("Extreme Close", StringComparison.Ordinal));
+            !section.BodyEnglish.Contains("Extreme Close", StringComparison.Ordinal));
         Assert.Contains(EditionDetailsCatalog.Sections, section =>
             section.TitleEnglish == "FluxRAM Pro" &&
+            section.BodyEnglish.Contains("Extreme Close", StringComparison.Ordinal) &&
             section.BodyEnglish.Contains("Exact EXE path protection", StringComparison.Ordinal));
     }
 

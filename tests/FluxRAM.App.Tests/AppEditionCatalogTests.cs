@@ -18,6 +18,7 @@ public sealed class AppEditionCatalogTests
 
         Assert.Equal("FluxRAM", features.ProductTitle);
         Assert.False(features.SupportsExtremeProfile);
+        Assert.False(features.SupportsExtremeClose);
         Assert.True(features.SupportsProtectList);
         Assert.False(features.SupportsAdvancedProtection);
         Assert.Equal("FluxRAM", features.EditionLabelEnglish);
@@ -31,6 +32,7 @@ public sealed class AppEditionCatalogTests
 
         Assert.Equal("FluxRAM Pro", features.ProductTitle);
         Assert.True(features.SupportsExtremeProfile);
+        Assert.True(features.SupportsExtremeClose);
         Assert.True(features.SupportsProtectList);
         Assert.True(features.SupportsAdvancedProtection);
         Assert.Equal("FluxRAM Pro", features.EditionLabelEnglish);

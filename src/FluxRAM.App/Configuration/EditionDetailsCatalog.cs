@@ -45,7 +45,6 @@ public static class EditionDetailsCatalog
             bodyEnglish:
                 "- Daily and Gaming profiles\n" +
                 "- Boost Now and pressure-based Auto Boost\n" +
-                "- Extreme Close with user confirmation\n" +
                 "- Tray Boost and minimize-to-tray workflow\n" +
                 "- Add / remove protected apps\n" +
                 "- Choose protected apps from running processes\n" +
@@ -53,7 +52,6 @@ public static class EditionDetailsCatalog
             bodyChinese:
                 "- Daily / Gaming 两种模式\n" +
                 "- 立即 Boost 与按内存压力触发的 Auto Boost\n" +
-                "- 用户确认后执行的 Extreme Close\n" +
                 "- 托盘 Boost 与最小化托盘工作流\n" +
                 "- 添加 / 删除受保护应用\n" +
                 "- 从正在运行的进程中选择保护应用\n" +
@@ -64,6 +62,7 @@ public static class EditionDetailsCatalog
             bodyEnglish:
                 "- Everything in FluxRAM\n" +
                 "- Extreme profile\n" +
+                "- Extreme Close with user confirmation\n" +
                 "- Exact EXE path protection\n" +
                 "- Child-process association protection\n" +
                 "- Visible-window recognition for target apps\n" +
@@ -71,6 +70,7 @@ public static class EditionDetailsCatalog
             bodyChinese:
                 "- 包含 FluxRAM 普通版全部功能\n" +
                 "- Extreme 模式\n" +
+                "- 用户确认后执行的 Extreme Close\n" +
                 "- 精确 EXE 路径保护\n" +
                 "- 子进程关联保护\n" +
                 "- 目标应用可见窗口识别\n" +

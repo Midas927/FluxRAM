@@ -364,6 +364,14 @@ public partial class MainWindow : Window
 
     private void ExtremeCloseMenuItem_OnClick(object sender, RoutedEventArgs e)
     {
+        if (!_licenseStatus.Features.SupportsExtremeClose)
+        {
+            _viewModel.SetStatus(T(
+                "Extreme Close is available after activating Pro.",
+                "激活专业版后可使用 Extreme Close。"));
+            return;
+        }
+
         var candidates = ExtremeCloseCandidateFactory.FromSnapshots(
                 ScrapeProcesses(_lastPurgeTimesByProcessId),
                 _licenseStatus.Features.SupportsProtectList ? _protectedProcessNames : Array.Empty<string>(),
@@ -1107,6 +1115,7 @@ public partial class MainWindow : Window
     {
         var edition = _licenseStatus.Features;
         AggressiveProfileItem.Visibility = edition.SupportsExtremeProfile ? Visibility.Visible : Visibility.Collapsed;
+        ExtremeCloseMenuItem.Visibility = edition.SupportsExtremeClose ? Visibility.Visible : Visibility.Collapsed;
         AddProtectedAppButton.Visibility = edition.SupportsProtectList ? Visibility.Visible : Visibility.Collapsed;
         AddRunningProtectedAppButton.Visibility = edition.SupportsProtectList ? Visibility.Visible : Visibility.Collapsed;
         RemoveProtectedAppButton.Visibility = edition.SupportsProtectList ? Visibility.Visible : Visibility.Collapsed;
