@@ -7,6 +7,7 @@ public sealed class AppUpdateCheckerTests
 {
     [Theory]
     [InlineData("0.3.5", "v0.3.6", UpdateVersionComparison.LatestIsNewer)]
+    [InlineData("0.3.6", "v0.3.7", UpdateVersionComparison.LatestIsNewer)]
     [InlineData("0.3.5", "0.3.5", UpdateVersionComparison.Same)]
     [InlineData("0.3.5", "v0.3.4", UpdateVersionComparison.CurrentIsNewer)]
     [InlineData("0.3.5+local", "v0.3.5", UpdateVersionComparison.Same)]
