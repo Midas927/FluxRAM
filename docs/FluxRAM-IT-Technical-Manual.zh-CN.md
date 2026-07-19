@@ -39,7 +39,9 @@ docs/                  商业说明书和 IT 技术说明书
 3. 程序不会向远程进程注入代码。
 4. 程序不会默认写入开机启动项。
 5. 正常 Boost 流程不调用云端 API。
-6. 运行时安装脚本只在缺少 .NET Desktop Runtime 时下载官方安装包。
+6. 检查更新由用户主动触发，只查询 GitHub 公开 latest-release 接口。
+7. 本地诊断日志写入 `%LOCALAPPDATA%\FluxRAM\fluxram.log`。
+8. 运行时安装脚本只在缺少 .NET Desktop Runtime 时下载官方安装包。
 
 授权模型：
 
@@ -79,8 +81,11 @@ docs/                  商业说明书和 IT 技术说明书
 2. 枚举进程并采样 CPU、窗口、前台和内存信息。
 3. 用 `PurgePolicyService` 生成候选列表。
 4. 排除系统白名单、前台进程、冷却中进程和受保护应用。
-5. 使用 `SetProcessWorkingSetSize(-1, -1)` 与 `EmptyWorkingSet` 裁剪候选进程。
-6. 更新最近裁剪量、累计裁剪量、净收益、回弹率、自身开销和最近事件。
+5. 在裁剪前用 CPU 和 I/O 硬门槛排除高活跃候选。
+6. 对剩余候选按冷度、工作集收益和活跃风险综合排序。
+7. 在严重内存压力下扩大安全候选数量，而不是触碰活跃应用。
+8. 使用 `SetProcessWorkingSetSize(-1, -1)` 与 `EmptyWorkingSet` 裁剪候选进程。
+9. 更新最近裁剪量、累计裁剪量、净收益、回弹率、自身开销和最近事件。
 
 ## 6. 当前策略矩阵
 
@@ -130,7 +135,7 @@ Pro 高级保护：
 1. Windows 11。
 2. .NET 8 SDK，包含 Windows Desktop workload。
 
-发布两个版本：
+发布 Lite 版本：
 
 ```powershell
 .\scripts\publish-win-x64.ps1
@@ -139,10 +144,12 @@ Pro 高级保护：
 输出：
 
 ```text
-dist\fluxram-small-win-x64\FluxRAM.exe
+dist\fluxram-lite-win-x64\FluxRAM.exe
+dist\release-assets\FluxRAM-Lite-Windows-x64.zip
+dist\release-assets\FluxRAM-Lite-Windows-x64.zip.sha256
 ```
 
-Small 模式为默认模式，依赖目标机器安装 .NET 8 Desktop Runtime。若要包含运行时：
+Lite 模式为默认模式，依赖目标机器安装 .NET 8 Desktop Runtime。若要包含运行时：
 
 ```powershell
 .\scripts\publish-win-x64.ps1 -Mode Portable
@@ -152,11 +159,23 @@ Portable 输出：
 
 ```text
 dist\fluxram-win-x64\FluxRAM.exe
+dist\release-assets\FluxRAM-Portable-Windows-x64.zip
+dist\release-assets\FluxRAM-Portable-Windows-x64.zip.sha256
 ```
+
+可选代码签名：
+
+```powershell
+$env:FLUXRAM_SIGNTOOL_PATH = "C:\Program Files (x86)\Windows Kits\10\bin\x64\signtool.exe"
+$env:FLUXRAM_SIGN_CERT_SHA1 = "<证书指纹>"
+.\scripts\publish-win-x64.ps1 -Mode Portable
+```
+
+配置签名环境变量后，脚本会先签名 `FluxRAM.exe`，再生成发布 zip 与 SHA256 文件。
 
 ## 9. 目标机器运行时
 
-Small 包可搭配：
+Lite 包可搭配：
 
 ```bat
 scripts\install-dotnet-desktop-runtime-8.bat
@@ -176,6 +195,7 @@ scripts\run-fluxram.bat
 1. 公开下载包只通过 GitHub Release 附件分发，不提交到仓库源码树。
 2. 生产发布应使用正式授权配置。
 3. 大范围分发前建议对发行 exe 做代码签名。
+4. Release 附件应同时包含生成的 `.sha256` 文件。
 
 ## 11. Win32 API 范围
 

@@ -304,8 +304,8 @@
     </Style>
 
     <Style TargetType="ScrollBar">
-      <Setter Property="Width" Value="10" />
-      <Setter Property="Height" Value="10" />
+      <Setter Property="Width" Value="16" />
+      <Setter Property="Height" Value="16" />
       <Setter Property="Background" Value="{DynamicResource ScrollBarTrackBrush}" />
       <Setter Property="Template">
         <Setter.Value>
@@ -323,8 +323,8 @@
                     <Thumb.Template>
                       <ControlTemplate TargetType="Thumb">
                         <Border x:Name="ThumbRoot"
-                                Margin="2"
-                                CornerRadius="4"
+                                Margin="3"
+                                CornerRadius="5"
                                 Background="{DynamicResource ScrollBarThumbBrush}" />
                         <ControlTemplate.Triggers>
                           <Trigger Property="IsMouseOver" Value="True">
@@ -382,8 +382,6 @@
             <ColumnDefinition Width="8" />
             <ColumnDefinition Width="70" />
             <ColumnDefinition Width="8" />
-            <ColumnDefinition Width="72" />
-            <ColumnDefinition Width="8" />
             <ColumnDefinition Width="78" />
           </Grid.ColumnDefinitions>
 
@@ -434,22 +432,38 @@
                   Grid.Column="4"
                   Height="30"
                   Style="{StaticResource QuietButtonStyle}"
-                  Content="Details"
+                  Content="Settings"
                   Click="DetailSettingsButton_OnClick" />
-          <Button x:Name="GithubButton"
+          <Button x:Name="ToolsMenuButton"
                   Grid.Column="6"
                   Height="30"
                   Style="{StaticResource QuietButtonStyle}"
-                  Content="GitHub"
-                  Click="GithubButton_OnClick" />
-          <Button x:Name="ThemeToggleButton"
-                  Grid.Column="8"
-                  Height="30"
-                  Style="{StaticResource QuietButtonStyle}"
-                  Content="Light"
-                  Click="ThemeToggleButton_OnClick" />
+                  Content="Tools"
+                  Click="ToolsMenuButton_OnClick">
+            <Button.ContextMenu>
+              <ContextMenu>
+                <MenuItem x:Name="CheckUpdateMenuItem"
+                          Header="Check Update"
+                          Click="CheckUpdateMenuItem_OnClick" />
+                <MenuItem x:Name="ThemeMenuItem"
+                          Header="Light Theme"
+                          Click="ThemeMenuItem_OnClick" />
+                <Separator />
+                <MenuItem x:Name="ExtremeCloseMenuItem"
+                          Header="Extreme Close"
+                          Click="ExtremeCloseMenuItem_OnClick" />
+                <Separator />
+                <MenuItem x:Name="DiagnosticLogMenuItem"
+                          Header="Diagnostic Log"
+                          Click="DiagnosticLogMenuItem_OnClick" />
+                <MenuItem x:Name="GithubMenuItem"
+                          Header="GitHub"
+                          Click="GithubMenuItem_OnClick" />
+              </ContextMenu>
+            </Button.ContextMenu>
+          </Button>
           <Button x:Name="MinimizeButton"
-                  Grid.Column="10"
+                  Grid.Column="8"
                   Height="30"
                   Style="{StaticResource QuietButtonStyle}"
                   Content="Minimize"
@@ -503,11 +517,11 @@
             <ComboBox x:Name="ProfileSelector"
                       Margin="0,4,0,0"
                       SelectionChanged="ProfileSelector_OnSelectionChanged">
-              <ComboBoxItem x:Name="ConservativeProfileItem" Tag="Conservative" Content="Light" />
-              <ComboBoxItem x:Name="BalancedProfileItem" Tag="Balanced" Content="Standard" />
+              <ComboBoxItem x:Name="ConservativeProfileItem" Tag="Conservative" Content="Daily" />
+              <ComboBoxItem x:Name="GamingHandheldProfileItem" Tag="GamingHandheld" Content="Gaming" />
               <ComboBoxItem x:Name="AggressiveProfileItem"
                             Tag="Aggressive"
-                            Content="Extreme Performance"
+                            Content="Extreme"
                             Visibility="Collapsed" />
             </ComboBox>
           </StackPanel>
@@ -565,17 +579,17 @@
 
       <Grid Grid.Column="0">
         <Grid.RowDefinitions>
-          <RowDefinition Height="*" />
+          <RowDefinition Height="Auto" />
           <RowDefinition Height="12" />
           <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <Border Grid.Row="0" Style="{StaticResource CardStyle}">
+        <Border x:Name="ProtectedAppsCard" Grid.Row="0" Style="{StaticResource CardStyle}">
           <Grid>
             <Grid.RowDefinitions>
               <RowDefinition Height="Auto" />
               <RowDefinition Height="10" />
-              <RowDefinition Height="*" />
+              <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
               <ColumnDefinition Width="*" />
@@ -623,8 +637,10 @@
                        ItemsSource="{Binding ProtectedEntries}"
                        SelectionMode="Extended"
                        SelectionChanged="ProtectedAppsListBox_OnSelectionChanged"
+                       MaxHeight="150"
                        FontFamily="Consolas"
-                       FontSize="11" />
+                       FontSize="11"
+                       PreviewMouseWheel="DetailListBox_OnPreviewMouseWheel" />
             </Border>
 
             <Border x:Name="ProtectListLockedBorder"
@@ -657,6 +673,7 @@
 
             <Grid Grid.Row="2" Margin="0,1,0,0">
               <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
@@ -704,14 +721,15 @@
                          Text="N/A" />
 
               <TextBlock x:Name="SelfOverheadCaptionTextBlock" Visibility="Collapsed" />
-              <TextBlock Grid.Row="2"
-                         Grid.Column="2"
+              <TextBlock x:Name="SelfOverheadValueTextBlock"
+                         Grid.Row="3"
+                         Grid.ColumnSpan="3"
                          Style="{StaticResource MetricLineStyle}"
-                         TextWrapping="NoWrap"
-                         TextTrimming="CharacterEllipsis"
+                         TextWrapping="Wrap"
+                         TextTrimming="None"
                          Text="{Binding SelfOverheadDisplay}" />
 
-              <TextBlock Grid.Row="3"
+              <TextBlock Grid.Row="4"
                          Grid.ColumnSpan="3"
                          Margin="0,2,0,0"
                          Style="{StaticResource BodyTextStyle}"
@@ -738,6 +756,8 @@
               <RowDefinition Height="8" />
               <RowDefinition Height="Auto" />
               <RowDefinition Height="10" />
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="5" />
               <RowDefinition Height="Auto" />
               <RowDefinition Height="5" />
               <RowDefinition Height="Auto" />
@@ -806,6 +826,12 @@
                       Content="Start with Windows and enable Auto Boost"
                       Checked="StartupAutoBoostCheckBox_OnChecked"
                       Unchecked="StartupAutoBoostCheckBox_OnUnchecked" />
+            <TextBlock x:Name="StartupAutoBoostStatusTextBlock"
+                       Grid.Row="12"
+                       Grid.ColumnSpan="3"
+                       Style="{StaticResource BodyTextStyle}"
+                       FontSize="11"
+                       Text="Startup Auto Boost is off." />
           </Grid>
         </Border>
 
@@ -823,11 +849,31 @@
                 <RowDefinition Height="8" />
                 <RowDefinition Height="*" />
               </Grid.RowDefinitions>
-              <TextBlock x:Name="BoostDetailsTitleTextBlock" Grid.Row="0" Style="{StaticResource SectionTitleStyle}" Text="Boost Details" />
+              <Grid Grid.Row="0">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="8" />
+                  <ColumnDefinition Width="78" />
+                </Grid.ColumnDefinitions>
+                <TextBlock x:Name="BoostDetailsTitleTextBlock"
+                           Grid.Column="0"
+                           VerticalAlignment="Center"
+                           Style="{StaticResource SectionTitleStyle}"
+                           Text="Boost Details" />
+                <Button x:Name="PreviewBoostCandidatesButton"
+                        Grid.Column="2"
+                        Height="28"
+                        Style="{StaticResource QuietButtonStyle}"
+                        Content="Preview"
+                        Click="PreviewBoostCandidatesButton_OnClick" />
+              </Grid>
               <Border Grid.Row="2" Style="{StaticResource InsetPanelStyle}" Padding="6">
-                <ListBox ItemsSource="{Binding BoostDetails}"
+                <ListBox x:Name="BoostDetailsListBox"
+                         ItemsSource="{Binding BoostDetails}"
+                         MaxHeight="150"
                          FontFamily="Consolas"
-                         FontSize="11" />
+                         FontSize="11"
+                         PreviewMouseWheel="DetailListBox_OnPreviewMouseWheel" />
               </Border>
             </Grid>
           </Border>
@@ -845,9 +891,12 @@
               </Grid.RowDefinitions>
               <TextBlock x:Name="RecentActivityTitleTextBlock" Grid.Row="0" Style="{StaticResource SectionTitleStyle}" Text="Recent Activity" />
               <Border Grid.Row="2" Style="{StaticResource InsetPanelStyle}" Padding="6">
-                <ListBox ItemsSource="{Binding RecentEvents}"
+                <ListBox x:Name="RecentEventsListBox"
+                         ItemsSource="{Binding RecentEvents}"
+                         MaxHeight="150"
                          FontFamily="Consolas"
-                         FontSize="11" />
+                         FontSize="11"
+                         PreviewMouseWheel="DetailListBox_OnPreviewMouseWheel" />
               </Border>
               <TextBlock x:Name="LicenseStatusCaptionTextBlock"
                          Grid.Row="4"

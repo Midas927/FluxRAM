@@ -27,4 +27,12 @@ public static class AppDataPaths
             "FluxRAM",
             "settings.json");
     }
+
+    public static string GetDiagnosticLogPath()
+    {
+        return Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "FluxRAM",
+            "fluxram.log");
+    }
 }

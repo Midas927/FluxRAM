@@ -32,10 +32,10 @@ public static class EditionDetailsCatalog
     public static string DialogTitleChinese => "FluxRAM 版本功能";
 
     public static string DialogSubtitleEnglish =>
-        "FluxRAM keeps the everyday workflow generous. Pro adds precision controls for heavier local workloads.";
+        "FluxRAM keeps the everyday workflow generous. Pro adds stronger controls for heavier local workloads.";
 
     public static string DialogSubtitleChinese =>
-        "FluxRAM 保留日常够用的核心体验，Pro 提供更精确的高负载保护能力。";
+        "FluxRAM 保留日常够用的核心体验，Pro 提供更强的重负载控制能力。";
 
     public static IReadOnlyList<EditionDetailsSection> Sections { get; } = new[]
     {
@@ -43,32 +43,34 @@ public static class EditionDetailsCatalog
             titleEnglish: "FluxRAM",
             titleChinese: "FluxRAM 普通版",
             bodyEnglish:
-                "- Light / Standard profiles\n" +
+                "- Daily and Gaming profiles\n" +
                 "- Boost Now and pressure-based Auto Boost\n" +
+                "- Extreme Close with user confirmation\n" +
                 "- Tray Boost and minimize-to-tray workflow\n" +
                 "- Add / remove protected apps\n" +
                 "- Choose protected apps from running processes\n" +
                 "- Basic process-name protection and clear memory metrics",
             bodyChinese:
-                "- 轻量 / 标准档位\n" +
-                "- 立即 Boost 与按内存压力触发的自动 Boost\n" +
+                "- Daily / Gaming 两种模式\n" +
+                "- 立即 Boost 与按内存压力触发的 Auto Boost\n" +
+                "- 用户确认后执行的 Extreme Close\n" +
                 "- 托盘 Boost 与最小化托盘工作流\n" +
                 "- 添加 / 删除受保护应用\n" +
-                "- 从正在运行的进程里选择保护应用\n" +
+                "- 从正在运行的进程中选择保护应用\n" +
                 "- 基础进程名保护与清晰内存指标"),
         new EditionDetailsSection(
             titleEnglish: "FluxRAM Pro",
             titleChinese: "FluxRAM Pro 专业版",
             bodyEnglish:
                 "- Everything in FluxRAM\n" +
-                "- Extreme Performance profile\n" +
+                "- Extreme profile\n" +
                 "- Exact EXE path protection\n" +
                 "- Child-process association protection\n" +
                 "- Visible-window recognition for target apps\n" +
                 "- Permanent activation on the current machine",
             bodyChinese:
                 "- 包含 FluxRAM 普通版全部功能\n" +
-                "- 极致性能档位\n" +
+                "- Extreme 模式\n" +
                 "- 精确 EXE 路径保护\n" +
                 "- 子进程关联保护\n" +
                 "- 目标应用可见窗口识别\n" +

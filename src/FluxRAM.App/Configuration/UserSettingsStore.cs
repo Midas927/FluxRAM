@@ -1,7 +1,9 @@
 using System.IO;
 using System.Text.Json;
+using FluxRAM.App.Diagnostics;
 using FluxRAM.App.Licensing;
 using FluxRAM.App.ViewModels;
+using FluxRAM.Core.Models;
 
 namespace FluxRAM.App.Configuration;
 
@@ -34,6 +36,23 @@ public sealed class UserSettingsStore
         return LoadSettings().StartupAutoBoost;
     }
 
+    public bool LoadAutoBoost()
+    {
+        return LoadSettings().AutoBoost;
+    }
+
+    public OptimizerProfile LoadProfile()
+    {
+        if (!Enum.TryParse<OptimizerProfile>(LoadSettings().ProfileCode, true, out var profile))
+        {
+            return OptimizerProfile.GamingHandheld;
+        }
+
+        return profile == OptimizerProfile.Balanced
+            ? OptimizerProfile.GamingHandheld
+            : profile;
+    }
+
     public void SaveLanguage(UiLanguage language)
     {
         var settings = LoadSettings();
@@ -55,6 +74,20 @@ public sealed class UserSettingsStore
         SaveSettings(settings);
     }
 
+    public void SaveAutoBoost(bool isEnabled)
+    {
+        var settings = LoadSettings();
+        settings.AutoBoost = isEnabled;
+        SaveSettings(settings);
+    }
+
+    public void SaveProfile(OptimizerProfile profile)
+    {
+        var settings = LoadSettings();
+        settings.ProfileCode = profile.ToString();
+        SaveSettings(settings);
+    }
+
     private UserSettings LoadSettings()
     {
         try
@@ -66,8 +99,9 @@ public sealed class UserSettingsStore
 
             return JsonSerializer.Deserialize<UserSettings>(File.ReadAllText(_path)) ?? new UserSettings();
         }
-        catch
+        catch (Exception ex)
         {
+            DiagnosticLog.Warning("Unable to load user settings.", ex);
             return new UserSettings();
         }
     }
@@ -84,8 +118,9 @@ public sealed class UserSettingsStore
 
             File.WriteAllText(_path, JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true }));
         }
-        catch
+        catch (Exception ex)
         {
+            DiagnosticLog.Warning("Unable to save user settings.", ex);
         }
     }
 
@@ -96,5 +131,9 @@ public sealed class UserSettingsStore
         public string? ThemeCode { get; set; }
 
         public bool StartupAutoBoost { get; set; }
+
+        public bool AutoBoost { get; set; }
+
+        public string? ProfileCode { get; set; }
     }
 }
