@@ -18,6 +18,7 @@ public static class NativeMethods
     public const uint SERVICE_QUERY_STATUS = 0x0004;
     public const uint SERVICE_STOP = 0x0020;
     public const uint SERVICE_CONTROL_STOP = 0x00000001;
+    public const uint SERVICE_ACCEPT_STOP = 0x00000001;
     public const int SC_STATUS_PROCESS_INFO = 0;
 
     public const int DWMWA_SYSTEMBACKDROP_TYPE = 38;
@@ -88,6 +89,14 @@ public static class NativeMethods
 
     [DllImport("user32.dll", SetLastError = true)]
     public static extern uint GetWindowThreadProcessId(IntPtr windowHandle, out uint processId);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool IsWindowVisible(IntPtr windowHandle);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool IsIconic(IntPtr windowHandle);
 
     [DllImport("dwmapi.dll")]
     public static extern int DwmSetWindowAttribute(

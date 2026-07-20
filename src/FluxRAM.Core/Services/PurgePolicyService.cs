@@ -22,89 +22,196 @@ public sealed class PurgePolicyService
     {
         var shouldBypassThreshold = settings.IgnoreMemoryPressureThreshold;
         var effectiveThreshold = CalculateEffectiveThreshold(memorySnapshot, settings);
-        if (!forcePurge && !shouldBypassThreshold && memorySnapshot.AvailablePhysicalMemoryBytes >= effectiveThreshold)
-        {
-            return new PurgePlan(
-                false,
-                $"Memory pressure is low; purge skipped. Available {FormatBytes(memorySnapshot.AvailablePhysicalMemoryBytes)} is above threshold {FormatBytes(effectiveThreshold)}.",
-                Array.Empty<ProcessSnapshot>());
-        }
-
-        var cooldown = TimeSpan.FromSeconds(settings.ProcessCooldownSeconds);
         var protectedNames = BuildProtectedNameSet(protectedProcessNames);
         if (settings.EnableGamingProcessProtection)
         {
             protectedNames.UnionWith(GamingProcessProtectionCatalog.ProcessNames);
         }
 
-        var protectedPaths = BuildProtectedPathSet(protectedProcessPaths);
-        var protectedTitleTokens = enableAdvancedProtection
-            ? BuildProtectedTitleTokens(protectedNames, protectedPaths)
-            : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var protectedRootProcessIds = enableAdvancedProtection
-            ? BuildProtectedRootProcessIds(snapshots, protectedNames, protectedPaths)
-            : new HashSet<int>();
-        var parentProcessIds = snapshots.ToDictionary(
-            snapshot => snapshot.ProcessId,
-            snapshot => snapshot.ParentProcessId);
+        var protectionContext = ProcessProtectionMatcher.CreateContext(
+            snapshots,
+            protectedNames,
+            protectedProcessPaths);
+        var protectionSummary = ProcessProtectionMatcher.Summarize(
+            snapshots,
+            protectionContext,
+            enableAdvancedProtection);
 
-        var orderedCandidates = snapshots
-            .Where(snapshot => settings.AllowForegroundProcessPurge || !snapshot.IsForeground)
-            .Where(snapshot => snapshot.WorkingSetBytes >= settings.MinimumCandidateWorkingSetBytes)
-            .Where(snapshot => snapshot.ColdnessScore >= settings.MinimumColdnessScore)
-            .Where(snapshot => !IsActivityRiskTooHigh(snapshot, settings))
-            .Where(snapshot => !IsProtectedSnapshot(
-                snapshot,
-                protectedNames,
-                protectedPaths,
-                protectedTitleTokens,
-                protectedRootProcessIds,
-                parentProcessIds,
-                enableAdvancedProtection))
-            .Where(snapshot => !IsInCooldown(snapshot.ProcessId, now, cooldown, lastPurgeTimesByProcessId))
-            .OrderByDescending(CalculateCandidatePriorityScore)
-            .ThenByDescending(snapshot => snapshot.WorkingSetBytes)
-            .ThenByDescending(snapshot => snapshot.ColdnessScore)
+        if (!forcePurge && !shouldBypassThreshold && memorySnapshot.AvailablePhysicalMemoryBytes >= effectiveThreshold)
+        {
+            return new PurgePlan(
+                false,
+                $"Memory pressure is low; purge skipped. Available {FormatBytes(memorySnapshot.AvailablePhysicalMemoryBytes)} is above threshold {FormatBytes(effectiveThreshold)}.",
+                Array.Empty<ProcessSnapshot>(),
+                protectionSummary);
+        }
+
+        var cooldown = TimeSpan.FromSeconds(settings.ProcessCooldownSeconds);
+
+        var assessedGroups = BuildCandidateGroups(snapshots, settings)
+            .Select(group => new CandidateGroupAssessment(
+                group,
+                GetRejectionReason(
+                    group,
+                    settings,
+                    now,
+                    cooldown,
+                    protectionContext,
+                    lastPurgeTimesByProcessId,
+                    enableAdvancedProtection)))
+            .ToArray();
+        var orderedGroups = assessedGroups
+            .Where(assessment => assessment.RejectionReason == CandidateGroupRejectionReason.None)
+            .Select(assessment => assessment.Group)
+            .OrderByDescending(group => CalculateCandidatePriorityScore(ToAggregateSnapshot(group)))
+            .ThenByDescending(group => group.WorkingSetBytes)
+            .ThenByDescending(group => group.ColdnessScore)
             .ToArray();
 
         var effectiveCandidateLimit = CalculateEffectiveCandidateLimit(
             settings,
             memorySnapshot,
             effectiveThreshold,
-            orderedCandidates.Length);
-        var candidates = effectiveCandidateLimit <= 0
-            ? orderedCandidates
-            : orderedCandidates
+            orderedGroups.Length);
+        var candidateGroups = effectiveCandidateLimit <= 0
+            ? orderedGroups
+            : orderedGroups
                 .Take(effectiveCandidateLimit)
                 .ToArray();
+        var candidates = candidateGroups
+            .SelectMany(group => group.Processes)
+            .ToArray();
 
         if (candidates.Length == 0)
         {
             return new PurgePlan(
                 false,
-                BuildNoEligibleProcessMessage(
-                    snapshots,
-                    settings,
-                    now,
-                    cooldown,
-                    protectedNames,
-                    protectedPaths,
-                    protectedTitleTokens,
-                    protectedRootProcessIds,
-                    parentProcessIds,
-                    lastPurgeTimesByProcessId,
-                    enableAdvancedProtection),
-                candidates);
+                BuildNoEligibleProcessMessage(snapshots, assessedGroups),
+                candidates,
+                protectionSummary,
+                Array.Empty<PurgeCandidateGroup>());
         }
 
         return new PurgePlan(
             true,
             forcePurge
-                ? $"Boost Now plan with {candidates.Length} candidate(s)."
+                ? $"Boost Now plan with {candidateGroups.Length} application(s), {candidates.Length} process(es)."
                 : shouldBypassThreshold
-                    ? $"Extreme bypassed threshold with {candidates.Length} candidate(s)."
-                : $"Purge plan ready with {candidates.Length} candidate(s), coldness >= {settings.MinimumColdnessScore:0}.",
-            candidates);
+                    ? $"Extreme bypassed threshold with {candidateGroups.Length} application(s), {candidates.Length} process(es)."
+                : $"Purge plan ready with {candidateGroups.Length} application(s), {candidates.Length} process(es), coldness >= {settings.MinimumColdnessScore:0}.",
+            candidates,
+            protectionSummary,
+            candidateGroups);
+    }
+
+    private static IReadOnlyList<PurgeCandidateGroup> BuildCandidateGroups(
+        IReadOnlyList<ProcessSnapshot> snapshots,
+        OptimizerSettings settings)
+    {
+        var minimumProcessWorkingSetBytes = Math.Max(1L, settings.MinimumGroupedProcessWorkingSetBytes);
+        return ProcessApplicationFamilyGrouper.Group(snapshots)
+            .Select(family => CreateCandidateGroup(family, minimumProcessWorkingSetBytes))
+            .ToArray();
+    }
+
+    private static PurgeCandidateGroup CreateCandidateGroup(
+        ProcessApplicationFamily family,
+        long minimumProcessWorkingSetBytes)
+    {
+        var observedProcesses = family.Processes.ToArray();
+        var targetProcesses = observedProcesses
+            .Where(snapshot => snapshot.WorkingSetBytes >= minimumProcessWorkingSetBytes)
+            .OrderByDescending(snapshot => snapshot.WorkingSetBytes)
+            .ThenBy(snapshot => snapshot.ProcessId)
+            .ToArray();
+        var workingSetBytes = observedProcesses.Sum(snapshot => Math.Max(0L, snapshot.WorkingSetBytes));
+        var cpuUsagePercent = observedProcesses.Sum(snapshot => Math.Max(0d, snapshot.CpuUsagePercent));
+        var ioBytesPerSecond = observedProcesses.Sum(snapshot => Math.Max(0d, snapshot.IoBytesPerSecond));
+
+        return new PurgeCandidateGroup(
+            family.DisplayName,
+            observedProcesses.Select(snapshot => snapshot.ExecutablePath).FirstOrDefault(path => !string.IsNullOrWhiteSpace(path)),
+            targetProcesses,
+            observedProcesses,
+            workingSetBytes,
+            cpuUsagePercent,
+            ioBytesPerSecond,
+            CalculateWeightedColdness(observedProcesses),
+            observedProcesses.Any(snapshot => snapshot.IsForeground),
+            observedProcesses.Any(snapshot => snapshot.HasVisibleWindow));
+    }
+
+    private static double CalculateWeightedColdness(IReadOnlyList<ProcessSnapshot> snapshots)
+    {
+        var totalWeight = snapshots.Sum(snapshot => Math.Max(1L, snapshot.WorkingSetBytes));
+        if (totalWeight <= 0)
+        {
+            return 0d;
+        }
+
+        var weightedScore = snapshots.Sum(snapshot =>
+            snapshot.ColdnessScore * Math.Max(1L, snapshot.WorkingSetBytes));
+        return Math.Clamp(weightedScore / totalWeight, 0d, 100d);
+    }
+
+    private static CandidateGroupRejectionReason GetRejectionReason(
+        PurgeCandidateGroup group,
+        OptimizerSettings settings,
+        DateTimeOffset now,
+        TimeSpan cooldown,
+        ProcessProtectionContext protectionContext,
+        IReadOnlyDictionary<int, DateTimeOffset> lastPurgeTimesByProcessId,
+        bool enableAdvancedProtection)
+    {
+        if (!settings.AllowForegroundProcessPurge && group.HasForegroundProcess)
+        {
+            return CandidateGroupRejectionReason.Foreground;
+        }
+
+        if (group.WorkingSetBytes < settings.MinimumCandidateWorkingSetBytes || group.Processes.Count == 0)
+        {
+            return CandidateGroupRejectionReason.TooSmall;
+        }
+
+        if (group.ColdnessScore < settings.MinimumColdnessScore)
+        {
+            return CandidateGroupRejectionReason.NotCold;
+        }
+
+        if (IsActivityRiskTooHigh(ToAggregateSnapshot(group), settings))
+        {
+            return CandidateGroupRejectionReason.Active;
+        }
+
+        if (group.ObservedProcesses.Any(snapshot => ProcessProtectionMatcher.Match(
+                snapshot,
+                protectionContext,
+                enableAdvancedProtection) != ProcessProtectionMatch.None))
+        {
+            return CandidateGroupRejectionReason.Protected;
+        }
+
+        return group.Processes.Any(snapshot => IsInCooldown(
+                snapshot.ProcessId,
+                now,
+                cooldown,
+                lastPurgeTimesByProcessId))
+            ? CandidateGroupRejectionReason.Cooldown
+            : CandidateGroupRejectionReason.None;
+    }
+
+    private static ProcessSnapshot ToAggregateSnapshot(PurgeCandidateGroup group)
+    {
+        return new ProcessSnapshot(
+            group.Processes.FirstOrDefault().ProcessId,
+            group.ProcessName,
+            group.WorkingSetBytes,
+            group.HasForegroundProcess,
+            group.CpuUsagePercent,
+            group.HasVisibleWindow,
+            group.ColdnessScore,
+            group.ExecutablePath,
+            group.IoBytesPerSecond);
     }
 
     private static HashSet<string> BuildProtectedNameSet(IReadOnlyCollection<string>? protectedProcessNames)
@@ -125,59 +232,6 @@ public sealed class PurgePolicyService
         }
 
         return normalized;
-    }
-
-    private static HashSet<string> BuildProtectedPathSet(IReadOnlyCollection<string>? protectedProcessPaths)
-    {
-        var normalized = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        if (protectedProcessPaths is null)
-        {
-            return normalized;
-        }
-
-        foreach (var processPath in protectedProcessPaths)
-        {
-            var normalizedPath = NormalizePath(processPath);
-            if (normalizedPath.Length > 0)
-            {
-                normalized.Add(normalizedPath);
-            }
-        }
-
-        return normalized;
-    }
-
-    private static HashSet<int> BuildProtectedRootProcessIds(
-        IReadOnlyList<ProcessSnapshot> snapshots,
-        IReadOnlySet<string> protectedNames,
-        IReadOnlySet<string> protectedPaths)
-    {
-        return snapshots
-            .Where(snapshot =>
-                protectedNames.Contains(NormalizeProcessName(snapshot.ProcessName)) ||
-                IsProtectedByPath(snapshot.ExecutablePath, protectedPaths))
-            .Select(snapshot => snapshot.ProcessId)
-            .ToHashSet();
-    }
-
-    private static HashSet<string> BuildProtectedTitleTokens(
-        IReadOnlySet<string> protectedNames,
-        IReadOnlySet<string> protectedPaths)
-    {
-        var tokens = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var protectedName in protectedNames)
-        {
-            AddTitleToken(tokens, protectedName);
-        }
-
-        foreach (var protectedPath in protectedPaths)
-        {
-            AddTitleToken(tokens, Path.GetFileNameWithoutExtension(protectedPath));
-            var directoryName = Path.GetFileName(Path.GetDirectoryName(protectedPath));
-            AddTitleToken(tokens, directoryName);
-        }
-
-        return tokens;
     }
 
     private static ulong CalculateEffectiveThreshold(MemorySnapshot memorySnapshot, OptimizerSettings settings)
@@ -295,85 +349,31 @@ public sealed class PurgePolicyService
 
     private static string BuildNoEligibleProcessMessage(
         IReadOnlyList<ProcessSnapshot> snapshots,
-        OptimizerSettings settings,
-        DateTimeOffset now,
-        TimeSpan cooldown,
-        IReadOnlySet<string> protectedNames,
-        IReadOnlySet<string> protectedPaths,
-        IReadOnlySet<string> protectedTitleTokens,
-        IReadOnlySet<int> protectedRootProcessIds,
-        IReadOnlyDictionary<int, int?> parentProcessIds,
-        IReadOnlyDictionary<int, DateTimeOffset> lastPurgeTimesByProcessId,
-        bool enableAdvancedProtection)
+        IReadOnlyList<CandidateGroupAssessment> assessedGroups)
     {
         if (snapshots.Count == 0)
         {
             return "No eligible process met safety criteria: no user processes could be scanned.";
         }
 
-        var foreground = 0;
-        var tooSmall = 0;
-        var notCold = 0;
-        var active = 0;
-        var protectedCount = 0;
-        var cooldownCount = 0;
-
-        foreach (var snapshot in snapshots)
-        {
-            if (!settings.AllowForegroundProcessPurge && snapshot.IsForeground)
-            {
-                foreground += 1;
-                continue;
-            }
-
-            if (snapshot.WorkingSetBytes < settings.MinimumCandidateWorkingSetBytes)
-            {
-                tooSmall += 1;
-                continue;
-            }
-
-            if (snapshot.ColdnessScore < settings.MinimumColdnessScore)
-            {
-                notCold += 1;
-                continue;
-            }
-
-            if (IsActivityRiskTooHigh(snapshot, settings))
-            {
-                active += 1;
-                continue;
-            }
-
-            if (IsProtectedSnapshot(
-                snapshot,
-                protectedNames,
-                protectedPaths,
-                protectedTitleTokens,
-                protectedRootProcessIds,
-                parentProcessIds,
-                enableAdvancedProtection))
-            {
-                protectedCount += 1;
-                continue;
-            }
-
-            if (IsInCooldown(snapshot.ProcessId, now, cooldown, lastPurgeTimesByProcessId))
-            {
-                cooldownCount += 1;
-            }
-        }
-
         var reasons = new List<string>();
-        AddReason(reasons, foreground, "foreground");
-        AddReason(reasons, tooSmall, "below size threshold");
-        AddReason(reasons, notCold, "not cold enough");
-        AddReason(reasons, active, "active CPU/I/O");
-        AddReason(reasons, protectedCount, "protected");
-        AddReason(reasons, cooldownCount, "cooldown");
+        AddReason(reasons, CountRejected(assessedGroups, CandidateGroupRejectionReason.Foreground), "foreground application(s)");
+        AddReason(reasons, CountRejected(assessedGroups, CandidateGroupRejectionReason.TooSmall), "below size threshold");
+        AddReason(reasons, CountRejected(assessedGroups, CandidateGroupRejectionReason.NotCold), "not cold enough");
+        AddReason(reasons, CountRejected(assessedGroups, CandidateGroupRejectionReason.Active), "active CPU/I/O");
+        AddReason(reasons, CountRejected(assessedGroups, CandidateGroupRejectionReason.Protected), "protected");
+        AddReason(reasons, CountRejected(assessedGroups, CandidateGroupRejectionReason.Cooldown), "cooldown");
 
         return reasons.Count == 0
             ? "No eligible process met safety criteria: no safe background candidate remained."
             : $"No eligible process met safety criteria: {string.Join(", ", reasons)}.";
+    }
+
+    private static int CountRejected(
+        IReadOnlyList<CandidateGroupAssessment> assessedGroups,
+        CandidateGroupRejectionReason reason)
+    {
+        return assessedGroups.Count(assessment => assessment.RejectionReason == reason);
     }
 
     private static void AddReason(ICollection<string> reasons, int count, string label)
@@ -407,114 +407,19 @@ public sealed class PurgePolicyService
         return normalized.ToLowerInvariant();
     }
 
-    private static bool IsProtectedByPath(string? executablePath, IReadOnlySet<string> protectedPaths)
-    {
-        if (string.IsNullOrWhiteSpace(executablePath))
-        {
-            return false;
-        }
+    private readonly record struct CandidateGroupAssessment(
+        PurgeCandidateGroup Group,
+        CandidateGroupRejectionReason RejectionReason);
 
-        return protectedPaths.Contains(NormalizePath(executablePath));
+    private enum CandidateGroupRejectionReason
+    {
+        None,
+        Foreground,
+        TooSmall,
+        NotCold,
+        Active,
+        Protected,
+        Cooldown
     }
 
-    private static bool IsProtectedSnapshot(
-        ProcessSnapshot snapshot,
-        IReadOnlySet<string> protectedNames,
-        IReadOnlySet<string> protectedPaths,
-        IReadOnlySet<string> protectedTitleTokens,
-        IReadOnlySet<int> protectedRootProcessIds,
-        IReadOnlyDictionary<int, int?> parentProcessIds,
-        bool enableAdvancedProtection)
-    {
-        if (protectedNames.Contains(NormalizeProcessName(snapshot.ProcessName)))
-        {
-            return true;
-        }
-
-        if (!enableAdvancedProtection)
-        {
-            return false;
-        }
-
-        return
-            IsProtectedByPath(snapshot.ExecutablePath, protectedPaths) ||
-            IsDescendantOfProtectedRoot(snapshot, protectedRootProcessIds, parentProcessIds) ||
-            (snapshot.HasVisibleWindow && IsProtectedByWindowTitle(snapshot.MainWindowTitle, protectedTitleTokens));
-    }
-
-    private static bool IsDescendantOfProtectedRoot(
-        ProcessSnapshot snapshot,
-        IReadOnlySet<int> protectedRootProcessIds,
-        IReadOnlyDictionary<int, int?> parentProcessIds)
-    {
-        var seenProcessIds = new HashSet<int> { snapshot.ProcessId };
-        var parentProcessId = snapshot.ParentProcessId;
-        for (var depth = 0; depth < 16 && parentProcessId.HasValue; depth += 1)
-        {
-            if (protectedRootProcessIds.Contains(parentProcessId.Value))
-            {
-                return true;
-            }
-
-            if (!seenProcessIds.Add(parentProcessId.Value))
-            {
-                return false;
-            }
-
-            parentProcessId = parentProcessIds.TryGetValue(parentProcessId.Value, out var nextParentProcessId)
-                ? nextParentProcessId
-                : null;
-        }
-
-        return false;
-    }
-
-    private static bool IsProtectedByWindowTitle(string? mainWindowTitle, IReadOnlySet<string> protectedTitleTokens)
-    {
-        if (string.IsNullOrWhiteSpace(mainWindowTitle) || protectedTitleTokens.Count == 0)
-        {
-            return false;
-        }
-
-        var normalizedTitle = NormalizeSearchToken(mainWindowTitle);
-        return protectedTitleTokens.Any(token => normalizedTitle.Contains(token, StringComparison.OrdinalIgnoreCase));
-    }
-
-    private static void AddTitleToken(ISet<string> tokens, string? rawToken)
-    {
-        var token = NormalizeSearchToken(rawToken);
-        if (token.Length >= 4 && !IsGenericTitleToken(token))
-        {
-            tokens.Add(token);
-        }
-    }
-
-    private static bool IsGenericTitleToken(string token)
-    {
-        return token is "app" or "game" or "client" or "helper" or "launcher" or "setup" or "update" or "updater";
-    }
-
-    private static string NormalizeSearchToken(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return string.Empty;
-        }
-
-        var chars = value
-            .Where(char.IsLetterOrDigit)
-            .Select(char.ToLowerInvariant)
-            .ToArray();
-        return new string(chars);
-    }
-
-    private static string NormalizePath(string path)
-    {
-        if (string.IsNullOrWhiteSpace(path))
-        {
-            return string.Empty;
-        }
-
-        return path.Trim().Replace('/', '\\').ToLowerInvariant();
-    }
 }

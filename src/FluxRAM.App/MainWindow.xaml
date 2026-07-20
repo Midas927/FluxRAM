@@ -196,6 +196,18 @@
       <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
     </Style>
 
+    <Style x:Key="DeepReleaseButtonStyle" TargetType="Button" BasedOn="{StaticResource BaseButtonStyle}">
+      <Setter Property="Background" Value="{DynamicResource SurfaceSoftBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+    </Style>
+
+    <Style x:Key="DeepReleaseLockedButtonStyle" TargetType="Button" BasedOn="{StaticResource BaseButtonStyle}">
+      <Setter Property="Background" Value="{DynamicResource SurfaceSoftBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource WarningBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource WarningBrush}" />
+    </Style>
+
     <Style x:Key="IconButtonStyle" TargetType="Button" BasedOn="{StaticResource BaseButtonStyle}">
       <Setter Property="Width" Value="18" />
       <Setter Property="Height" Value="18" />
@@ -449,10 +461,6 @@
                           Header="Light Theme"
                           Click="ThemeMenuItem_OnClick" />
                 <Separator />
-                <MenuItem x:Name="ExtremeCloseMenuItem"
-                          Header="Extreme Close"
-                          Click="ExtremeCloseMenuItem_OnClick" />
-                <Separator />
                 <MenuItem x:Name="DiagnosticLogMenuItem"
                           Header="Diagnostic Log"
                           Click="DiagnosticLogMenuItem_OnClick" />
@@ -545,6 +553,8 @@
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="10" />
             <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="10" />
+            <ColumnDefinition Width="*" />
           </Grid.ColumnDefinitions>
           <Button x:Name="BoostNowButton"
                   Grid.Column="0"
@@ -554,8 +564,16 @@
                   Style="{StaticResource PrimaryButtonStyle}"
                   Content="Boost Now"
                   Click="BoostNowButton_OnClick" />
+          <Button x:Name="DeepReleaseButton"
+                  Grid.Column="2"
+                  Height="44"
+                  FontSize="13"
+                  FontWeight="Bold"
+                  Style="{StaticResource DeepReleaseButtonStyle}"
+                  Content="Deep Release"
+                  Click="DeepReleaseButton_OnClick" />
           <ToggleButton x:Name="AutoBoostToggle"
-                        Grid.Column="2"
+                        Grid.Column="4"
                         Style="{StaticResource ToggleBoostStyle}"
                         Content="Auto Boost"
                         Checked="AutoBoostToggle_OnChecked"
@@ -589,6 +607,8 @@
             <Grid.RowDefinitions>
               <RowDefinition Height="Auto" />
               <RowDefinition Height="10" />
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="8" />
               <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
@@ -658,6 +678,16 @@
                          VerticalAlignment="Center"
                          Text="Pro edition unlocks app protection." />
             </Border>
+
+            <TextBlock x:Name="ProProtectionSummaryTextBlock"
+                       Grid.Row="4"
+                       Grid.ColumnSpan="2"
+                       FontSize="12"
+                       FontWeight="SemiBold"
+                       Foreground="{DynamicResource AccentBrush}"
+                       Text="{Binding ProProtectionSummaryDisplay}"
+                       TextWrapping="Wrap"
+                       Visibility="Collapsed" />
           </Grid>
         </Border>
 

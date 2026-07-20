@@ -12,10 +12,10 @@ public sealed class EditionDetailsCatalogTests
         Assert.Contains(EditionDetailsCatalog.Sections, section =>
             section.TitleEnglish == "FluxRAM" &&
             section.BodyEnglish.Contains("Daily and Gaming", StringComparison.Ordinal) &&
-            !section.BodyEnglish.Contains("Extreme Close", StringComparison.Ordinal));
+            !section.BodyEnglish.Contains("Deep Release", StringComparison.Ordinal));
         Assert.Contains(EditionDetailsCatalog.Sections, section =>
             section.TitleEnglish == "FluxRAM Pro" &&
-            section.BodyEnglish.Contains("Extreme Close", StringComparison.Ordinal) &&
+            section.BodyEnglish.Contains("Deep Release", StringComparison.Ordinal) &&
             section.BodyEnglish.Contains("Exact EXE path protection", StringComparison.Ordinal));
     }
 
@@ -29,6 +29,7 @@ public sealed class EditionDetailsCatalogTests
             section.BodyChinese.Contains("Daily / Gaming", StringComparison.Ordinal));
         Assert.Contains(EditionDetailsCatalog.Sections, section =>
             section.TitleChinese.Contains("专业版", StringComparison.Ordinal) &&
-            section.BodyChinese.Contains("精确 EXE 路径保护", StringComparison.Ordinal));
+            section.BodyChinese.Contains("深度释放", StringComparison.Ordinal) &&
+            section.BodyChinese.Contains("智能关联保护", StringComparison.Ordinal));
     }
 }

@@ -28,7 +28,7 @@ public sealed class ProtectedAppDisplayFormatterTests
             UiLanguage.English);
 
         Assert.Single(entries);
-        Assert.Contains("Pro advanced protection", entries[0].DisplayText);
-        Assert.Contains("path + child + window", entries[0].DisplayText);
+        Assert.Contains("Smart association protection", entries[0].DisplayText);
+        Assert.Contains("exact path + child + related app", entries[0].DisplayText);
     }
 }

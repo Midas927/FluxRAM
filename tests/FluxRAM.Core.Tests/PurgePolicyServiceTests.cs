@@ -501,4 +501,191 @@ public sealed class PurgePolicyServiceTests
         Assert.True(plan.ShouldPurge);
         Assert.Equal(3, plan.Candidates.Count);
     }
+
+    [Fact]
+    public void CreatePlan_AggregatesFragmentedProcessesFromSameApplication()
+    {
+        var service = new PurgePolicyService();
+        var settings = OptimizerSettings.SafeDefaults() with
+        {
+            IgnoreMemoryPressureThreshold = true,
+            MinimumCandidateWorkingSetBytes = 160L * 1024 * 1024,
+            MinimumGroupedProcessWorkingSetBytes = 8L * 1024 * 1024,
+            MinimumColdnessScore = 50
+        };
+        var snapshots = new[]
+        {
+            new ProcessSnapshot(701, "chrome", 52L * 1024 * 1024, false, ColdnessScore: 88, ExecutablePath: @"C:\Program Files\Google\Chrome\chrome.exe"),
+            new ProcessSnapshot(702, "chrome", 48L * 1024 * 1024, false, ColdnessScore: 84, ExecutablePath: @"C:\Program Files\Google\Chrome\chrome.exe"),
+            new ProcessSnapshot(703, "chrome", 46L * 1024 * 1024, false, ColdnessScore: 82, ExecutablePath: @"C:\Program Files\Google\Chrome\chrome.exe"),
+            new ProcessSnapshot(704, "chrome", 44L * 1024 * 1024, false, ColdnessScore: 80, ExecutablePath: @"C:\Program Files\Google\Chrome\chrome.exe")
+        };
+
+        var plan = service.CreatePlan(
+            snapshots,
+            new MemorySnapshot(4UL * 1024 * 1024 * 1024, 16UL * 1024 * 1024 * 1024, 75),
+            settings,
+            DateTimeOffset.UtcNow,
+            new Dictionary<int, DateTimeOffset>());
+
+        Assert.True(plan.ShouldPurge);
+        Assert.Equal(4, plan.Candidates.Count);
+        var group = Assert.Single(plan.CandidateGroups);
+        Assert.Equal("chrome", group.ProcessName);
+        Assert.Equal(190L * 1024 * 1024, group.WorkingSetBytes);
+        Assert.Equal(new[] { 701, 702, 703, 704 }, group.Processes.Select(snapshot => snapshot.ProcessId));
+    }
+
+    [Fact]
+    public void CreatePlan_CountsApplicationGroupsInsteadOfChildProcessesAgainstLimit()
+    {
+        var service = new PurgePolicyService();
+        var settings = OptimizerSettings.SafeDefaults() with
+        {
+            IgnoreMemoryPressureThreshold = true,
+            MaxPurgeTargetsPerPass = 1,
+            MinimumCandidateWorkingSetBytes = 100L * 1024 * 1024,
+            MinimumGroupedProcessWorkingSetBytes = 8L * 1024 * 1024,
+            MinimumColdnessScore = 50
+        };
+        var snapshots = new[]
+        {
+            new ProcessSnapshot(711, "browser", 90L * 1024 * 1024, false, ColdnessScore: 86, ExecutablePath: @"C:\Apps\Browser\browser.exe"),
+            new ProcessSnapshot(712, "browser", 80L * 1024 * 1024, false, ColdnessScore: 84, ExecutablePath: @"C:\Apps\Browser\browser.exe"),
+            new ProcessSnapshot(713, "browser", 70L * 1024 * 1024, false, ColdnessScore: 82, ExecutablePath: @"C:\Apps\Browser\browser.exe"),
+            new ProcessSnapshot(714, "editor", 180L * 1024 * 1024, false, ColdnessScore: 80, ExecutablePath: @"C:\Apps\Editor\editor.exe")
+        };
+
+        var plan = service.CreatePlan(
+            snapshots,
+            new MemorySnapshot(4UL * 1024 * 1024 * 1024, 16UL * 1024 * 1024 * 1024, 75),
+            settings,
+            DateTimeOffset.UtcNow,
+            new Dictionary<int, DateTimeOffset>());
+
+        var group = Assert.Single(plan.CandidateGroups);
+        Assert.Equal("browser", group.ProcessName);
+        Assert.Equal(3, plan.Candidates.Count);
+    }
+
+    [Fact]
+    public void CreatePlan_SkipsWholeApplicationGroupWhenOneMemberIsForeground()
+    {
+        var service = new PurgePolicyService();
+        var settings = OptimizerSettings.SafeDefaults() with
+        {
+            IgnoreMemoryPressureThreshold = true,
+            MinimumCandidateWorkingSetBytes = 100L * 1024 * 1024,
+            MinimumGroupedProcessWorkingSetBytes = 8L * 1024 * 1024,
+            MinimumColdnessScore = 40
+        };
+        var snapshots = new[]
+        {
+            new ProcessSnapshot(721, "browser", 70L * 1024 * 1024, true, ColdnessScore: 60, ExecutablePath: @"C:\Apps\Browser\browser.exe"),
+            new ProcessSnapshot(722, "browser", 180L * 1024 * 1024, false, ColdnessScore: 90, ExecutablePath: @"C:\Apps\Browser\browser.exe"),
+            new ProcessSnapshot(723, "chat", 150L * 1024 * 1024, false, ColdnessScore: 82, ExecutablePath: @"C:\Apps\Chat\chat.exe")
+        };
+
+        var plan = service.CreatePlan(
+            snapshots,
+            new MemorySnapshot(4UL * 1024 * 1024 * 1024, 16UL * 1024 * 1024 * 1024, 75),
+            settings,
+            DateTimeOffset.UtcNow,
+            new Dictionary<int, DateTimeOffset>());
+
+        var group = Assert.Single(plan.CandidateGroups);
+        Assert.Equal("chat", group.ProcessName);
+        Assert.Single(plan.Candidates);
+        Assert.Equal(723, plan.Candidates[0].ProcessId);
+    }
+
+    [Fact]
+    public void CreatePlan_SkipsApplicationGroupWithHighAggregateActivity()
+    {
+        var service = new PurgePolicyService();
+        var settings = OptimizerSettings.SafeDefaults() with
+        {
+            IgnoreMemoryPressureThreshold = true,
+            MinimumCandidateWorkingSetBytes = 100L * 1024 * 1024,
+            MinimumGroupedProcessWorkingSetBytes = 8L * 1024 * 1024,
+            MinimumColdnessScore = 40
+        };
+        var snapshots = new[]
+        {
+            new ProcessSnapshot(731, "renderer", 80L * 1024 * 1024, false, CpuUsagePercent: 3, ColdnessScore: 80, ExecutablePath: @"C:\Apps\Renderer\renderer.exe"),
+            new ProcessSnapshot(732, "renderer", 80L * 1024 * 1024, false, CpuUsagePercent: 3, ColdnessScore: 80, ExecutablePath: @"C:\Apps\Renderer\renderer.exe"),
+            new ProcessSnapshot(733, "renderer", 80L * 1024 * 1024, false, CpuUsagePercent: 3, ColdnessScore: 80, ExecutablePath: @"C:\Apps\Renderer\renderer.exe"),
+            new ProcessSnapshot(734, "idle", 140L * 1024 * 1024, false, CpuUsagePercent: 0.1, ColdnessScore: 82, ExecutablePath: @"C:\Apps\Idle\idle.exe")
+        };
+
+        var plan = service.CreatePlan(
+            snapshots,
+            new MemorySnapshot(4UL * 1024 * 1024 * 1024, 16UL * 1024 * 1024 * 1024, 75),
+            settings,
+            DateTimeOffset.UtcNow,
+            new Dictionary<int, DateTimeOffset>());
+
+        var group = Assert.Single(plan.CandidateGroups);
+        Assert.Equal("idle", group.ProcessName);
+        Assert.Single(plan.Candidates);
+    }
+
+    [Fact]
+    public void CreatePlan_DoesNotMergeSameProcessNameAcrossDifferentPaths()
+    {
+        var service = new PurgePolicyService();
+        var settings = OptimizerSettings.SafeDefaults() with
+        {
+            IgnoreMemoryPressureThreshold = true,
+            MinimumCandidateWorkingSetBytes = 160L * 1024 * 1024,
+            MinimumGroupedProcessWorkingSetBytes = 8L * 1024 * 1024,
+            MinimumColdnessScore = 40
+        };
+        var snapshots = new[]
+        {
+            new ProcessSnapshot(741, "helper", 90L * 1024 * 1024, false, ColdnessScore: 85, ExecutablePath: @"C:\Apps\One\helper.exe"),
+            new ProcessSnapshot(742, "helper", 90L * 1024 * 1024, false, ColdnessScore: 85, ExecutablePath: @"C:\Apps\Two\helper.exe")
+        };
+
+        var plan = service.CreatePlan(
+            snapshots,
+            new MemorySnapshot(4UL * 1024 * 1024 * 1024, 16UL * 1024 * 1024 * 1024, 75),
+            settings,
+            DateTimeOffset.UtcNow,
+            new Dictionary<int, DateTimeOffset>());
+
+        Assert.False(plan.ShouldPurge);
+        Assert.Empty(plan.Candidates);
+        Assert.Empty(plan.CandidateGroups);
+    }
+
+    [Fact]
+    public void CreatePlan_AggregatesDifferentExecutablesFromSameApplicationFamily()
+    {
+        var service = new PurgePolicyService();
+        var settings = OptimizerSettings.SafeDefaults() with
+        {
+            IgnoreMemoryPressureThreshold = true,
+            MinimumCandidateWorkingSetBytes = 100L * 1024 * 1024,
+            MinimumGroupedProcessWorkingSetBytes = 8L * 1024 * 1024,
+            MinimumColdnessScore = 50
+        };
+        var snapshots = new[]
+        {
+            new ProcessSnapshot(751, "Marvis", 45L * 1024 * 1024, false, ColdnessScore: 85, ExecutablePath: @"C:\Apps\Marvis\Marvis.exe"),
+            new ProcessSnapshot(752, "MarvisAgent", 38L * 1024 * 1024, false, ColdnessScore: 84, ExecutablePath: @"C:\Apps\Marvis\MarvisAgent.exe"),
+            new ProcessSnapshot(753, "MarvisHost", 35L * 1024 * 1024, false, ColdnessScore: 83, ExecutablePath: @"C:\Apps\Marvis\MarvisHost.exe")
+        };
+
+        var plan = service.CreatePlan(
+            snapshots,
+            new MemorySnapshot(4UL * 1024 * 1024 * 1024, 16UL * 1024 * 1024 * 1024, 75),
+            settings,
+            DateTimeOffset.UtcNow,
+            new Dictionary<int, DateTimeOffset>());
+
+        var group = Assert.Single(plan.CandidateGroups);
+        Assert.Equal("Marvis", group.ProcessName);
+        Assert.Equal(3, group.Processes.Count);
+    }
 }

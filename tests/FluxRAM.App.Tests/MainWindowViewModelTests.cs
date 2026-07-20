@@ -54,6 +54,25 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
+    public void UpdateProProtectionSummary_ShowsTangibleAssociationResults()
+    {
+        var viewModel = new MainWindowViewModel();
+
+        viewModel.UpdateProProtectionSummary(
+            new ProcessProtectionSummary(1, 0, 2, 1),
+            isPro: true);
+
+        Assert.Equal(
+            "Pro Guard: protected 4 processes (name 1, child 2, related window 1).",
+            viewModel.ProProtectionSummaryDisplay);
+
+        viewModel.SetLanguage(UiLanguage.ChineseSimplified);
+        Assert.Equal(
+            "Pro 守护：已保护 4 个进程（名称 1、子进程 2、关联窗口 1）。",
+            viewModel.ProProtectionSummaryDisplay);
+    }
+
+    [Fact]
     public void UpdateProtectedEntries_ReplacesEntries()
     {
         var viewModel = new MainWindowViewModel();

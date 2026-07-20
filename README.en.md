@@ -40,8 +40,9 @@ These screenshots show FluxRAM running next to Windows Task Manager. Results var
 | --- | --- | --- |
 | Boost Now | Yes | Yes |
 | Auto Boost when memory pressure rises | Yes | Yes |
-| Light / Standard profiles | Yes | Yes |
+| Daily / Gaming profiles | Yes | Yes |
 | Extreme Performance profile | No | Yes |
+| Deep Release and background service guidance | No | Yes |
 | Tray resident mode and tray Boost | Yes | Yes |
 | Add / remove protected apps | Yes | Yes |
 | Pick protected apps from running processes | Yes | Yes |
@@ -56,7 +57,7 @@ The free edition is meant to feel complete for everyday use:
 
 1. `Boost Now`: run a memory Boost when you need it.
 2. `Auto Boost`: trigger automatically when memory pressure becomes high.
-3. `Light` / `Standard`: conservative profiles for gaming, office work, local AI and creator workloads.
+3. `Daily` / `Gaming`: conservative profiles for office work, gaming, local AI and creator workloads.
 4. Protected app list: add, remove, or pick apps directly from running processes.
 5. Tray workflow: minimize to tray and run Boost from the tray menu.
 6. Visible metrics: RAM delta, available memory, recent trimmed memory, total trimmed memory, net gain and FluxRAM's own overhead.
@@ -66,10 +67,11 @@ The free edition is meant to feel complete for everyday use:
 Pro is for heavier local workloads and more precise protection needs:
 
 1. `Extreme Performance` profile.
-2. Exact EXE path protection to reduce false matches between processes with the same name.
-3. Child-process association protection for launchers, game clients, local AI toolchains and creator apps.
-4. Window recognition protection for apps with unstable process names or wrapper launchers.
-5. Permanent activation on the current computer, with no online verification required after activation.
+2. Deep Release for grouped background processes, idle-state detection and user-confirmed closing.
+3. Classification and stop guidance for optional background services.
+4. Exact EXE path protection to reduce false matches between processes with the same name.
+5. Smart child-process and related-app protection.
+6. Permanent activation on the current computer, with no online verification required after activation.
 
 ## Pro Activation
 
