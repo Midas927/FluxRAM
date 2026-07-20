@@ -42,7 +42,8 @@ public sealed class ServiceKillerService
                     relatedNames))
                 .Where(candidate => candidate is not null)
                 .Cast<OptionalServiceCandidate>()
-                .OrderBy(candidate => candidate.DisplayName, StringComparer.OrdinalIgnoreCase)
+                .OrderBy(candidate => candidate.Kind == OptionalServiceKind.Application ? 0 : 1)
+                .ThenBy(candidate => candidate.DisplayName, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(candidate => candidate.ServiceName, StringComparer.OrdinalIgnoreCase)
                 .ToArray();
         }
@@ -198,7 +199,9 @@ public sealed class ServiceKillerService
                 : new OptionalServiceCandidate(
                     serviceName,
                     GetServiceDisplayName(serviceName),
-                    (int)status.ProcessId);
+                    (int)status.ProcessId,
+                    OptionalServiceKind.Application,
+                    OptionalServiceStopGuidance.WithApplication);
         }
         finally
         {

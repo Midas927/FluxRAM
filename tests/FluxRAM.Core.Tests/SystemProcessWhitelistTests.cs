@@ -42,6 +42,26 @@ public sealed class SystemProcessWhitelistTests
         Assert.Contains(candidates, candidate => candidate.ServiceName == "CDPUserSvc_4f92a");
         Assert.Contains(candidates, candidate => candidate.ServiceName == "PimIndexMaintenanceSvc_4f92a");
         Assert.DoesNotContain(candidates, candidate => candidate.ServiceName == "UnrelatedService");
+        Assert.All(candidates, candidate => Assert.Equal(
+            FluxRAM.Core.Models.OptionalServiceKind.System,
+            candidate.Kind));
+        Assert.All(candidates, candidate => Assert.Equal(
+            FluxRAM.Core.Models.OptionalServiceStopGuidance.WhenFeatureUnused,
+            candidate.StopGuidance));
+    }
+
+    [Fact]
+    public void ServiceTargets_AssignsPerServiceCloseGuidance()
+    {
+        var candidates = ServiceTargets.ResolveCandidates(new[] { "WSearch", "CopilotService" });
+
+        var search = Assert.Single(candidates, candidate => candidate.ServiceName == "WSearch");
+        Assert.Equal(FluxRAM.Core.Models.OptionalServiceKind.System, search.Kind);
+        Assert.Equal(FluxRAM.Core.Models.OptionalServiceStopGuidance.KeepRunning, search.StopGuidance);
+
+        var copilot = Assert.Single(candidates, candidate => candidate.ServiceName == "CopilotService");
+        Assert.Equal(FluxRAM.Core.Models.OptionalServiceKind.Application, copilot.Kind);
+        Assert.Equal(FluxRAM.Core.Models.OptionalServiceStopGuidance.WithApplication, copilot.StopGuidance);
     }
 
     [Fact]

@@ -8,13 +8,13 @@ public static class ServiceTargets
 {
     private static readonly ServiceTargetDefinition[] TargetDefinitions =
     {
-        new("DiagTrack", "Connected User Experiences and Telemetry"),
-        new("DmWappushService", "WAP Push Message Routing"),
-        new("CDPSvc", "Connected Devices Platform"),
-        new("CDPUserSvc", "Connected Devices Platform User Service"),
-        new("PimIndexMaintenanceSvc", "Contact Data Indexing"),
-        new("CopilotService", "Microsoft Copilot Service"),
-        new("WSearch", "Windows Search")
+        new("DiagTrack", "Connected User Experiences and Telemetry", OptionalServiceKind.System, OptionalServiceStopGuidance.WhenFeatureUnused),
+        new("DmWappushService", "WAP Push Message Routing", OptionalServiceKind.System, OptionalServiceStopGuidance.WhenFeatureUnused),
+        new("CDPSvc", "Connected Devices Platform", OptionalServiceKind.System, OptionalServiceStopGuidance.WhenFeatureUnused),
+        new("CDPUserSvc", "Connected Devices Platform User Service", OptionalServiceKind.System, OptionalServiceStopGuidance.WhenFeatureUnused),
+        new("PimIndexMaintenanceSvc", "Contact Data Indexing", OptionalServiceKind.System, OptionalServiceStopGuidance.WhenFeatureUnused),
+        new("CopilotService", "Microsoft Copilot Service", OptionalServiceKind.Application, OptionalServiceStopGuidance.WithApplication),
+        new("WSearch", "Windows Search", OptionalServiceKind.System, OptionalServiceStopGuidance.KeepRunning)
     };
     private static readonly FrozenSet<string> ServiceNames = TargetDefinitions
         .Select(definition => definition.NamePrefix)
@@ -40,7 +40,9 @@ public static class ServiceTargets
             .Where(item => item.Definition is not null)
             .Select(item => new OptionalServiceCandidate(
                 item.ServiceName,
-                item.Definition!.DisplayName))
+                item.Definition!.DisplayName,
+                Kind: item.Definition.Kind,
+                StopGuidance: item.Definition.StopGuidance))
             .DistinctBy(candidate => candidate.ServiceName, StringComparer.OrdinalIgnoreCase)
             .OrderBy(candidate => candidate.DisplayName, StringComparer.OrdinalIgnoreCase)
             .ThenBy(candidate => candidate.ServiceName, StringComparer.OrdinalIgnoreCase)
@@ -73,5 +75,9 @@ public static class ServiceTargets
             : normalized;
     }
 
-    private sealed record ServiceTargetDefinition(string NamePrefix, string DisplayName);
+    private sealed record ServiceTargetDefinition(
+        string NamePrefix,
+        string DisplayName,
+        OptionalServiceKind Kind,
+        OptionalServiceStopGuidance StopGuidance);
 }

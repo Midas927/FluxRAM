@@ -1556,18 +1556,19 @@ public partial class MainWindow : Window
 
             foreach (var serviceCandidate in serviceCandidates)
             {
+                var serviceDisplay = OptionalServiceDisplayFormatter.Format(serviceCandidate, _uiLanguage);
                 var serviceCheckBox = new System.Windows.Controls.CheckBox
                 {
                     Margin = new Thickness(0, 0, 0, 8),
                     IsChecked = false,
                     Tag = serviceCandidate,
-                    Content = $"{serviceCandidate.DisplayName} | {serviceCandidate.ServiceName}",
-                    Foreground = ThemeBrush("TextPrimaryBrush"),
+                    Content = serviceDisplay.Line,
+                    Foreground = ThemeBrush(serviceCandidate.StopGuidance == OptionalServiceStopGuidance.KeepRunning
+                        ? "WarningBrush"
+                        : "TextPrimaryBrush"),
                     FontFamily = new System.Windows.Media.FontFamily("Consolas"),
                     FontSize = 11,
-                    ToolTip = T(
-                        "This running service accepts a normal stop request and is never selected by default.",
-                        "该运行中服务支持正常停止，且永远不会默认勾选。")
+                    ToolTip = serviceDisplay.ToolTip
                 };
                 serviceCheckBoxes.Add(serviceCheckBox);
                 candidatePanel.Children.Add(serviceCheckBox);
