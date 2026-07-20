@@ -16,11 +16,23 @@ public sealed class ExtremeCloseCandidateFactoryTests
             new ProcessSnapshot(12, "discord", 300L * 1024 * 1024, false)
         };
 
-        var candidates = ExtremeCloseCandidateFactory.FromSnapshots(snapshots);
+        var activity = new Dictionary<string, BackgroundActivityAssessment>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["name:chrome"] = new(
+                "name:chrome",
+                BackgroundActivityState.Idle,
+                TimeSpan.FromMinutes(2),
+                TimeSpan.FromMinutes(2),
+                8)
+        };
+        var candidates = ExtremeCloseCandidateFactory.FromSnapshots(
+            snapshots,
+            activityAssessments: activity);
 
         var chrome = Assert.Single(candidates, candidate => candidate.ProcessName == "chrome");
         Assert.Equal(2, chrome.ProcessIds.Count);
         Assert.True(chrome.IsDefaultSelected);
+        Assert.Equal(BackgroundActivityState.Idle, chrome.ActivityState);
     }
 
     [Fact]
@@ -133,6 +145,47 @@ public sealed class ExtremeCloseCandidateFactoryTests
 
         var candidate = Assert.Single(ExtremeCloseCandidateFactory.FromSnapshots(snapshots));
 
+        Assert.False(candidate.IsDefaultSelected);
+    }
+
+    [Fact]
+    public void FromSnapshots_ListsAggregatedSmallBackgroundAppsAboveTwelveMegabytes()
+    {
+        var snapshots = new[]
+        {
+            new ProcessSnapshot(80, "tinyapp", 7L * 1024 * 1024, false, ExecutablePath: @"C:\Apps\Tiny\tinyapp.exe"),
+            new ProcessSnapshot(81, "tinyhelper", 7L * 1024 * 1024, false, ExecutablePath: @"C:\Apps\Tiny\tinyhelper.exe")
+        };
+
+        var candidate = Assert.Single(ExtremeCloseCandidateFactory.FromSnapshots(snapshots));
+
+        Assert.Equal(2, candidate.ProcessIds.Count);
+        Assert.Equal(14L * 1024 * 1024, candidate.WorkingSetBytes);
+        Assert.False(candidate.IsDefaultSelected);
+    }
+
+    [Fact]
+    public void FromSnapshots_DoesNotSelectRecentlyActiveBackgroundApp()
+    {
+        var snapshots = new[]
+        {
+            new ProcessSnapshot(90, "syncapp", 300L * 1024 * 1024, false, ExecutablePath: @"C:\Apps\Sync\syncapp.exe")
+        };
+        var activity = new Dictionary<string, BackgroundActivityAssessment>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["directory:c:\\apps\\sync"] = new(
+                "directory:c:\\apps\\sync",
+                BackgroundActivityState.Working,
+                TimeSpan.FromMinutes(5),
+                TimeSpan.FromSeconds(10),
+                20)
+        };
+
+        var candidate = Assert.Single(ExtremeCloseCandidateFactory.FromSnapshots(
+            snapshots,
+            activityAssessments: activity));
+
+        Assert.Equal(BackgroundActivityState.Working, candidate.ActivityState);
         Assert.False(candidate.IsDefaultSelected);
     }
 }

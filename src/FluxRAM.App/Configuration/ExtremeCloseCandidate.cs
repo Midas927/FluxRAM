@@ -1,3 +1,5 @@
+using FluxRAM.Core.Models;
+
 namespace FluxRAM.App.Configuration;
 
 public sealed record ExtremeCloseCandidate(
@@ -8,4 +10,7 @@ public sealed record ExtremeCloseCandidate(
     double IoBytesPerSecond,
     bool HasForegroundProcess,
     bool HasVisibleWindow,
-    bool IsDefaultSelected);
+    bool IsDefaultSelected,
+    BackgroundActivityState ActivityState = BackgroundActivityState.Observing,
+    TimeSpan ObservedFor = default,
+    TimeSpan IdleFor = default);

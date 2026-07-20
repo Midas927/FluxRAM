@@ -272,7 +272,10 @@ public sealed class ProcessScraperService
     {
         try
         {
-            return process.MainWindowHandle != IntPtr.Zero;
+            var windowHandle = process.MainWindowHandle;
+            return windowHandle != IntPtr.Zero &&
+                NativeMethods.IsWindowVisible(windowHandle) &&
+                !NativeMethods.IsIconic(windowHandle);
         }
         catch
         {

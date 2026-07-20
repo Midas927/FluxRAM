@@ -6,7 +6,8 @@ namespace FluxRAM.App.Configuration;
 
 public static class ExtremeCloseCandidateFactory
 {
-    private const long MinimumGroupWorkingSetBytes = 32L * 1024 * 1024;
+    private const long MinimumBackgroundGroupWorkingSetBytes = 12L * 1024 * 1024;
+    private const long MinimumVisibleGroupWorkingSetBytes = 32L * 1024 * 1024;
     private const long DefaultSelectionWorkingSetBytes = 96L * 1024 * 1024;
     private const double ActiveCpuPercent = 20d;
     private const double ActiveIoBytesPerSecond = 16d * 1024 * 1024;
@@ -17,7 +18,8 @@ public static class ExtremeCloseCandidateFactory
         IReadOnlyCollection<string>? protectedProcessNames = null,
         IReadOnlyCollection<string>? protectedProcessPaths = null,
         int? currentProcessId = null,
-        bool enableAdvancedProtection = true)
+        bool enableAdvancedProtection = true,
+        IReadOnlyDictionary<string, BackgroundActivityAssessment>? activityAssessments = null)
     {
         var protectionContext = ProcessProtectionMatcher.CreateContext(
             snapshots,
@@ -32,16 +34,20 @@ public static class ExtremeCloseCandidateFactory
                 snapshot,
                 protectionContext,
                 enableAdvancedProtection) == ProcessProtectionMatch.None))
-            .Select(CreateCandidate)
-            .Where(candidate => candidate.WorkingSetBytes >= MinimumGroupWorkingSetBytes)
-            .OrderByDescending(candidate => candidate.IsDefaultSelected)
+            .Select(family => CreateCandidate(family, activityAssessments))
+            .Where(candidate => candidate.WorkingSetBytes >= (candidate.HasVisibleWindow
+                ? MinimumVisibleGroupWorkingSetBytes
+                : MinimumBackgroundGroupWorkingSetBytes))
+            .OrderBy(candidate => ActivitySortOrder(candidate.ActivityState))
             .ThenByDescending(candidate => candidate.WorkingSetBytes)
             .ThenBy(candidate => candidate.ProcessName, StringComparer.OrdinalIgnoreCase)
             .Take(MaximumCandidateCount)
             .ToArray();
     }
 
-    private static ExtremeCloseCandidate CreateCandidate(ProcessApplicationFamily family)
+    private static ExtremeCloseCandidate CreateCandidate(
+        ProcessApplicationFamily family,
+        IReadOnlyDictionary<string, BackgroundActivityAssessment>? activityAssessments)
     {
         var snapshots = family.Processes;
         var workingSetBytes = snapshots.Sum(snapshot => Math.Max(0L, snapshot.WorkingSetBytes));
@@ -50,6 +56,12 @@ public static class ExtremeCloseCandidateFactory
         var hasForegroundProcess = snapshots.Any(snapshot => snapshot.IsForeground);
         var hasVisibleWindow = snapshots.Any(snapshot => snapshot.HasVisibleWindow);
         var isActive = cpuUsagePercent >= ActiveCpuPercent || ioBytesPerSecond >= ActiveIoBytesPerSecond;
+        var activity = ResolveActivityAssessment(
+            family,
+            activityAssessments,
+            hasForegroundProcess,
+            hasVisibleWindow,
+            isActive);
 
         return new ExtremeCloseCandidate(
             family.DisplayName,
@@ -63,7 +75,49 @@ public static class ExtremeCloseCandidateFactory
                 workingSetBytes >= DefaultSelectionWorkingSetBytes &&
                 !hasForegroundProcess &&
                 !hasVisibleWindow &&
-                !isActive);
+                !isActive &&
+                activity.State == BackgroundActivityState.Idle,
+            activity.State,
+            activity.ObservedFor,
+            activity.IdleFor);
+    }
+
+    private static BackgroundActivityAssessment ResolveActivityAssessment(
+        ProcessApplicationFamily family,
+        IReadOnlyDictionary<string, BackgroundActivityAssessment>? activityAssessments,
+        bool hasForegroundProcess,
+        bool hasVisibleWindow,
+        bool isActive)
+    {
+        if (activityAssessments is not null &&
+            activityAssessments.TryGetValue(family.Key, out var assessment))
+        {
+            return assessment;
+        }
+
+        var state = hasForegroundProcess || hasVisibleWindow
+            ? BackgroundActivityState.Visible
+            : isActive
+                ? BackgroundActivityState.Working
+                : BackgroundActivityState.Observing;
+        return new BackgroundActivityAssessment(
+            family.Key,
+            state,
+            TimeSpan.Zero,
+            TimeSpan.Zero,
+            0);
+    }
+
+    private static int ActivitySortOrder(BackgroundActivityState state)
+    {
+        return state switch
+        {
+            BackgroundActivityState.Idle => 0,
+            BackgroundActivityState.Observing => 1,
+            BackgroundActivityState.Working => 2,
+            BackgroundActivityState.Visible => 3,
+            _ => 4
+        };
     }
 
     private static bool IsCurrentProcess(ProcessSnapshot snapshot, int? currentProcessId)

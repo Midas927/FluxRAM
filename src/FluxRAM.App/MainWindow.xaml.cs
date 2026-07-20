@@ -41,6 +41,7 @@ public partial class MainWindow : Window
 
     private readonly MainWindowViewModel _viewModel;
     private readonly ProcessScraperService _processScraperService;
+    private readonly BackgroundActivityTracker _backgroundActivityTracker;
     private readonly MemoryStatusService _memoryStatusService;
     private readonly MemoryPurgeService _memoryPurgeService;
     private readonly PurgePolicyService _purgePolicyService;
@@ -96,6 +97,7 @@ public partial class MainWindow : Window
 
         _viewModel = new MainWindowViewModel();
         _processScraperService = new ProcessScraperService();
+        _backgroundActivityTracker = new BackgroundActivityTracker();
         _memoryStatusService = new MemoryStatusService();
         _memoryPurgeService = new MemoryPurgeService();
         _purgePolicyService = new PurgePolicyService();
@@ -147,6 +149,7 @@ public partial class MainWindow : Window
         _trayIcon.DoubleClick += (_, _) => Dispatcher.Invoke(RestoreFromTray);
 
         StateChanged += MainWindow_OnStateChanged;
+        Loaded += MainWindow_OnLoaded;
         Closing += MainWindow_OnClosing;
         Closed += MainWindow_OnClosed;
 
@@ -184,6 +187,12 @@ public partial class MainWindow : Window
         TryEnableMicaBackdrop();
         CaptureBaselineMemory();
         UpdateSelfOverhead();
+    }
+
+    private async void MainWindow_OnLoaded(object sender, RoutedEventArgs e)
+    {
+        Loaded -= MainWindow_OnLoaded;
+        await RunMonitoringTickAsync();
     }
 
     public void StartInTray()
@@ -399,7 +408,8 @@ public partial class MainWindow : Window
                 _licenseStatus.Features.SupportsProtectList ? _protectedProcessNames : Array.Empty<string>(),
                 _licenseStatus.Features.SupportsProtectList ? _protectedProcessPaths : Array.Empty<string>(),
                 Environment.ProcessId,
-                enableAdvancedProtection: _licenseStatus.Features.SupportsAdvancedProtection)
+                enableAdvancedProtection: _licenseStatus.Features.SupportsAdvancedProtection,
+                activityAssessments: _backgroundActivityTracker.CurrentAssessments)
             .ToArray();
         var serviceCandidates = _serviceKillerService.GetRunningTargets(
             candidates.SelectMany(candidate => candidate.ProcessIds).ToHashSet(),
@@ -1010,7 +1020,9 @@ public partial class MainWindow : Window
     {
         lock (_processScraperLock)
         {
-            return _processScraperService.Scrape(lastPurgeTimesByProcessId);
+            var snapshots = _processScraperService.Scrape(lastPurgeTimesByProcessId);
+            _backgroundActivityTracker.Observe(snapshots, DateTimeOffset.UtcNow);
+            return snapshots;
         }
     }
 
@@ -1514,13 +1526,18 @@ public partial class MainWindow : Window
 
         if (candidates.Count > 0)
         {
+            var backgroundCandidates = candidates
+                .Where(candidate => !candidate.HasVisibleWindow && !candidate.HasForegroundProcess)
+                .ToArray();
             candidatePanel.Children.Add(new TextBlock
             {
                 Margin = new Thickness(0, 0, 0, 10),
                 FontSize = 12,
                 FontWeight = FontWeights.SemiBold,
                 Foreground = ThemeBrush("TextSecondaryBrush"),
-                Text = T("Applications and background components", "应用与后台组件")
+                Text = T(
+                    $"Background accumulation: {backgroundCandidates.Length} apps / {MainWindowViewModel.FormatBytes(backgroundCandidates.Sum(candidate => candidate.WorkingSetBytes))}",
+                    $"后台积累：{backgroundCandidates.Length} 个应用 / {MainWindowViewModel.FormatBytes(backgroundCandidates.Sum(candidate => candidate.WorkingSetBytes))}")
             });
         }
 
@@ -1532,12 +1549,15 @@ public partial class MainWindow : Window
                 IsChecked = candidate.IsDefaultSelected,
                 Tag = candidate,
                 Content = FormatExtremeCloseCandidate(candidate),
-                Foreground = ThemeBrush(candidate.HasForegroundProcess ? "WarningBrush" : "TextPrimaryBrush"),
+                Foreground = ThemeBrush(candidate.ActivityState switch
+                {
+                    BackgroundActivityState.Idle => "AccentBrush",
+                    BackgroundActivityState.Working or BackgroundActivityState.Visible => "WarningBrush",
+                    _ => "TextPrimaryBrush"
+                }),
                 FontFamily = new System.Windows.Media.FontFamily("Consolas"),
                 FontSize = 11,
-                ToolTip = candidate.HasForegroundProcess
-                    ? T("Foreground app. Select only if you are sure it can be closed.", "前台应用。确认不需要时再勾选。")
-                    : null
+                ToolTip = FormatExtremeCloseCandidateToolTip(candidate)
             };
             checkBoxes.Add(checkBox);
             candidatePanel.Children.Add(checkBox);
@@ -1578,8 +1598,8 @@ public partial class MainWindow : Window
         var warningTextBlock = new TextBlock
         {
             Text = T(
-                "Deep Release closes the applications you select. Unsaved work may be lost. Foreground apps are listed but not selected by default.",
-                "深度释放会关闭你选择的应用，未保存内容可能丢失。前台应用会列出，但默认不会勾选。"),
+                "Deep Release closes the applications you select. Only apps observed idle for at least 60 seconds can be preselected. Unsaved work may be lost.",
+                "深度释放会关闭你选择的应用。只有持续观察闲置至少 60 秒的应用才可能预先勾选，未保存内容可能丢失。"),
             TextWrapping = TextWrapping.Wrap,
             FontSize = 12,
             LineHeight = 19,
@@ -1844,25 +1864,70 @@ public partial class MainWindow : Window
             flags.Add(T("HIGH IO", "高 IO"));
         }
 
-        var flagText = flags.Count == 0 ? T("background", "后台") : string.Join(", ", flags);
-        return $"{candidate.ProcessName} | " +
+        var activityText = candidate.ActivityState switch
+        {
+            BackgroundActivityState.Idle => T(
+                $"IDLE BACKGROUND · idle {FormatActivityDuration(candidate.IdleFor)}",
+                $"闲置后台 · 已闲置 {FormatActivityDuration(candidate.IdleFor)}"),
+            BackgroundActivityState.Working => T("BACKGROUND WORKING", "后台工作中"),
+            BackgroundActivityState.Visible => T("VISIBLE · REVIEW", "有窗口 · 谨慎关闭"),
+            _ => T(
+                $"OBSERVING · {FormatActivityDuration(candidate.ObservedFor)} / {FormatActivityDuration(BackgroundActivityTracker.MinimumObservationDuration)}",
+                $"观察中 · {FormatActivityDuration(candidate.ObservedFor)} / {FormatActivityDuration(BackgroundActivityTracker.MinimumObservationDuration)}")
+        };
+        var flagText = flags.Count == 0 ? string.Empty : $" | {string.Join(", ", flags)}";
+        return $"[{activityText}] {candidate.ProcessName} | " +
             $"{MainWindowViewModel.FormatBytes(candidate.WorkingSetBytes)} | " +
-            T($"{candidate.ProcessIds.Count} processes | ", $"{candidate.ProcessIds.Count} 个进程 | ") +
+            T($"{candidate.ProcessIds.Count} processes", $"{candidate.ProcessIds.Count} 个进程") +
+            Environment.NewLine +
             $"CPU {candidate.CpuUsagePercent:0.0}% | " +
-            $"IO {MainWindowViewModel.FormatBytes((long)candidate.IoBytesPerSecond)}/s | " +
+            $"IO {MainWindowViewModel.FormatBytes((long)candidate.IoBytesPerSecond)}/s" +
             flagText;
+    }
+
+    private string FormatExtremeCloseCandidateToolTip(ExtremeCloseCandidate candidate)
+    {
+        return candidate.ActivityState switch
+        {
+            BackgroundActivityState.Idle => T(
+                "No foreground, visible window, or obvious CPU/disk activity was observed continuously. Review before closing.",
+                "持续观察期间未发现前台、可见窗口或明显 CPU/磁盘活动，关闭前仍请确认。"),
+            BackgroundActivityState.Working => T(
+                "This app used CPU or disk recently. Closing it may interrupt background work.",
+                "该应用近期使用过 CPU 或磁盘，关闭可能中断后台工作。"),
+            BackgroundActivityState.Visible => T(
+                "This app has a foreground or visible window. Select only if you are sure it can be closed.",
+                "该应用存在前台或可见窗口，确认不需要时再勾选。"),
+            _ => T(
+                "FluxRAM has not observed this app long enough to recommend closing it.",
+                "FluxRAM 对该应用的观察时间还不足，暂不建议关闭。")
+        };
+    }
+
+    private string FormatActivityDuration(TimeSpan duration)
+    {
+        if (duration.TotalMinutes >= 1d)
+        {
+            return T($"{Math.Floor(duration.TotalMinutes):0} min", $"{Math.Floor(duration.TotalMinutes):0} 分钟");
+        }
+
+        return T($"{Math.Max(0, Math.Floor(duration.TotalSeconds)):0} sec", $"{Math.Max(0, Math.Floor(duration.TotalSeconds)):0} 秒");
     }
 
     private void UpdateMonitoringState()
     {
         var hasReboundTracking = _reboundTrackingUntil.HasValue && DateTimeOffset.Now < _reboundTrackingUntil.Value;
-        if ((hasReboundTracking || _isAutoBoostEnabled) && !_optimizerTimer.IsEnabled)
+        var desiredInterval = hasReboundTracking || _isAutoBoostEnabled
+            ? TimeSpan.FromSeconds(3)
+            : TimeSpan.FromSeconds(15);
+        if (_optimizerTimer.Interval != desiredInterval)
+        {
+            _optimizerTimer.Interval = desiredInterval;
+        }
+
+        if (!_optimizerTimer.IsEnabled)
         {
             _optimizerTimer.Start();
-        }
-        else if (!hasReboundTracking && !_isAutoBoostEnabled && _optimizerTimer.IsEnabled)
-        {
-            _optimizerTimer.Stop();
         }
     }
 

@@ -90,6 +90,14 @@ public static class NativeMethods
     [DllImport("user32.dll", SetLastError = true)]
     public static extern uint GetWindowThreadProcessId(IntPtr windowHandle, out uint processId);
 
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool IsWindowVisible(IntPtr windowHandle);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool IsIconic(IntPtr windowHandle);
+
     [DllImport("dwmapi.dll")]
     public static extern int DwmSetWindowAttribute(
         IntPtr windowHandle,
