@@ -90,4 +90,49 @@ public sealed class ExtremeCloseCandidateFactoryTests
         var candidate = Assert.Single(candidates);
         Assert.Equal("discord", candidate.ProcessName);
     }
+
+    [Fact]
+    public void FromSnapshots_GroupsBackgroundComponentsByApplicationDirectory()
+    {
+        var snapshots = new[]
+        {
+            new ProcessSnapshot(60, "Marvis", 22L * 1024 * 1024, false, ExecutablePath: @"C:\Apps\Marvis\Marvis.exe"),
+            new ProcessSnapshot(61, "MarvisAgent", 26L * 1024 * 1024, false, ExecutablePath: @"C:\Apps\Marvis\MarvisAgent.exe"),
+            new ProcessSnapshot(62, "MarvisHost", 21L * 1024 * 1024, false, ExecutablePath: @"C:\Apps\Marvis\MarvisHost.exe"),
+            new ProcessSnapshot(63, "MarvisDISrv", 18L * 1024 * 1024, false, ExecutablePath: @"C:\Apps\Marvis\MarvisDISrv.exe")
+        };
+
+        var candidate = Assert.Single(ExtremeCloseCandidateFactory.FromSnapshots(snapshots));
+
+        Assert.Equal("Marvis", candidate.ProcessName);
+        Assert.Equal(4, candidate.ProcessIds.Count);
+        Assert.Equal(87L * 1024 * 1024, candidate.WorkingSetBytes);
+        Assert.False(candidate.IsDefaultSelected);
+    }
+
+    [Fact]
+    public void FromSnapshots_DoesNotSelectVisibleWindowByDefault()
+    {
+        var snapshots = new[]
+        {
+            new ProcessSnapshot(25, "editor", 800L * 1024 * 1024, false, HasVisibleWindow: true)
+        };
+
+        var candidate = Assert.Single(ExtremeCloseCandidateFactory.FromSnapshots(snapshots));
+
+        Assert.False(candidate.IsDefaultSelected);
+    }
+
+    [Fact]
+    public void FromSnapshots_ListsSmallBackgroundAppsWithoutSelectingThemByDefault()
+    {
+        var snapshots = new[]
+        {
+            new ProcessSnapshot(70, "utility", 40L * 1024 * 1024, false, ExecutablePath: @"C:\Apps\Utility\utility.exe")
+        };
+
+        var candidate = Assert.Single(ExtremeCloseCandidateFactory.FromSnapshots(snapshots));
+
+        Assert.False(candidate.IsDefaultSelected);
+    }
 }

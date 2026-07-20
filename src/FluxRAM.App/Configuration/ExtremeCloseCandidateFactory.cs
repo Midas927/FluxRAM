@@ -6,9 +6,11 @@ namespace FluxRAM.App.Configuration;
 
 public static class ExtremeCloseCandidateFactory
 {
-    private const long MinimumGroupWorkingSetBytes = 256L * 1024 * 1024;
+    private const long MinimumGroupWorkingSetBytes = 32L * 1024 * 1024;
+    private const long DefaultSelectionWorkingSetBytes = 96L * 1024 * 1024;
     private const double ActiveCpuPercent = 20d;
     private const double ActiveIoBytesPerSecond = 16d * 1024 * 1024;
+    private const int MaximumCandidateCount = 40;
 
     public static IReadOnlyList<ExtremeCloseCandidate> FromSnapshots(
         IReadOnlyList<ProcessSnapshot> snapshots,
@@ -22,25 +24,26 @@ public static class ExtremeCloseCandidateFactory
             protectedProcessNames,
             protectedProcessPaths);
 
-        return snapshots
-            .Where(snapshot => !IsCurrentProcess(snapshot, currentProcessId))
-            .Where(snapshot => !SystemProcessWhitelist.Contains(snapshot.ProcessName))
-            .Where(snapshot => !GamingProcessProtectionCatalog.Contains(snapshot.ProcessName))
-            .Where(snapshot => ProcessProtectionMatcher.Match(
+        return ProcessApplicationFamilyGrouper.Group(snapshots)
+            .Where(family => family.Processes.All(snapshot => !IsCurrentProcess(snapshot, currentProcessId)))
+            .Where(family => family.Processes.All(snapshot => !SystemProcessWhitelist.Contains(snapshot.ProcessName)))
+            .Where(family => family.Processes.All(snapshot => !GamingProcessProtectionCatalog.Contains(snapshot.ProcessName)))
+            .Where(family => family.Processes.All(snapshot => ProcessProtectionMatcher.Match(
                 snapshot,
                 protectionContext,
-                enableAdvancedProtection) == ProcessProtectionMatch.None)
-            .GroupBy(snapshot => NormalizeProcessName(snapshot.ProcessName), StringComparer.OrdinalIgnoreCase)
-            .Select(group => CreateCandidate(group.ToArray()))
+                enableAdvancedProtection) == ProcessProtectionMatch.None))
+            .Select(CreateCandidate)
             .Where(candidate => candidate.WorkingSetBytes >= MinimumGroupWorkingSetBytes)
             .OrderByDescending(candidate => candidate.IsDefaultSelected)
             .ThenByDescending(candidate => candidate.WorkingSetBytes)
             .ThenBy(candidate => candidate.ProcessName, StringComparer.OrdinalIgnoreCase)
+            .Take(MaximumCandidateCount)
             .ToArray();
     }
 
-    private static ExtremeCloseCandidate CreateCandidate(IReadOnlyList<ProcessSnapshot> snapshots)
+    private static ExtremeCloseCandidate CreateCandidate(ProcessApplicationFamily family)
     {
+        var snapshots = family.Processes;
         var workingSetBytes = snapshots.Sum(snapshot => Math.Max(0L, snapshot.WorkingSetBytes));
         var cpuUsagePercent = snapshots.Sum(snapshot => Math.Max(0d, snapshot.CpuUsagePercent));
         var ioBytesPerSecond = snapshots.Sum(snapshot => Math.Max(0d, snapshot.IoBytesPerSecond));
@@ -49,32 +52,23 @@ public static class ExtremeCloseCandidateFactory
         var isActive = cpuUsagePercent >= ActiveCpuPercent || ioBytesPerSecond >= ActiveIoBytesPerSecond;
 
         return new ExtremeCloseCandidate(
-            snapshots[0].ProcessName,
+            family.DisplayName,
             snapshots.Select(snapshot => snapshot.ProcessId).Distinct().ToArray(),
             workingSetBytes,
             cpuUsagePercent,
             ioBytesPerSecond,
             hasForegroundProcess,
             hasVisibleWindow,
-            IsDefaultSelected: !hasForegroundProcess && !isActive);
+            IsDefaultSelected:
+                workingSetBytes >= DefaultSelectionWorkingSetBytes &&
+                !hasForegroundProcess &&
+                !hasVisibleWindow &&
+                !isActive);
     }
 
     private static bool IsCurrentProcess(ProcessSnapshot snapshot, int? currentProcessId)
     {
         return currentProcessId.HasValue && snapshot.ProcessId == currentProcessId.Value;
-    }
-
-    private static string NormalizeProcessName(string? processName)
-    {
-        if (string.IsNullOrWhiteSpace(processName))
-        {
-            return string.Empty;
-        }
-
-        var normalized = processName.Trim();
-        return normalized.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)
-            ? normalized[..^4].ToLowerInvariant()
-            : normalized.ToLowerInvariant();
     }
 
 }

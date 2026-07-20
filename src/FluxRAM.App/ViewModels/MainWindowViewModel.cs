@@ -181,11 +181,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         RaisePropertyChanged(nameof(AutoBoostDisplay));
     }
 
-    public void UpdateProcessMetrics(int scannedProcessCount, int purgeCandidateCount, string foregroundProcessName)
+    public void UpdateProcessMetrics(int scannedProcessCount, int purgeCandidateAppCount, string foregroundProcessName)
     {
         _processSummaryDisplay = L(
-            $"Processes: scanned {scannedProcessCount}, boost candidates {purgeCandidateCount}",
-            $"进程：已扫描 {scannedProcessCount}，Boost 候选 {purgeCandidateCount}");
+            $"Processes: scanned {scannedProcessCount}, candidate apps {purgeCandidateAppCount}",
+            $"进程：已扫描 {scannedProcessCount}，候选应用 {purgeCandidateAppCount}");
         _foregroundProcessDisplay = L(
             $"Foreground: {foregroundProcessName}",
             $"前台：{foregroundProcessName}");

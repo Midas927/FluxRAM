@@ -24,7 +24,8 @@ public static class OptimizerSettingsCatalog
                 EnableServiceKiller: false,
                 EnableGamingProcessProtection: false,
                 MinimumColdnessScore: 65d,
-                BoostCooldownSeconds: 120),
+                BoostCooldownSeconds: 120,
+                MinimumGroupedProcessWorkingSetBytes: 24L * 1024 * 1024),
 
             OptimizerProfile.Balanced => new OptimizerSettings(
                 MaxPurgeTargetsPerPass: 5,
@@ -42,7 +43,8 @@ public static class OptimizerSettingsCatalog
                 EnableServiceKiller: false,
                 EnableGamingProcessProtection: false,
                 MinimumColdnessScore: 55d,
-                BoostCooldownSeconds: 120),
+                BoostCooldownSeconds: 120,
+                MinimumGroupedProcessWorkingSetBytes: 12L * 1024 * 1024),
 
             OptimizerProfile.GamingHandheld => new OptimizerSettings(
                 MaxPurgeTargetsPerPass: 7,
@@ -60,7 +62,8 @@ public static class OptimizerSettingsCatalog
                 EnableServiceKiller: false,
                 EnableGamingProcessProtection: true,
                 MinimumColdnessScore: 45d,
-                BoostCooldownSeconds: 90),
+                BoostCooldownSeconds: 90,
+                MinimumGroupedProcessWorkingSetBytes: 8L * 1024 * 1024),
 
             OptimizerProfile.Aggressive => new OptimizerSettings(
                 MaxPurgeTargetsPerPass: 0,
@@ -78,7 +81,8 @@ public static class OptimizerSettingsCatalog
                 EnableServiceKiller: false,
                 EnableGamingProcessProtection: false,
                 MinimumColdnessScore: 20d,
-                BoostCooldownSeconds: 120),
+                BoostCooldownSeconds: 120,
+                MinimumGroupedProcessWorkingSetBytes: 4L * 1024 * 1024),
 
             _ => FromProfile(OptimizerProfile.Conservative)
         };

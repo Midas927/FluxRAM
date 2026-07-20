@@ -1,23 +1,77 @@
 ﻿using System.Collections.Frozen;
 
+using FluxRAM.Core.Models;
+
 namespace FluxRAM.Core.Services;
 
 public static class ServiceTargets
 {
-    private static readonly FrozenSet<string> ServiceNames = new[]
+    private static readonly ServiceTargetDefinition[] TargetDefinitions =
     {
-        "DiagTrack",
-        "WSearch",
-        "DmWappushService",
-        "CDPSvc",
-        "PimIndexMaintenanceSvc",
-        "CopilotService"
-    }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
+        new("DiagTrack", "Connected User Experiences and Telemetry"),
+        new("DmWappushService", "WAP Push Message Routing"),
+        new("CDPSvc", "Connected Devices Platform"),
+        new("CDPUserSvc", "Connected Devices Platform User Service"),
+        new("PimIndexMaintenanceSvc", "Contact Data Indexing"),
+        new("CopilotService", "Microsoft Copilot Service"),
+        new("WSearch", "Windows Search")
+    };
+    private static readonly FrozenSet<string> ServiceNames = TargetDefinitions
+        .Select(definition => definition.NamePrefix)
+        .ToFrozenSet(StringComparer.OrdinalIgnoreCase);
 
     public static IReadOnlySet<string> WindowsBackgroundServices => ServiceNames;
 
     public static bool Contains(string serviceName)
     {
-        return ServiceNames.Contains(serviceName);
+        return TargetDefinitions.Any(definition => Matches(definition.NamePrefix, serviceName));
     }
+
+    public static IReadOnlyList<OptionalServiceCandidate> ResolveCandidates(
+        IEnumerable<string> installedServiceNames)
+    {
+        return installedServiceNames
+            .Select(serviceName => new
+            {
+                ServiceName = serviceName,
+                Definition = TargetDefinitions.FirstOrDefault(definition =>
+                    Matches(definition.NamePrefix, serviceName))
+            })
+            .Where(item => item.Definition is not null)
+            .Select(item => new OptionalServiceCandidate(
+                item.ServiceName,
+                item.Definition!.DisplayName))
+            .DistinctBy(candidate => candidate.ServiceName, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(candidate => candidate.DisplayName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(candidate => candidate.ServiceName, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
+
+    public static bool IsRelatedApplicationService(
+        string serviceName,
+        IEnumerable<string> applicationNames)
+    {
+        var normalizedServiceName = NormalizeName(serviceName);
+        return applicationNames
+            .Select(NormalizeName)
+            .Where(applicationName => applicationName.Length >= 4)
+            .Any(applicationName =>
+                normalizedServiceName.StartsWith(applicationName, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool Matches(string prefix, string serviceName)
+    {
+        return serviceName.Equals(prefix, StringComparison.OrdinalIgnoreCase) ||
+            serviceName.StartsWith(prefix + "_", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string NormalizeName(string value)
+    {
+        var normalized = value.Trim();
+        return normalized.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)
+            ? normalized[..^4]
+            : normalized;
+    }
+
+    private sealed record ServiceTargetDefinition(string NamePrefix, string DisplayName);
 }

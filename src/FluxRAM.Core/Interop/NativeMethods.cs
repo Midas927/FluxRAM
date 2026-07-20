@@ -18,6 +18,7 @@ public static class NativeMethods
     public const uint SERVICE_QUERY_STATUS = 0x0004;
     public const uint SERVICE_STOP = 0x0020;
     public const uint SERVICE_CONTROL_STOP = 0x00000001;
+    public const uint SERVICE_ACCEPT_STOP = 0x00000001;
     public const int SC_STATUS_PROCESS_INFO = 0;
 
     public const int DWMWA_SYSTEMBACKDROP_TYPE = 38;

@@ -32,7 +32,32 @@ public static class SystemProcessWhitelist
         "audiodg",
         "WmiPrvSE",
         "ApplicationFrameHost",
-        "SystemSettings"
+        "SystemSettings",
+        "LockApp",
+        "TextInputHost",
+        "backgroundTaskHost",
+        "UserOOBEBroker",
+        "SecurityHealthService",
+        "SecurityHealthSystray",
+        "conhost",
+        "dllhost",
+        "WUDFHost",
+        "dasHost",
+        "unsecapp",
+        "msedgewebview2",
+        "HipsDaemon",
+        "HipsTray",
+        "MsMpEng",
+        "NisSrv",
+        "MpDefenderCoreService",
+        "Sense",
+        "avp",
+        "AVGSvc",
+        "AvastSvc",
+        "360tray",
+        "360safe",
+        "ZhuDongFangYu",
+        "QQPCRTP"
     }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
 
     public static IReadOnlySet<string> ProcessNames => Names;

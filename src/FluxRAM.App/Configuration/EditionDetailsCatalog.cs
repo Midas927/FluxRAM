@@ -62,7 +62,7 @@ public static class EditionDetailsCatalog
             bodyEnglish:
                 "- Everything in FluxRAM\n" +
                 "- Extreme profile\n" +
-                "- Deep Release with app selection and confirmation\n" +
+                "- Deep Release for app families and optional background services\n" +
                 "- Exact EXE path protection\n" +
                 "- Child-process association protection\n" +
                 "- Smart association protection for related apps\n" +
@@ -70,7 +70,7 @@ public static class EditionDetailsCatalog
             bodyChinese:
                 "- 包含 FluxRAM 普通版全部功能\n" +
                 "- Extreme 模式\n" +
-                "- 选择应用并确认执行的深度释放\n" +
+                "- 面向应用组件与可选后台服务的深度释放\n" +
                 "- 精确 EXE 路径保护\n" +
                 "- 子进程与关联应用的智能关联保护\n" +
                 "- 当前电脑永久激活")

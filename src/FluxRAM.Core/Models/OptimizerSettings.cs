@@ -16,7 +16,8 @@ public sealed record OptimizerSettings(
     bool EnableServiceKiller,
     bool EnableGamingProcessProtection = false,
     double MinimumColdnessScore = 55d,
-    int BoostCooldownSeconds = 120)
+    int BoostCooldownSeconds = 120,
+    long MinimumGroupedProcessWorkingSetBytes = 16L * 1024 * 1024)
 {
     public static OptimizerSettings SafeDefaults()
     {
@@ -36,6 +37,7 @@ public sealed record OptimizerSettings(
             EnableServiceKiller: false,
             EnableGamingProcessProtection: false,
             MinimumColdnessScore: 55d,
-            BoostCooldownSeconds: 120);
+            BoostCooldownSeconds: 120,
+            MinimumGroupedProcessWorkingSetBytes: 16L * 1024 * 1024);
     }
 }
