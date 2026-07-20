@@ -47,6 +47,25 @@ public sealed class MainWindowLayoutContractTests
         Assert.Equal("{Binding ProProtectionSummaryDisplay}", (string?)summary.Attribute("Text"));
     }
 
+    [Fact]
+    public void DeepRelease_IsAThreeColumnPrimaryActionAndNotDuplicatedInToolsMenu()
+    {
+        var document = LoadMainWindowXaml();
+        var deepReleaseButton = FindNamedElement(document, "DeepReleaseButton");
+        var actionGrid = deepReleaseButton.Parent;
+        var columnWidths = actionGrid?
+            .Element(PresentationNamespace + "Grid.ColumnDefinitions")?
+            .Elements(PresentationNamespace + "ColumnDefinition")
+            .Select(column => (string?)column.Attribute("Width"))
+            .ToArray();
+
+        Assert.Equal("2", (string?)deepReleaseButton.Attribute("Grid.Column"));
+        Assert.Equal("DeepReleaseButton_OnClick", (string?)deepReleaseButton.Attribute("Click"));
+        Assert.Equal(new[] { "*", "10", "*", "10", "*" }, columnWidths);
+        Assert.DoesNotContain(document.Descendants(), element =>
+            (string?)element.Attribute(XamlNamespace + "Name") == "ExtremeCloseMenuItem");
+    }
+
     private static XDocument LoadMainWindowXaml()
     {
         var current = new DirectoryInfo(AppContext.BaseDirectory);

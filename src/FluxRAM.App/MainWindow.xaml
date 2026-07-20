@@ -196,6 +196,18 @@
       <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
     </Style>
 
+    <Style x:Key="DeepReleaseButtonStyle" TargetType="Button" BasedOn="{StaticResource BaseButtonStyle}">
+      <Setter Property="Background" Value="{DynamicResource SurfaceSoftBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+    </Style>
+
+    <Style x:Key="DeepReleaseLockedButtonStyle" TargetType="Button" BasedOn="{StaticResource BaseButtonStyle}">
+      <Setter Property="Background" Value="{DynamicResource SurfaceSoftBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource WarningBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource WarningBrush}" />
+    </Style>
+
     <Style x:Key="IconButtonStyle" TargetType="Button" BasedOn="{StaticResource BaseButtonStyle}">
       <Setter Property="Width" Value="18" />
       <Setter Property="Height" Value="18" />
@@ -449,10 +461,6 @@
                           Header="Light Theme"
                           Click="ThemeMenuItem_OnClick" />
                 <Separator />
-                <MenuItem x:Name="ExtremeCloseMenuItem"
-                           Header="Deep Release"
-                          Click="ExtremeCloseMenuItem_OnClick" />
-                <Separator />
                 <MenuItem x:Name="DiagnosticLogMenuItem"
                           Header="Diagnostic Log"
                           Click="DiagnosticLogMenuItem_OnClick" />
@@ -545,6 +553,8 @@
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="10" />
             <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="10" />
+            <ColumnDefinition Width="*" />
           </Grid.ColumnDefinitions>
           <Button x:Name="BoostNowButton"
                   Grid.Column="0"
@@ -554,8 +564,16 @@
                   Style="{StaticResource PrimaryButtonStyle}"
                   Content="Boost Now"
                   Click="BoostNowButton_OnClick" />
+          <Button x:Name="DeepReleaseButton"
+                  Grid.Column="2"
+                  Height="44"
+                  FontSize="13"
+                  FontWeight="Bold"
+                  Style="{StaticResource DeepReleaseButtonStyle}"
+                  Content="Deep Release"
+                  Click="DeepReleaseButton_OnClick" />
           <ToggleButton x:Name="AutoBoostToggle"
-                        Grid.Column="2"
+                        Grid.Column="4"
                         Style="{StaticResource ToggleBoostStyle}"
                         Content="Auto Boost"
                         Checked="AutoBoostToggle_OnChecked"

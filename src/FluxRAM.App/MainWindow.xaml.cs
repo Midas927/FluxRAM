@@ -383,13 +383,14 @@ public partial class MainWindow : Window
         OpenGitHubRepository();
     }
 
-    private void ExtremeCloseMenuItem_OnClick(object sender, RoutedEventArgs e)
+    private void DeepReleaseButton_OnClick(object sender, RoutedEventArgs e)
     {
         if (!_licenseStatus.Features.SupportsExtremeClose)
         {
             _viewModel.SetStatus(T(
-                "Deep Release is available after activating Pro.",
-                "激活专业版后可使用深度释放。"));
+                "Deep Release is included in Pro. Edition comparison opened.",
+                "深度释放包含在 Pro 中，已打开版本区别。"));
+            ShowEditionDetailsDialog();
             return;
         }
 
@@ -583,6 +584,11 @@ public partial class MainWindow : Window
     }
 
     private void EditionHelpButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        ShowEditionDetailsDialog();
+    }
+
+    private void ShowEditionDetailsDialog()
     {
         var dialog = new Window
         {
@@ -1235,7 +1241,9 @@ public partial class MainWindow : Window
     {
         var edition = _licenseStatus.Features;
         AggressiveProfileItem.Visibility = edition.SupportsExtremeProfile ? Visibility.Visible : Visibility.Collapsed;
-        ExtremeCloseMenuItem.Visibility = edition.SupportsExtremeClose ? Visibility.Visible : Visibility.Collapsed;
+        DeepReleaseButton.Style = TryFindResource(edition.SupportsExtremeClose
+            ? "DeepReleaseButtonStyle"
+            : "DeepReleaseLockedButtonStyle") as Style;
         ProProtectionSummaryTextBlock.Visibility = edition.SupportsAdvancedProtection
             ? Visibility.Visible
             : Visibility.Collapsed;
@@ -1999,6 +2007,11 @@ public partial class MainWindow : Window
             "Start with Windows and enable Auto Boost",
             "开机自启并自动开启 Auto Boost");
         BoostNowButton.Content = T("Boost Now", "立即 Boost");
+        var deepReleaseEntry = DeepReleaseEntryFormatter.Format(
+            _licenseStatus.Features.SupportsExtremeClose,
+            _uiLanguage);
+        DeepReleaseButton.Content = deepReleaseEntry.Label;
+        DeepReleaseButton.ToolTip = deepReleaseEntry.ToolTip;
         AutoBoostToggle.Content = T("Auto Boost", "自动 Boost");
         ProtectListTitleTextBlock.Text = T("Protected Apps", "受保护应用");
         ProtectionModeTextBlock.Text = _licenseStatus.Features.SupportsAdvancedProtection
@@ -2122,7 +2135,6 @@ public partial class MainWindow : Window
         ThemeMenuItem.Header = _uiTheme == AppTheme.Light
             ? T("Switch to Dark", "切换到暗色")
             : T("Switch to Light", "切换到亮色");
-        ExtremeCloseMenuItem.Header = T("Deep Release", "深度释放");
         DiagnosticLogMenuItem.Header = T("Diagnostic Log", "诊断日志");
         GithubMenuItem.Header = "GitHub";
     }
