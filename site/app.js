@@ -59,7 +59,7 @@ const profiles = {
   extreme: {
     overline: "本地 AI、剪辑与重负载",
     title: "Extreme",
-    description: "将候选门槛降到最低，并提供需主动确认的 Extreme Close；系统和保护应用仍被排除。",
+    description: "将候选门槛降到最低，并提供需主动确认的深度释放；系统和保护应用仍被排除。",
     threshold: "64 MB",
     targets: "动态",
     protection: "系统与自定义名单",
