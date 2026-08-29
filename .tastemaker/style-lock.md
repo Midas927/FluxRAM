@@ -38,5 +38,5 @@ Verified text-safe pairs: ink/paper, ink/surface, white/green, white/blue.
 ## Assets
 
 - Use the real FluxRAM icon unchanged.
-- Use generated process-family visual v2 in hero; no screenshot wallpaper.
+- Use a live canvas process-signal field in hero; no screenshot wallpaper or generated poster asset.
 - No decorative image is required for text-led ledger sections.

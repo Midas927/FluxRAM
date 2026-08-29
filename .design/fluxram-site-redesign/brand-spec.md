@@ -3,7 +3,7 @@
 ## Locked Assets
 
 - Product mark: `site/assets/FluxRAM.ico`
-- Hero and mechanism visual: `site/assets/memory-field-manual-v2.png`
+- Hero visual: the live `#hero-memory-canvas` process-signal field.
 - Selected visual truth: `.design/fluxram-site-redesign/options/option-2.png`
 
 ## Product Facts
@@ -16,4 +16,4 @@
 
 ## Visual Direction
 
-Windows Performance Field Manual: mineral paper surfaces, graphite evidence bands, emerald action, cobalt informational state, orange caution, narrow technical labels, and high-contrast Chinese editorial hierarchy.
+Windows Performance Field Manual: a dark live signal-field hero followed by mineral paper surfaces, graphite evidence bands, emerald action, cobalt informational state, orange caution, narrow technical labels, and high-contrast Chinese editorial hierarchy.

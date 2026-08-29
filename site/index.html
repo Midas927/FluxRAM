@@ -7,7 +7,6 @@
   <meta name="theme-color" content="#111d21">
   <meta property="og:title" content="FluxRAM 0.4 | Windows 内存 Boost">
   <meta property="og:description" content="先判断，再释放。面向 Windows 的本地内存 Boost 与深度释放工具。">
-  <meta property="og:image" content="assets/memory-field-manual.png">
   <title>FluxRAM 0.4 | Windows 内存 Boost</title>
   <link rel="icon" href="assets/FluxRAM.ico">
   <script type="application/ld+json">
@@ -36,17 +35,18 @@
   </header>
 
   <main id="main">
-    <section class="hero" id="top" aria-labelledby="hero-title">
-      <div class="page-shell hero-grid">
+    <section class="hero hero-signal" id="top" aria-labelledby="hero-title">
+      <canvas id="hero-memory-canvas" aria-hidden="true"></canvas>
+      <div class="page-shell hero-grid hero-grid-signal">
         <div class="hero-copy reveal">
           <p class="eyebrow"><span></span>FluxRAM 0.4 · Windows 10/11 x64</p>
           <p class="hero-product-name">FluxRAM 0.4</p>
-          <h1 id="hero-title">Windows 内存 Boost，<br>先判断，再释放。</h1>
-          <p class="hero-lead">把一堆零碎后台进程看成一个应用，再决定是否值得动它。普通 Boost 不关闭应用，深度释放也把最终决定留给你。</p>
+          <h1 id="hero-title">先看清后台，<br>再释放内存。</h1>
+          <p class="hero-lead">FluxRAM 按应用族汇总零碎进程，先识别正在工作的部分，再把可以回收的空间交回给你。</p>
           <div class="hero-actions"><a class="button button-primary button-large" href="https://gitcode.com/Midas927/FluxRAM/releases/download/v0.4/FluxRAM-Portable-Windows-x64.zip">国内下载 Portable</a><a class="button button-quiet" href="https://github.com/Midas927/FluxRAM/releases/latest/download/FluxRAM-Portable-Windows-x64.zip">GitHub 备用</a></div>
           <dl class="hero-facts"><div><dt>运行方式</dt><dd>本地执行</dd></div><div><dt>默认策略</dt><dd>先保护活跃应用</dd></div><div><dt>下载校验</dt><dd>SHA256</dd></div></dl>
         </div>
-        <figure class="hero-visual reveal" aria-labelledby="hero-visual-caption"><img src="assets/memory-field-manual-v2.png" alt="彩色进程碎片沿轨道进入深色内存核心，再分流为不同安全状态的技术海报"><figcaption id="hero-visual-caption">进程碎片不会单独决定去留。FluxRAM 先汇总，再观察。</figcaption></figure>
+        <div class="hero-stage reveal" aria-hidden="true"><p>BACKGROUND FRAGMENTS</p><strong>观察后再决定</strong><span>活跃 / 保护 / 闲置 / 可释放</span></div>
       </div>
     </section>
 

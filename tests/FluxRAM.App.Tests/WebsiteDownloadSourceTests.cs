@@ -29,7 +29,8 @@ public sealed class WebsiteDownloadSourceTests
     {
         var html = File.ReadAllText(FindWebsiteIndex());
 
-        Assert.Contains("assets/memory-field-manual-v2.png", html);
+        Assert.Contains("id=\"hero-memory-canvas\"", html);
+        Assert.DoesNotContain("memory-field-manual", html);
         Assert.Contains("FluxRAM 0.4", html);
         Assert.Contains("先判断，再释放。", html);
         Assert.Contains("普通 Boost 不替你关闭应用。", html);
