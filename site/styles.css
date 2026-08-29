@@ -599,7 +599,27 @@ summary:focus-visible {
 .download-choice h3 { margin: 15px 0 0; font-size: 31px; line-height: 1.2; }
 .download-choice p { max-width: 480px; margin: 14px 0 28px; color: var(--ink-soft); }
 .download-choice-primary p { color: var(--ink-soft); }
-.download-choice .button { margin-top: auto; }
+.download-actions {
+  width: 100%;
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.download-actions .text-link { color: var(--ink-soft); font-size: 13px; }
+.download-actions .text-link:hover { color: var(--mint-dark); }
+
+.checksum-link {
+  margin-top: 13px;
+  color: #64736f;
+  font-size: 12px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.checksum-link:hover { color: var(--mint-dark); }
 
 .edition-comparison {
   margin-top: 18px;
