@@ -14,7 +14,7 @@ I hope FluxRAM can be a simple, convenient Windows tool for people who are not r
 
 ## Download
 
-[Download the latest FluxRAM release](https://github.com/Midas927/FluxRAM/releases/latest)
+[China mirror (GitCode)](https://gitcode.com/Midas927/FluxRAM/releases) | [GitHub releases](https://github.com/Midas927/FluxRAM/releases/latest)
 
 Recommended package: `FluxRAM-Portable-Windows-x64.zip`. Unzip it and run `FluxRAM.exe`.
 

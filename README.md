@@ -16,7 +16,7 @@ FluxRAM 不是把 8GB 变成 16GB 的魔法。它更现实一点：尽量清掉�
 
 不会使用 Git 的用户，直接从这里下载最新版：
 
-[下载 FluxRAM 最新版](https://github.com/Midas927/FluxRAM/releases/latest)
+[国内下载（GitCode）](https://gitcode.com/Midas927/FluxRAM/releases) | [GitHub 备用下载](https://github.com/Midas927/FluxRAM/releases/latest)
 
 推荐下载 `FluxRAM-Portable-Windows-x64.zip`，解压后双击 `FluxRAM.exe` 即可运行。普通版和 Pro 版使用同一个主程序；Pro 功能只能通过当前电脑的机器码 Key 激活。
 
