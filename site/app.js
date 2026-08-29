@@ -7,15 +7,20 @@ const memoryCanvas = document.getElementById("hero-memory-canvas");
 const signalHero = document.querySelector(".hero-signal");
 
 if (memoryCanvas && signalHero) {
-  const context = memoryCanvas.getContext("2d");
+  const context = memoryCanvas.getContext("2d", { alpha: false });
   let animationFrame = 0;
   let lastFrameAt = 0;
   let heroVisible = true;
   let canvasWidth = 0;
   let canvasHeight = 0;
   let pixelRatio = 1;
+  let blocks = [];
+  const pointer = { x: 0, y: 0, active: false };
 
-  const palette = ["#2ab982", "#2f67bd", "#2ab982", "#9ba9a8", "#c76a35"];
+  function seededValue(column, row) {
+    const value = Math.sin(column * 91.17 + row * 41.73) * 43758.5453;
+    return value - Math.floor(value);
+  }
 
   function resizeMemoryCanvas() {
     const bounds = memoryCanvas.getBoundingClientRect();
@@ -25,77 +30,77 @@ if (memoryCanvas && signalHero) {
     memoryCanvas.width = Math.floor(canvasWidth * pixelRatio);
     memoryCanvas.height = Math.floor(canvasHeight * pixelRatio);
     context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+
+    const cellWidth = 30;
+    const cellHeight = 19;
+    const gap = 6;
+    const columns = Math.ceil(canvasWidth / (cellWidth + gap)) + 2;
+    const rows = Math.ceil(canvasHeight / (cellHeight + gap)) + 2;
+    blocks = [];
+
+    for (let row = 0; row < rows; row += 1) {
+      for (let column = 0; column < columns; column += 1) {
+        const seed = seededValue(column, row);
+        blocks.push({
+          x: column * (cellWidth + gap) - cellWidth,
+          y: row * (cellHeight + gap) - cellHeight,
+          width: cellWidth,
+          height: cellHeight,
+          status: seed > 0.91 ? "protected" : seed > 0.76 ? "cold" : seed > 0.28 ? "active" : "empty"
+        });
+      }
+    }
+
     drawMemoryField(0);
   }
 
+  function blockColor(block, intensity, release) {
+    if (release > 0.72 && block.status === "cold") return `rgba(42, 185, 130, ${0.18 + intensity * 0.34})`;
+    if (block.status === "protected") return `rgba(34, 126, 93, ${0.12 + intensity * 0.22})`;
+    if (block.status === "cold") return `rgba(116, 89, 50, ${0.07 + intensity * 0.14})`;
+    if (block.status === "active") return `rgba(58, 78, 89, ${0.08 + intensity * 0.15})`;
+    return `rgba(27, 39, 46, ${0.11 + intensity * 0.08})`;
+  }
+
   function drawMemoryField(time) {
-    context.clearRect(0, 0, canvasWidth, canvasHeight);
-    context.fillStyle = "#0b1215";
+    context.fillStyle = "#081015";
     context.fillRect(0, 0, canvasWidth, canvasHeight);
 
-    const fieldLeft = canvasWidth * 0.42;
-    const coreX = canvasWidth * 0.78;
-    const verticalStep = Math.max(42, canvasHeight / 12);
-    const cycle = time / 1000;
+    const waveX = ((time / 42) % (canvasWidth + 260)) - 130;
+    const releaseX = ((time % 9000) / 9000) * (canvasWidth + 360) - 180;
 
+    for (const block of blocks) {
+      const centerX = block.x + block.width / 2;
+      const centerY = block.y + block.height / 2;
+      let intensity = Math.max(0, 1 - Math.abs(centerX - waveX) / 180) * 0.48;
+
+      if (pointer.active) {
+        const distance = Math.hypot(centerX - pointer.x, centerY - pointer.y);
+        intensity += Math.max(0, 1 - distance / 190) * 0.42;
+      }
+
+      const release = Math.max(0, 1 - Math.abs(centerX - releaseX) / 100);
+      context.fillStyle = blockColor(block, Math.min(1, intensity), release);
+      context.fillRect(block.x, block.y, block.width, block.height);
+
+      if (block.status === "protected") {
+        context.strokeStyle = `rgba(42, 185, 130, ${0.08 + intensity * 0.2})`;
+        context.lineWidth = 1;
+        context.strokeRect(block.x + 0.5, block.y + 0.5, block.width - 1, block.height - 1);
+      }
+    }
+
+    context.strokeStyle = "rgba(122, 151, 159, 0.13)";
     context.lineWidth = 1;
-    context.strokeStyle = "rgba(143, 165, 169, 0.15)";
-    for (let x = fieldLeft; x < canvasWidth; x += 64) {
-      context.beginPath();
-      context.moveTo(x + 0.5, 0);
-      context.lineTo(x + 0.5, canvasHeight);
-      context.stroke();
-    }
-    for (let y = verticalStep * 1.25; y < canvasHeight; y += verticalStep) {
-      context.beginPath();
-      context.moveTo(fieldLeft, y + 0.5);
-      context.lineTo(canvasWidth, y + 0.5);
-      context.stroke();
-    }
+    context.beginPath();
+    context.moveTo(canvasWidth * 0.58 + 0.5, 0);
+    context.lineTo(canvasWidth * 0.58 + 0.5, canvasHeight);
+    context.moveTo(0, canvasHeight * 0.63 + 0.5);
+    context.lineTo(canvasWidth, canvasHeight * 0.63 + 0.5);
+    context.stroke();
 
-    context.fillStyle = "rgba(35, 51, 57, 0.8)";
-    context.fillRect(coreX - 14, canvasHeight * 0.13, 28, canvasHeight * 0.74);
-    context.fillStyle = "rgba(42, 185, 130, 0.62)";
-    context.fillRect(coreX - 1, canvasHeight * 0.13, 2, canvasHeight * 0.74);
-
-    for (let index = 0; index < 10; index += 1) {
-      const y = canvasHeight * 0.17 + index * verticalStep * 0.78;
-      const startX = fieldLeft + 28 + (index % 3) * 28;
-      const junctionX = coreX - 34;
-      const color = palette[index % palette.length];
-      const breathing = reducedMotion ? 0 : Math.sin(cycle * 1.4 + index * 0.7) * 8;
-      const fragmentX = startX + ((cycle * (18 + index)) % 150);
-
-      context.strokeStyle = `${color}88`;
-      context.beginPath();
-      context.moveTo(startX, y);
-      context.lineTo(junctionX - 72, y);
-      context.lineTo(junctionX, canvasHeight * 0.5 + breathing);
-      context.lineTo(coreX - 16, canvasHeight * 0.5 + breathing);
-      context.stroke();
-
-      context.fillStyle = color;
-      context.fillRect(fragmentX, y - 4, 8, 8);
-      context.fillStyle = "rgba(238, 244, 243, 0.72)";
-      context.fillRect(startX - 18, y - 3, 5, 5);
-    }
-
-    for (let index = 0; index < 3; index += 1) {
-      const outputY = canvasHeight * 0.36 + index * verticalStep * 1.16;
-      const color = palette[index === 1 ? 1 : 0];
-      const pulse = reducedMotion ? 0 : Math.sin(cycle * 1.6 + index) * 4;
-      context.strokeStyle = `${color}bb`;
-      context.beginPath();
-      context.moveTo(coreX + 16, canvasHeight * 0.5 + pulse);
-      context.lineTo(coreX + 72, outputY);
-      context.lineTo(canvasWidth - 54, outputY);
-      context.stroke();
-      context.fillStyle = color;
-      context.fillRect(canvasWidth - 50, outputY - 5, 10, 10);
-    }
-
-    context.strokeStyle = "rgba(237, 244, 242, 0.3)";
-    context.strokeRect(fieldLeft + 22.5, canvasHeight * 0.11 + 0.5, canvasWidth - fieldLeft - 66, canvasHeight * 0.78);
+    context.fillStyle = "rgba(42, 185, 130, 0.22)";
+    context.fillRect(waveX, 0, 1, canvasHeight);
   }
 
   function renderMemoryField(time) {
@@ -117,6 +122,15 @@ if (memoryCanvas && signalHero) {
 
   const resizeObserver = new ResizeObserver(resizeMemoryCanvas);
   resizeObserver.observe(memoryCanvas);
+  signalHero.addEventListener("pointermove", event => {
+    const bounds = memoryCanvas.getBoundingClientRect();
+    pointer.x = event.clientX - bounds.left;
+    pointer.y = event.clientY - bounds.top;
+    pointer.active = true;
+  });
+  signalHero.addEventListener("pointerleave", () => {
+    pointer.active = false;
+  });
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden) beginMemoryField();
   });

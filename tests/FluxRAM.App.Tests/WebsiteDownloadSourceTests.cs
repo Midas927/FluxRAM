@@ -25,16 +25,18 @@ public sealed class WebsiteDownloadSourceTests
     }
 
     [Fact]
-    public void Website_UsesThePerformanceManualHeroAndKeepsItsCorePromise()
+    public void Website_UsesThePerformanceManualWithTheMemoryGridBackground()
     {
         var html = File.ReadAllText(FindWebsiteIndex());
 
         Assert.Contains("id=\"hero-memory-canvas\"", html);
+        Assert.Contains("data-visual=\"memory-grid\"", html);
         Assert.DoesNotContain("memory-field-manual", html);
         Assert.Contains("FluxRAM 0.4", html);
         Assert.Contains("先判断，再释放。", html);
         Assert.Contains("普通 Boost 不替你关闭应用。", html);
         Assert.Contains("深度释放", html);
+        Assert.DoesNotContain("未知发布者", html);
     }
 
     private static string FindWebsiteIndex()

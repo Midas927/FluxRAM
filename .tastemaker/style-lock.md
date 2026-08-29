@@ -3,9 +3,9 @@
 ## Direction
 
 - Thesis: Windows memory management explained as a careful operating manual, not a flashy cleaner.
-- First viewport: literal offer, GitCode domestic download, and one process-family observation visual.
+- First viewport: literal offer and GitCode domestic download over the original dark memory-grid background; all foreground layout comes from the redesigned site.
 - Macrostructure: editorial index with numbered operating beats.
-- Selected concept: user selected ImageGen direction 2 on 2026-08-30.
+- Selected concept: ImageGen direction 2 for layout and content, combined with the user-selected memory-grid background on 2026-08-30.
 
 ## Color Contract
 
@@ -38,5 +38,10 @@ Verified text-safe pairs: ink/paper, ink/surface, white/green, white/blue.
 ## Assets
 
 - Use the real FluxRAM icon unchanged.
-- Use a live canvas process-signal field in hero; no screenshot wallpaper or generated poster asset.
+- Use a live Canvas memory grid in the hero, matching `.design/fluxram-site-redesign/references/memory-grid-background-reference.png`; do not restore the old page layout or telemetry card.
 - No decorative image is required for text-led ledger sections.
+
+## Do Not
+
+- Do not replace the redesigned page with the original homepage.
+- Do not use the rejected line-routing or static observatory visuals in the hero.

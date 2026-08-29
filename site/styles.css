@@ -70,9 +70,10 @@ a:focus-visible, summary:focus-visible, .button:focus-visible { outline: 3px sol
 
 .hero { overflow: hidden; border-bottom: 1px solid var(--line); }
 .hero-signal { position: relative; background: #0b1215; color: var(--white); }
-#hero-memory-canvas { position: absolute; right: 0; bottom: 0; left: 0; width: 100%; height: 300px; opacity: 0.94; }
+#hero-memory-canvas { position: absolute; z-index: 0; inset: 0; width: 100%; height: 100%; opacity: 1; }
+.hero-signal::after { content: ""; position: absolute; z-index: 1; inset: 0; pointer-events: none; background: rgba(5, 11, 15, 0.38); }
 .hero-grid { display: grid; gap: var(--space-12); padding: var(--space-16) 0 var(--space-12); }
-.hero-grid-signal { position: relative; z-index: 1; gap: var(--space-6); padding-bottom: 0; }
+.hero-grid-signal { position: relative; z-index: 2; gap: var(--space-6); }
 .hero-copy { max-width: 660px; }
 .eyebrow, .section-index { margin: 0 0 var(--space-4); color: var(--green); font: 800 12px/1.4 "JetBrains Mono", Consolas, monospace; letter-spacing: 0.04em; text-transform: uppercase; }
 .eyebrow { display: flex; align-items: center; gap: var(--space-2); }
@@ -92,7 +93,7 @@ h1 { max-width: 680px; margin-bottom: var(--space-6); font-size: 40px; line-heig
 .hero-facts div { min-width: 0; }
 .hero-facts dt { color: #91a4a7; font-size: 12px; }
 .hero-facts dd { margin: 2px 0 0; font-size: 14px; font-weight: 800; }
-.hero-stage { min-height: 300px; }
+.hero-stage { display: none; min-height: 0; }
 .hero-stage p, .hero-stage strong, .hero-stage span { display: none; }
 
 .proof-strip { background: var(--ink); color: var(--white); }
@@ -218,7 +219,6 @@ h1 { max-width: 680px; margin-bottom: var(--space-6); font-size: 40px; line-heig
   .header-download { margin-left: var(--space-3); }
   .mobile-menu { display: none; }
   .hero-signal { min-height: 650px; }
-  #hero-memory-canvas { inset: 0; width: 100%; height: 100%; }
   .hero-grid-signal { grid-template-columns: minmax(0, 0.94fr) minmax(480px, 1.06fr); align-items: stretch; min-height: 650px; gap: var(--space-12); padding: 112px 0 88px; }
   .hero-stage { min-height: 460px; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-start; gap: var(--space-3); padding: 0 0 var(--space-8) var(--space-8); border-left: 1px solid rgba(198, 208, 209, 0.38); }
   .hero-stage p { display: block; margin: 0; color: #91a4a7; font: 800 12px/1.4 "JetBrains Mono", Consolas, monospace; letter-spacing: 0.08em; }

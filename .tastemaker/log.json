@@ -5,5 +5,12 @@
     "macrostructure": "editorial-index",
     "beats": ["offer", "application-family", "tagline", "actions", "safety", "edition", "download", "faq"],
     "status": "pending-review"
+  },
+  {
+    "date": "2026-08-30",
+    "surface": "FluxRAM hero background",
+    "macrostructure": "editorial-index-with-memory-grid",
+    "beats": ["offer", "memory-grid-background", "application-family", "actions", "safety", "edition", "download", "faq"],
+    "status": "user-clarified"
   }
 ]

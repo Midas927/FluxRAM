@@ -36,7 +36,7 @@
 
   <main id="main">
     <section class="hero hero-signal" id="top" aria-labelledby="hero-title">
-      <canvas id="hero-memory-canvas" aria-hidden="true"></canvas>
+      <canvas id="hero-memory-canvas" data-visual="memory-grid" aria-hidden="true"></canvas>
       <div class="page-shell hero-grid hero-grid-signal">
         <div class="hero-copy reveal">
           <p class="eyebrow"><span></span>FluxRAM 0.4 · Windows 10/11 x64</p>
@@ -85,7 +85,11 @@
 
     <section class="section section-faq" id="faq" aria-labelledby="faq-title"><div class="page-shell faq-layout">
       <div class="section-heading reveal"><p class="section-index">06 / 常见问题</p><h2 id="faq-title">把担心的事，<br>先讲明白。</h2></div>
-      <div class="faq-list reveal"><details><summary>会用固态硬盘寿命换内存空间吗？</summary><p>FluxRAM 的核心操作是请求 Windows 收缩候选进程的工作集，不会主动把内存内容写成自己的磁盘缓存。无差别频繁裁剪反而会让应用重新载入页面，因此 FluxRAM 会筛选冷后台并限制自动触发。</p></details><details><summary>能直接提升 FPS 吗？</summary><p>FluxRAM 不承诺直接提高 FPS。它处理的是内存压力和冷后台占用；当卡顿确实来自内存紧张时，体验可能改善，CPU、GPU 或网络瓶颈则不在它的处理范围内。</p></details><details><summary>为什么有时 Boost 释放得不多？</summary><p>当前内存压力可能不高，或者高占用应用仍然活跃、属于游戏或系统进程、已经被保护。FluxRAM 会显示候选与跳过原因，不会为了数字好看而处理高风险目标。</p></details><details><summary>Windows 为什么提示未知发布者？</summary><p>当前公开版本尚未购买代码签名证书，因此 Windows 可能显示未知发布者。安装包同时发布在 GitCode 国内镜像与 GitHub Releases，并附带 SHA256 校验文件。</p></details></div>
+      <div class="faq-list reveal">
+        <details><summary>会用固态硬盘寿命换内存空间吗？</summary><p>FluxRAM 的核心操作是请求 Windows 收缩候选进程的工作集，不会主动把内存内容写成自己的磁盘缓存。无差别频繁裁剪反而会让应用重新载入页面，因此 FluxRAM 会筛选冷后台并限制自动触发。</p></details>
+        <details><summary>能直接提升 FPS 吗？</summary><p>FluxRAM 不承诺直接提高 FPS。它处理的是内存压力和冷后台占用；当卡顿确实来自内存紧张时，体验可能改善，CPU、GPU 或网络瓶颈则不在它的处理范围内。</p></details>
+        <details><summary>为什么有时 Boost 释放得不多？</summary><p>当前内存压力可能不高，或者高占用应用仍然活跃、属于游戏或系统进程、已经被保护。FluxRAM 会显示候选与跳过原因，不会为了数字好看而处理高风险目标。</p></details>
+      </div>
     </div></section>
   </main>
 

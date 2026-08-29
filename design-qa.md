@@ -1,56 +1,59 @@
-# FluxRAM Website Redesign QA
+# FluxRAM Website Background QA
 
 ## Comparison Target
 
-- Source visual truth: `.design/fluxram-site-redesign/options/option-2.png`
-- Desktop implementation: browser-rendered desktop and mobile captures during the final v2 asset pass.
-- Mobile implementation: `.design/fluxram-site-redesign/screenshots/implementation-mobile-375-final.png`
-- Final v2 mobile hero: `.design/fluxram-site-redesign/screenshots/implementation-mobile-375-v2.png`
-- Final live-signal desktop hero: `.design/fluxram-site-redesign/screenshots/implementation-desktop-signal.png`
-- Final live-signal mobile hero: `.design/fluxram-site-redesign/screenshots/implementation-mobile-signal.png`
-- Combined hero evidence: `.design/fluxram-site-redesign/screenshots/qa-hero-comparison.png`
-- Source dimensions: 899 x 1750 px.
-- Desktop capture: 1425 x 1013 px at a 1440 x 1024 CSS viewport.
-- Mobile capture: 360 x 779 px at a 375 x 812 CSS viewport.
+- Background source visual: `.design/fluxram-site-redesign/references/memory-grid-background-reference.png`.
+- Overall layout source: `.design/fluxram-site-redesign/options/option-2.png` and the existing redesigned website.
+- Final desktop hero: `.design/fluxram-site-redesign/screenshots/hybrid-memory-grid-desktop.png`.
+- Final mobile hero: `.design/fluxram-site-redesign/screenshots/hybrid-memory-grid-mobile.png`.
+- Lower-page evidence: `.design/fluxram-site-redesign/screenshots/hybrid-memory-grid-desktop-middle.png` and `.design/fluxram-site-redesign/screenshots/hybrid-memory-grid-desktop-lower.png`.
+- Focused background comparison: `.design/fluxram-site-redesign/screenshots/qa-memory-grid-background-comparison.png`.
+- Source image: 2538 x 1150 px. It was normalized to 1269 x 575 px, then compared with an equal 700 x 260 px background-only crop from the browser implementation.
+- Desktop implementation: 1425 x 1013 px at a 1440 x 1024 CSS viewport.
+- Mobile implementation: 360 x 779 px at a 375 x 812 CSS viewport.
+- State: page top, normal motion, no menu or FAQ open.
+
+## Scope Boundary
+
+The user's reference applies only to the animated hero background. Foreground typography, copy, actions, facts, navigation, proof strip, and every lower-page section intentionally remain from the redesigned website.
 
 ## State And Interaction Evidence
 
-- Hero at scroll position 0.
-- Mobile menu opens and exposes navigation.
-- FAQ question "能直接提升 FPS 吗？" opens its answer.
-- Primary GitCode Portable link, GitHub fallback links, and SHA256 links are present in the rendered DOM.
+- `#hero-memory-canvas[data-visual="memory-grid"]` fills the complete hero on desktop and mobile.
+- Desktop Canvas size is 1425 x 664 CSS pixels; mobile Canvas size is 360 x 577 CSS pixels.
+- Mobile removes the old reserved visual stage, so the full-background treatment does not create empty space.
+- Mobile menu opens with six links and closes normally.
+- FAQ entry “能直接提升 FPS 吗？” opens its answer, with only one FAQ open.
+- GitCode Portable remains the primary action; GitHub Portable remains the secondary action.
 - Browser console: no warnings or errors.
+- Desktop and mobile: no horizontal overflow.
 
-## Full View Comparison
+## Full-View Evidence
 
-The implementation preserves the selected performance-field-manual direction in the content sections: mineral paper background, graphite evidence bands, precise emerald action color, numbered sections, and editorial hierarchy. Per user feedback, the hero intentionally diverges from the selected static comp and now uses a live canvas process-signal field rather than a generated poster. This keeps explanatory density out of the hero while showing fragments converging into one controlled decision.
+The accepted top, middle, and lower viewport captures show that only the hero background changed. The editorial process ledger, action comparison, safety ledger, edition table, download choices, FAQ, and footer retain the selected redesign's layout and styling.
 
-## Focused Hero Comparison
+## Focused Background Comparison
 
-The paired screenshot compares an equal-height top crop of the selected visual with the actual desktop hero. The source foregrounds the FluxRAM product name, explanatory process diagram, and domestic download. The implementation now matches all three priorities: FluxRAM 0.4 appears in the hero, the process-family visual is a real generated asset, and the GitCode domestic download remains the primary action.
+The side-by-side crop compares only background regions. Both use a blue-black base, dense 30 x 19 pixel memory blocks, six-pixel gaps, sparse emerald protected blocks, quieter steel/amber cells, and faint horizontal/vertical guides. The implementation is live Canvas rather than a raster wallpaper, preserving the source atmosphere while remaining responsive.
 
 ## Required Fidelity Surfaces
 
-- Fonts and typography: Chinese system sans stack uses a clear display/body hierarchy; technical metadata uses monospace fallback only where meaningful. Desktop and mobile title wrapping was checked and adjusted.
-- Spacing and layout rhythm: hero, proof strip, numbered sections, comparison, downloads, and FAQ use a fixed spacing scale. Mobile changes to single-column reading rather than shrinking desktop grids.
-- Colors and visual tokens: paper, ink, emerald, cobalt, orange, and line tokens are recorded in `.tastemaker/style-lock.md`. The contrast contract was checked before implementation.
-- Image quality and asset fidelity: the hero uses a deterministic Canvas process-signal field that is rendered from the page's real behavior and pauses outside the hero. The existing FluxRAM icon is preserved unchanged.
-- Copy and content: product claims reflect the current 0.4 implementation. No testimonials, benchmark numbers, or customer logos were fabricated.
+- Fonts and typography: unchanged from the redesigned site; Chinese headings, UI labels, and body copy remain readable at desktop and mobile widths.
+- Spacing and layout rhythm: redesigned hero grid and lower-page spacing remain unchanged; only the mobile-only empty visual column was removed because the background now fills the hero.
+- Colors and visual tokens: the reference's blue-black, low-contrast green, muted steel, and amber background palette is reproduced without changing foreground action colors.
+- Image quality and asset fidelity: the supplied screenshot is retained as design evidence only. Production uses a deterministic, DPR-aware Canvas memory grid, not a stretched screenshot, CSS drawing, or generated poster.
+- Copy and content: version, download URLs, product boundaries, and Pro distinction remain intact. The “未知发布者” FAQ was removed by explicit user request before publication.
 
-## Comparison History
+## Findings And Fixes
 
-1. P2 fixed: desktop hero title wrapped too aggressively. The desktop grid was rebalanced and title scale reduced.
-2. P2 fixed: mobile title created an orphaned final character. The mobile base type scale was reduced to a readable three-line layout.
-3. P2 fixed: tagline activation was too late on narrow screens. Trigger threshold was lowered and its muted state strengthened for readability.
-4. P2 fixed: selected visual foregrounded FluxRAM more strongly than the initial implementation. `FluxRAM 0.4` was promoted into the hero hierarchy.
-5. P2 fixed: the safety heading created a stranded final character on narrow screens. It now uses two deliberate Chinese phrase lines: “每一次候选，” and “都要守住边界。”.
-6. P2 fixed: the generated hero diagrams read as generic information UI. They were removed and replaced with a reduced-motion-aware canvas signal field that pauses when the hero is off-screen or the tab is hidden.
-7. P2 fixed: the first canvas version overlapped hero text on mobile. The canvas is now a separate lower visual beat on narrow screens while remaining a full compositional field on desktop.
+1. P2 fixed: the first Canvas pass used 38 x 23 pixel desktop blocks and looked too large and sparse. It now uses 30 x 19 pixel blocks with six-pixel gaps, matching the normalized reference.
+2. P2 fixed: the old mobile signal visualization reserved 300 pixels below the copy. The new full-background Canvas removes that stage on mobile, eliminating the empty area.
+3. Verification complete: responsive screenshots, focused source comparison, mobile menu, FAQ, download DOM, console logs, JavaScript syntax, .NET tests, and overflow checks passed.
 
 ## Residual Notes
 
-- The generated reference contains illustrative process labels that are not copied verbatim. Real product copy and direct download links take precedence.
-- The page intentionally does not use a manual dark-mode toggle because the selected direction is a fixed light technical manual with dark evidence bands.
+- Foreground layout differs from the reference screenshot by explicit user request.
+- Canvas cells animate subtly and pause outside the hero or when the tab is hidden; reduced-motion users receive a static rendered field.
 
 ## Final Result
 
