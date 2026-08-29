@@ -3,7 +3,7 @@
 ## Locked Assets
 
 - Product mark: `site/assets/FluxRAM.ico`
-- Hero and mechanism visual: `site/assets/memory-field-manual.png`
+- Hero and mechanism visual: `site/assets/memory-field-manual-v2.png`
 - Selected visual truth: `.design/fluxram-site-redesign/options/option-2.png`
 
 ## Product Facts

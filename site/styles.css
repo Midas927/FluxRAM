@@ -134,6 +134,8 @@ h1 { max-width: 680px; margin-bottom: var(--space-6); font-size: 40px; line-heig
 .action-column .button { margin-top: var(--space-4); }
 
 .safety-layout { display: grid; gap: var(--space-10); }
+.safety-title span { display: block; }
+.safety-title { font-size: 34px !important; line-height: 1.2 !important; }
 .safety-ledger { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
 .safety-ledger li { display: grid; grid-template-columns: 48px 1fr; gap: var(--space-4); padding: var(--space-6) 0; border-bottom: 1px solid var(--line); }
 .safety-ledger b { color: var(--orange); font: 800 14px/1 "JetBrains Mono", Consolas, monospace; }
@@ -220,6 +222,7 @@ h1 { max-width: 680px; margin-bottom: var(--space-6); font-size: 40px; line-heig
   .action-column { min-height: 460px; padding: 56px 48px; border-bottom: 0; }
   .action-column:first-child { border-right: 1px solid var(--line-dark); }
   .safety-layout, .faq-layout { grid-template-columns: 0.75fr 1.25fr; align-items: start; }
+  .safety-title { font-size: 56px !important; }
   .edition-row { grid-template-columns: 1.35fr 0.8fr 1.25fr; padding: 18px 24px; }
   .download-heading { grid-template-columns: 1fr 0.7fr; align-items: end; }
 }

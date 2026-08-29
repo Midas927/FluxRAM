@@ -46,7 +46,7 @@
           <div class="hero-actions"><a class="button button-primary button-large" href="https://gitcode.com/Midas927/FluxRAM/releases/download/v0.4/FluxRAM-Portable-Windows-x64.zip">国内下载 Portable</a><a class="button button-quiet" href="https://github.com/Midas927/FluxRAM/releases/latest/download/FluxRAM-Portable-Windows-x64.zip">GitHub 备用</a></div>
           <dl class="hero-facts"><div><dt>运行方式</dt><dd>本地执行</dd></div><div><dt>默认策略</dt><dd>先保护活跃应用</dd></div><div><dt>下载校验</dt><dd>SHA256</dd></div></dl>
         </div>
-        <figure class="hero-visual reveal" aria-labelledby="hero-visual-caption"><img src="assets/memory-field-manual.png" alt="多个后台进程被汇总为应用族，经过活动观察和保护判断后得到可释放结论的示意图"><figcaption id="hero-visual-caption">进程碎片不会单独决定去留。FluxRAM 先汇总，再观察。</figcaption></figure>
+        <figure class="hero-visual reveal" aria-labelledby="hero-visual-caption"><img src="assets/memory-field-manual-v2.png" alt="彩色进程碎片沿轨道进入深色内存核心，再分流为不同安全状态的技术海报"><figcaption id="hero-visual-caption">进程碎片不会单独决定去留。FluxRAM 先汇总，再观察。</figcaption></figure>
       </div>
     </section>
 
@@ -69,7 +69,7 @@
     </div></section>
 
     <section class="section section-paper" id="safety" aria-labelledby="safety-title"><div class="page-shell safety-layout">
-      <div class="section-heading reveal"><p class="section-index">03 / 安全账本</p><h2 id="safety-title">每一次候选，都有<br>不能越过的边界。</h2></div>
+      <div class="section-heading reveal"><p class="section-index">03 / 安全账本</p><h2 id="safety-title" class="safety-title"><span>每一次候选，</span><span>都要守住边界。</span></h2></div>
       <ol class="safety-ledger reveal" data-reveal-group><li><b>01</b><div><h3>系统进程自动排除</h3><p>Windows 外壳、安全软件、共享运行时与关键宿主不会进入关闭候选。</p></div></li><li><b>02</b><div><h3>可见窗口优先保护</h3><p>有前台或实际可见窗口的应用会显示，但不会默认勾选。</p></div></li><li><b>03</b><div><h3>连续观察而非单次快照</h3><p>后台应用至少观察 60 秒并取得 5 个样本，才可能标记为闲置。</p></div></li><li><b>04</b><div><h3>服务先分类，再选择</h3><p>系统服务、应用服务以及关闭建议分别标明，全部默认不勾选。</p></div></li><li><b>05</b><div><h3>关闭前仍由你确认</h3><p>深度释放只列出候选。是否关闭某个应用，始终由你最后决定。</p></div></li></ol>
     </div></section>
 

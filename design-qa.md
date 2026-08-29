@@ -3,8 +3,9 @@
 ## Comparison Target
 
 - Source visual truth: `.design/fluxram-site-redesign/options/option-2.png`
-- Desktop implementation: `.design/fluxram-site-redesign/screenshots/implementation-desktop-1440-final.png`
+- Desktop implementation: browser-rendered desktop and mobile captures during the final v2 asset pass.
 - Mobile implementation: `.design/fluxram-site-redesign/screenshots/implementation-mobile-375-final.png`
+- Final v2 mobile hero: `.design/fluxram-site-redesign/screenshots/implementation-mobile-375-v2.png`
 - Combined hero evidence: `.design/fluxram-site-redesign/screenshots/qa-hero-comparison.png`
 - Source dimensions: 899 x 1750 px.
 - Desktop capture: 1425 x 1013 px at a 1440 x 1024 CSS viewport.
@@ -20,7 +21,7 @@
 
 ## Full View Comparison
 
-The implementation preserves the selected performance-field-manual direction: mineral paper background, graphite evidence bands, precise emerald action color, numbered sections, editorial hierarchy, and a product-specific process-family visual. The coded page intentionally uses FluxRAM's real download and product copy rather than the generated comp's illustrative placeholder text.
+The implementation preserves the selected performance-field-manual direction: mineral paper background, graphite evidence bands, precise emerald action color, numbered sections, editorial hierarchy, and a product-specific process-family visual. The hero visual was upgraded during QA to `site/assets/memory-field-manual-v2.png`, a more editorial process-convergence composition that keeps explanatory density out of the hero copy.
 
 ## Focused Hero Comparison
 
@@ -40,6 +41,8 @@ The paired screenshot compares an equal-height top crop of the selected visual w
 2. P2 fixed: mobile title created an orphaned final character. The mobile base type scale was reduced to a readable three-line layout.
 3. P2 fixed: tagline activation was too late on narrow screens. Trigger threshold was lowered and its muted state strengthened for readability.
 4. P2 fixed: selected visual foregrounded FluxRAM more strongly than the initial implementation. `FluxRAM 0.4` was promoted into the hero hierarchy.
+5. P2 fixed: the safety heading created a stranded final character on narrow screens. It now uses two deliberate Chinese phrase lines: “每一次候选，” and “都要守住边界。”.
+6. P2 fixed: the first generated hero diagram read as generic information UI. It was replaced with a purpose-built process-convergence poster asset.
 
 ## Residual Notes
 
