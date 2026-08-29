@@ -1,0 +1,9 @@
+[
+  {
+    "date": "2026-08-30",
+    "surface": "FluxRAM marketing website",
+    "macrostructure": "editorial-index",
+    "beats": ["offer", "application-family", "tagline", "actions", "safety", "edition", "download", "faq"],
+    "status": "pending-review"
+  }
+]
