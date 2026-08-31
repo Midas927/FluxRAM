@@ -1,17 +1,17 @@
 # FluxRAM IT 技术说明书
 
-文档版本：1.1
-更新日期：2026-05-07
+文档版本：1.2
+更新日期：2026-08-31
 适用对象：IT 管理员、桌面工程团队、端点安全团队、开发维护者
 
 ## 1. 技术定位
 
-FluxRAM 是 Windows 11 本地内存 Boost 工具，基于 C# / .NET 8 / WPF 开发。
+FluxRAM 是面向 Windows 10/11 的本地内存 Boost 工具，基于 C# / .NET 8 / WPF 开发。
 
 核心目标：
 
 1. 通过裁剪冷后台进程 working set 缓解内存压力。
-2. 提供 `Light`、`Standard`、`Extreme Performance` 三档策略。
+2. 提供 `Daily`、`Gaming`、`Extreme` 三档策略。
 3. 以本地执行为主，不内置云端遥测上传。
 4. 支持托盘常驻、手动 Boost 和压力触发的 Auto Boost。
 
@@ -47,14 +47,15 @@ docs/                  商业说明书和 IT 技术说明书
 
 1. FluxRAM Pro 使用机器 ID + RSA 签名 key 激活。
 2. 激活后由程序在本机完成授权验证。
-3. Pro Key 由官方根据机器标识签发，绑定当前电脑使用。
+3. Pro Key 根据机器标识生成，仅适用于对应电脑。
 
 ## 4. 版本与功能开关
 
 | 功能 | FluxRAM | FluxRAM Pro |
 | --- | --- | --- |
-| Light / Standard | 支持 | 支持 |
-| Extreme Performance | 不支持 | 支持 |
+| Daily / Gaming | 支持 | 支持 |
+| Extreme | 不支持 | 支持 |
+| 深度释放与后台服务建议 | 不支持 | 支持 |
 | Boost Now | 支持 | 支持 |
 | Auto Boost | 支持 | 支持 |
 | 托盘 Boost | 支持 | 支持 |
@@ -65,7 +66,7 @@ docs/                  商业说明书和 IT 技术说明书
 | 子进程关联保护 | 不支持 | 支持 |
 | 智能关联保护 | 不支持 | 支持 |
 
-公开交付只使用一个 `FluxRAM.exe`。程序默认以普通版启动，Pro 功能必须通过当前机器 ID 绑定的 Pro key 激活，不能通过公开构建参数直接生成内置 Pro 版。
+公开交付只使用一个 `FluxRAM.exe`。程序默认以普通版启动，Pro 功能必须通过当前机器 ID 绑定的 Pro Key 激活，不能通过公开构建参数直接生成内置 Pro 版。
 
 ## 5. Boost 执行流程
 
@@ -89,28 +90,31 @@ docs/                  商业说明书和 IT 技术说明书
 
 ## 6. 当前策略矩阵
 
-| 参数 | Light | Standard | Extreme Performance |
+| 参数 | Daily | Gaming | Extreme |
 | --- | ---: | ---: | ---: |
-| MaxPurgeTargetsPerPass | 2 | 5 | 0，表示全部合格候选 |
-| MinimumCandidateWorkingSetBytes | 280 MB | 160 MB | 64 MB |
-| PurgeWhenAvailableMemoryBelowBytes | 5 GB | 9 GB | 0 |
-| PurgeWhenAvailableMemoryBelowPercentOfTotal | 26% | 40% | 0 |
+| MaxPurgeTargetsPerPass | 2 | 7 | 0，表示全部合格候选 |
+| MinimumCandidateWorkingSetBytes | 280 MB | 96 MB | 64 MB |
+| PurgeWhenAvailableMemoryBelowBytes | 5 GB | 12 GB | 0 |
+| PurgeWhenAvailableMemoryBelowPercentOfTotal | 26% | 48% | 0 |
 | IgnoreMemoryPressureThreshold | false | false | true |
 | AllowForegroundProcessPurge | false | false | true |
-| ProcessCooldownSeconds | 60 | 24 | 0 |
-| NormalIntervalSeconds | 8 | 5 | 1 |
-| BackoffIntervalSeconds | 18 | 12 | 1 |
-| LowYieldThresholdBytes | 96 MB | 40 MB | 0 |
-| MinimumColdnessScore | 65 | 55 | 20 |
-| BoostCooldownSeconds | 120 | 120 | 120 |
+| ProcessCooldownSeconds | 60 | 18 | 0 |
+| NormalIntervalSeconds | 8 | 4 | 1 |
+| BackoffIntervalSeconds | 18 | 10 | 1 |
+| LowYieldThresholdBytes | 96 MB | 24 MB | 0 |
+| MinimumColdnessScore | 65 | 45 | 20 |
+| BoostCooldownSeconds | 120 | 90 | 120 |
+| MinimumGroupedProcessWorkingSetBytes | 24 MB | 8 MB | 4 MB |
+| EnableGamingProcessProtection | false | true | false |
 | EnablePriorityAdjustment | false | false | false |
 | EnableServiceKiller | false | false | false |
 
 说明：
 
-1. `Extreme Performance` 只在 FluxRAM Pro 中开放。
+1. `Extreme` 只在 FluxRAM Pro 中开放。
 2. 所有默认档位都不停止系统服务。
-3. `Extreme Performance` 更激进，建议先在受控机器上验证。
+3. 手动 Boost 会在 Daily / Gaming 基础上降低候选门槛并缩短进程冷却，但仍保留前台和保护应用排除。
+4. `Extreme` 更激进，建议先在受控机器上验证。
 
 ## 7. 保护应用规则
 
@@ -215,8 +219,8 @@ scripts\run-fluxram.bat
 ## 12. 验收清单
 
 1. `dotnet test FluxRAM.sln` 全部通过。
-2. 普通版只能选择 `Light` 和 `Standard`。
-3. 输入当前机器 ID 对应的有效 Pro key 后，可选择 `Extreme Performance`。
+2. 普通版只能选择 `Daily` 和 `Gaming`。
+3. 输入当前机器 ID 对应的有效 Pro Key 后，可选择 `Extreme` 并使用深度释放。
 4. 普通版可添加、删除保护应用，可从运行进程添加。
 5. Pro 版高级保护说明显示正确。
 6. `Boost Now` 可执行并刷新指标。

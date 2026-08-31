@@ -2,15 +2,13 @@
 
 English | [简体中文](README.md)
 
-FluxRAM is a local Windows memory Boost tool. It is not designed to aggressively clean memory all the time. Instead, it frees cold background working sets when you ask it to, or when memory pressure rises, while keeping protected apps such as games, creator tools, local AI workloads and streaming software out of the target list.
+FluxRAM is a local Windows memory Boost tool. When you run it manually or memory pressure rises, it evaluates and trims idle background working sets while excluding active and protected apps such as games, creator tools, local AI workloads and streaming software.
 
 ## Why FluxRAM Exists
 
-Memory prices have made upgrades harder for many budget-conscious users. A lot of 8GB users want to upgrade, but keep putting it off because of the cost, and end up living with a sluggish PC. My own laptop has 12GB, and I have seen browsers crash when memory pressure climbs, so I built FluxRAM for that very practical pain.
+On memory-constrained PCs, browsers, chat clients and launchers can gradually reduce the memory available to active work, causing slowdowns or application exits. FluxRAM focuses on one specific problem: reclaiming idle background memory while minimizing disruption to active applications.
 
-FluxRAM does not magically make 8GB behave like 16GB. It does something more realistic: reclaim memory from cold background processes that are sitting on RAM without doing useful work, so the memory you already have lasts a little longer. Real results depend on your workload. In common browser, office, chat and launcher scenarios, you may see anything from a few hundred MB to around 1-2GB reclaimed. Background-heavy systems may see more, and some memory rebound is normal when apps become active again.
-
-I hope FluxRAM can be a simple, convenient Windows tool for people who are not ready to upgrade RAM yet. Because this is an indie project, Pro activation keys are currently issued manually from machine IDs, so please allow a little time after purchase.
+FluxRAM cannot make 8GB behave like 16GB, and it does not promise a fixed amount of reclaimed memory. Results depend on the running applications, system load and protection settings. Memory usage increasing again when an application becomes active is normal.
 
 ## Download
 
@@ -20,7 +18,7 @@ Recommended package: `FluxRAM-Portable-Windows-x64.zip`. Unzip it and run `FluxR
 
 FluxRAM and FluxRAM Pro use the same executable. Pro features can only be activated with a key generated for the current machine ID.
 
-`FluxRAM-Lite-Windows-x64.zip` is also available for users who want a smaller download. Lite does not remove features; it only requires `.NET 8 Desktop Runtime` to already be installed. If you are unsure, use the Portable package.
+`FluxRAM-Lite-Windows-x64.zip` is available as a smaller download with the same features. It requires `.NET 8 Desktop Runtime` to be installed. If you are unsure, use the Portable package.
 
 ## Demo
 
@@ -41,7 +39,7 @@ These screenshots show FluxRAM running next to Windows Task Manager. Results var
 | Boost Now | Yes | Yes |
 | Auto Boost when memory pressure rises | Yes | Yes |
 | Daily / Gaming profiles | Yes | Yes |
-| Extreme Performance profile | No | Yes |
+| Extreme profile | No | Yes |
 | Deep Release and background service guidance | No | Yes |
 | Tray resident mode and tray Boost | Yes | Yes |
 | Add / remove protected apps | Yes | Yes |
@@ -53,7 +51,7 @@ These screenshots show FluxRAM running next to Windows Task Manager. Results var
 
 ## FluxRAM
 
-The free edition is meant to feel complete for everyday use:
+The free edition includes the complete everyday Boost workflow:
 
 1. `Boost Now`: run a memory Boost when you need it.
 2. `Auto Boost`: trigger automatically when memory pressure becomes high.
@@ -66,7 +64,7 @@ The free edition is meant to feel complete for everyday use:
 
 Pro is for heavier local workloads and more precise protection needs:
 
-1. `Extreme Performance` profile.
+1. `Extreme` profile.
 2. Deep Release for grouped background processes, idle-state detection and user-confirmed closing.
 3. Classification and stop guidance for optional background services.
 4. Exact EXE path protection to reduce false matches between processes with the same name.
@@ -79,11 +77,11 @@ FluxRAM Pro can only be activated with a machine-bound key:
 
 1. Open FluxRAM.
 2. Copy the machine ID shown in the app.
-3. Send the machine ID to sales or support.
+3. Submit the machine ID through the purchase channel.
 4. Enter the Pro Key you receive inside FluxRAM.
 5. The key is bound to the current computer. A new computer requires a new key.
 
-Pro Keys are issued officially from the machine ID and are bound to the current computer.
+Each Pro Key is generated from a machine ID and works only on the corresponding computer.
 
 ## Purchase
 
