@@ -1,7 +1,7 @@
 # FluxRAM IT Technical Manual
 
-Document version: 1.1
-Updated: 2026-05-09
+Document version: 1.2
+Updated: 2026-08-31
 Audience: IT administrators, desktop engineering teams, endpoint security teams and maintainers
 
 ## 1. Technical Positioning
@@ -11,7 +11,7 @@ FluxRAM is a local Windows memory Boost tool built with C# / .NET 8 / WPF.
 Core goals:
 
 1. Reduce memory pressure by trimming cold background process working sets.
-2. Provide `Light`, `Standard` and `Extreme Performance` profiles.
+2. Provide `Daily`, `Gaming` and `Extreme` profiles.
 3. Run locally without built-in cloud telemetry upload.
 4. Support tray residency, manual Boost and memory-pressure-triggered Auto Boost.
 
@@ -47,14 +47,15 @@ Licensing model:
 
 1. FluxRAM Pro uses machine ID + RSA signature verification.
 2. The app performs local verification after activation.
-3. Pro Keys are issued officially from the machine ID and are bound to the current computer.
+3. Pro Keys are generated from machine IDs and work only on the corresponding computers.
 
 ## 4. Editions And Feature Gates
 
 | Feature | FluxRAM | FluxRAM Pro |
 | --- | --- | --- |
-| Light / Standard | Yes | Yes |
-| Extreme Performance | No | Yes |
+| Daily / Gaming | Yes | Yes |
+| Extreme | No | Yes |
+| Deep Release and background service guidance | No | Yes |
 | Boost Now | Yes | Yes |
 | Auto Boost | Yes | Yes |
 | Tray Boost | Yes | Yes |
@@ -65,7 +66,7 @@ Licensing model:
 | Child-process association protection | No | Yes |
 | Window recognition protection | No | Yes |
 
-Public delivery uses a single `FluxRAM.exe`. The app starts as FluxRAM by default. Pro features require a Pro key bound to the current machine ID and cannot be unlocked through a public build flag.
+Public delivery uses a single `FluxRAM.exe`. The app starts as FluxRAM by default. Pro features require a Pro Key bound to the current machine ID and cannot be unlocked through a public build flag.
 
 ## 5. Boost Execution Flow
 
@@ -89,28 +90,31 @@ Single-pass flow:
 
 ## 6. Current Policy Matrix
 
-| Parameter | Light | Standard | Extreme Performance |
+| Parameter | Daily | Gaming | Extreme |
 | --- | ---: | ---: | ---: |
-| MaxPurgeTargetsPerPass | 2 | 5 | 0, meaning all eligible candidates |
-| MinimumCandidateWorkingSetBytes | 280 MB | 160 MB | 64 MB |
-| PurgeWhenAvailableMemoryBelowBytes | 5 GB | 9 GB | 0 |
-| PurgeWhenAvailableMemoryBelowPercentOfTotal | 26% | 40% | 0 |
+| MaxPurgeTargetsPerPass | 2 | 7 | 0, meaning all eligible candidates |
+| MinimumCandidateWorkingSetBytes | 280 MB | 96 MB | 64 MB |
+| PurgeWhenAvailableMemoryBelowBytes | 5 GB | 12 GB | 0 |
+| PurgeWhenAvailableMemoryBelowPercentOfTotal | 26% | 48% | 0 |
 | IgnoreMemoryPressureThreshold | false | false | true |
 | AllowForegroundProcessPurge | false | false | true |
-| ProcessCooldownSeconds | 60 | 24 | 0 |
-| NormalIntervalSeconds | 8 | 5 | 1 |
-| BackoffIntervalSeconds | 18 | 12 | 1 |
-| LowYieldThresholdBytes | 96 MB | 40 MB | 0 |
-| MinimumColdnessScore | 65 | 55 | 20 |
-| BoostCooldownSeconds | 120 | 120 | 120 |
+| ProcessCooldownSeconds | 60 | 18 | 0 |
+| NormalIntervalSeconds | 8 | 4 | 1 |
+| BackoffIntervalSeconds | 18 | 10 | 1 |
+| LowYieldThresholdBytes | 96 MB | 24 MB | 0 |
+| MinimumColdnessScore | 65 | 45 | 20 |
+| BoostCooldownSeconds | 120 | 90 | 120 |
+| MinimumGroupedProcessWorkingSetBytes | 24 MB | 8 MB | 4 MB |
+| EnableGamingProcessProtection | false | true | false |
 | EnablePriorityAdjustment | false | false | false |
 | EnableServiceKiller | false | false | false |
 
 Notes:
 
-1. `Extreme Performance` is available only in FluxRAM Pro.
+1. `Extreme` is available only in FluxRAM Pro.
 2. Default profiles do not stop system services.
-3. `Extreme Performance` is more aggressive and should be tested on controlled machines first.
+3. Manual Boost lowers candidate thresholds and shortens process cooldowns for Daily / Gaming while keeping foreground and protected-app exclusions.
+4. `Extreme` is more aggressive and should be tested on controlled machines first.
 
 ## 7. Protected App Rules
 
@@ -219,8 +223,8 @@ Service-control code remains in the codebase, but default profiles do not enable
 ## 12. Acceptance Checklist
 
 1. `dotnet test FluxRAM.sln` passes.
-2. Free edition can only select `Light` and `Standard`.
-3. A valid Pro key for the current machine ID unlocks `Extreme Performance`.
+2. Free edition can only select `Daily` and `Gaming`.
+3. A valid Pro Key for the current machine ID unlocks `Extreme` and Deep Release.
 4. Free edition can add and remove protected apps, including from running processes.
 5. Pro advanced protection copy displays correctly.
 6. `Boost Now` runs and refreshes metrics.

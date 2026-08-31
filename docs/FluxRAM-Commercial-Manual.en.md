@@ -1,14 +1,14 @@
 # FluxRAM Commercial Manual
 
 Document version: 1.0
-Updated: 2026-05-09
+Updated: 2026-08-31
 Audience: product, sales, channel partners and customer decision makers
 
 ## 1. Product Positioning
 
 FluxRAM is a local Windows memory Boost tool for high-memory-pressure workloads such as gaming, local AI, editing, design and development.
 
-The product is Boost-first:
+The product centers on safe, explainable Boost operations:
 
 1. Users can click `Boost Now` when they need immediate cleanup.
 2. Users can enable `Auto Boost`, and FluxRAM will trigger only when memory pressure is high.
@@ -24,13 +24,13 @@ FluxRAM follows a simple product model: the free edition should be useful enough
 | FluxRAM | Free edition covering most daily workflows | gamers, local AI users, office users and light creators |
 | FluxRAM Pro | Paid edition with stronger profiles and more precise protection | heavy gamers, streamers, editors, designers, local AI power users and IT-managed pilots |
 
-The free edition should cover roughly 80%-90% of the everyday experience. Pro should add stronger, more stable and more precise controls instead of removing basic functionality from free users.
+The free edition covers the complete everyday Boost workflow. Pro adds stronger, more precise and more controllable capabilities.
 
 ## 3. FluxRAM Free Edition
 
 The free edition includes:
 
-1. `Light` and `Standard` optimization profiles.
+1. `Daily` and `Gaming` optimization profiles.
 2. Manual `Boost Now`.
 3. Memory-pressure-based `Auto Boost`.
 4. Tray resident mode, tray restore, tray Boost and tray exit.
@@ -39,19 +39,20 @@ The free edition includes:
 7. Basic protection by process name.
 8. Metrics for recent trimmed memory, total trimmed memory, net gain, rebound rate and FluxRAM's own overhead.
 
-The goal is to make the free edition comfortable for long-term daily use.
+The free edition is designed to cover the complete everyday Boost workflow.
 
 ## 4. FluxRAM Pro
 
 Pro unlocks:
 
-1. `Extreme Performance` profile.
-2. Exact EXE path protection to reduce false matches between processes with the same name.
-3. Child-process association protection for launchers, game clients, AI toolchains and creator software.
-4. Window recognition protection for wrapper launchers and apps with unstable process names.
-5. Permanent activation on the current computer with no online verification required after activation.
+1. `Extreme` profile.
+2. Deep Release with continuous background observation, grouped idle-app candidates and user-confirmed closing.
+3. Classification and stop guidance for optional background services.
+4. Exact EXE path protection to reduce false matches between processes with the same name.
+5. Smart protection for child processes and related applications.
+6. Permanent activation on the current computer with no online verification required after activation.
 
-Pro value is not about taking basic features away. It is about giving advanced users a stronger, safer and more precise Boost experience.
+Pro retains the complete free workflow and adds stronger, more precise controls for advanced workloads.
 
 ## 5. Licensing Flow
 
@@ -59,15 +60,15 @@ FluxRAM shows a machine ID inside the app.
 
 Commercial licensing flow:
 
-1. The customer sends the machine ID to sales or support.
+1. The customer submits the machine ID through the purchase channel.
 2. FluxRAM issues a Pro Key for that specific machine ID.
-3. The customer enters the Pro key in FluxRAM.
+3. The customer enters the Pro Key in FluxRAM.
 4. After successful verification, FluxRAM Pro is permanently activated on that computer.
 
 Important notes:
 
-1. Customers only need the FluxRAM main executable and their Pro key.
-2. A Pro key is bound to the current computer. A replacement computer requires a new key.
+1. Customers only need the FluxRAM release package and their Pro Key.
+2. A Pro Key is bound to the current computer. A replacement computer requires a new key.
 
 ## 6. Comparison With Mem Reduct
 
@@ -89,11 +90,11 @@ FluxRAM should feel easier: no manual process-name typing, one-click protected a
 
 Short version:
 
-> FluxRAM is a local Windows memory Boost tool. The free edition already includes manual Boost, Auto Boost, protected apps and tray workflow. FluxRAM Pro unlocks Extreme Performance and advanced app protection for gaming, local AI, streaming and editing workloads.
+> FluxRAM is a local Windows memory Boost tool. The free edition includes manual Boost, Auto Boost, protected apps and tray controls. FluxRAM Pro adds Extreme, Deep Release and smart related-app protection for gaming, local AI, streaming and editing workloads.
 
 For heavy users:
 
-> FluxRAM Pro is not only about freeing memory. It tries to know which apps should not be touched. Path protection, child-process association and window recognition let Boost become more aggressive while staying more controlled.
+> FluxRAM Pro uses exact paths, child-process relationships and related-app detection to protect active workloads. Deep Release then presents idle background candidates for explicit confirmation.
 
 For IT / business:
 
@@ -103,16 +104,15 @@ For IT / business:
 
 For free users:
 
-1. `FluxRAM.exe`
-2. If using the Small build, include `run-fluxram.bat` and `install-dotnet-desktop-runtime-8.bat`
+1. Prefer `FluxRAM-Portable-Windows-x64.zip`, which includes .NET 8 Desktop Runtime.
+2. For a smaller download, use `FluxRAM-Lite-Windows-x64.zip`; the target PC must already have .NET 8 Desktop Runtime.
 
 For paid users:
 
-1. `FluxRAM.exe`
-2. Pro key
-3. If using the Small build, include the runtime helper scripts
+1. The same Portable or Lite package used for the free edition.
+2. A Pro Key generated for the current machine ID.
 
 Operations notes:
 
-1. Pro Keys should be issued only through the official sales or support flow.
+1. Pro Keys should be generated only through the published purchase and fulfillment channels.
 2. Do not promise a universal cross-machine license.

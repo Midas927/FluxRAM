@@ -10,3 +10,8 @@ scripts/publish-keygen-win-x64.ps1
 *.private-key.xml
 license-private*.xml
 *.log
+
+# Local design and QA artifacts
+.design/
+.tastemaker/
+design-qa.md

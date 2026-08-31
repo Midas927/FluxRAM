@@ -31,6 +31,8 @@ public sealed class WebsiteDownloadSourceTests
 
         Assert.Contains("id=\"hero-memory-canvas\"", html);
         Assert.Contains("data-visual=\"memory-grid\"", html);
+        Assert.Contains("后台状态", html);
+        Assert.DoesNotContain("BACKGROUND FRAGMENTS", html);
         Assert.DoesNotContain("memory-field-manual", html);
         Assert.Contains("FluxRAM 0.4", html);
         Assert.Contains("先判断，再释放。", html);
