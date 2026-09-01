@@ -39,7 +39,7 @@ docs/                  商业说明书和 IT 技术说明书
 3. 程序不会向远程进程注入代码。
 4. 程序不会默认写入开机启动项。
 5. 正常 Boost 流程不调用云端 API。
-6. 检查更新由用户主动触发，只查询 GitHub 公开 latest-release 接口。
+6. 检查更新由用户主动触发，只查询 GitCode 国内镜像的公开 Release 接口。
 7. 本地诊断日志写入 `%LOCALAPPDATA%\FluxRAM\fluxram.log`。
 8. 运行时安装脚本只在缺少 .NET Desktop Runtime 时下载官方安装包。
 
@@ -196,7 +196,7 @@ scripts\run-fluxram.bat
 
 ## 10. 授权与发布安全
 
-1. 公开下载包只通过 GitHub Release 附件分发，不提交到仓库源码树。
+1. 公开下载包通过 GitCode 国内镜像和 GitHub Release 附件分发，不提交到仓库源码树。
 2. 生产发布应使用正式授权配置。
 3. 大范围分发前建议对发行 exe 做代码签名。
 4. Release 附件应同时包含生成的 `.sha256` 文件。

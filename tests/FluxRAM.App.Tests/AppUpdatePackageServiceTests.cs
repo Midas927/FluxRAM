@@ -77,13 +77,13 @@ public sealed class AppUpdatePackageServiceTests : IDisposable
         var hash = Convert.ToHexString(SHA256.HashData(packageBytes)).ToLowerInvariant();
         var asset = new AppUpdateAsset(
             "FluxRAM-Lite-Windows-x64.zip",
-            new Uri("https://github.com/Midas927/FluxRAM/releases/download/v0.3.8/FluxRAM-Lite-Windows-x64.zip"),
-            hash);
+            new Uri("https://gitcode.com/Midas927/FluxRAM/releases/download/v0.3.8/FluxRAM-Lite-Windows-x64.zip"),
+            null);
         var update = new UpdateCheckResult(
             UpdateCheckState.UpdateAvailable,
             "v0.3.7",
             "v0.3.8",
-            "https://github.com/Midas927/FluxRAM/releases/tag/v0.3.8",
+            "https://gitcode.com/Midas927/FluxRAM/releases/tag/v0.3.8",
             null,
             new[] { asset });
         var currentExecutablePath = Path.Combine(_tempDirectory, "FluxRAM.exe");
@@ -91,7 +91,8 @@ public sealed class AppUpdatePackageServiceTests : IDisposable
         var staleUpdateDirectory = Path.Combine(_tempDirectory, "updates", "0.3.7");
         Directory.CreateDirectory(staleUpdateDirectory);
         File.WriteAllText(Path.Combine(staleUpdateDirectory, "old.zip"), "old update");
-        using var client = new HttpClient(new StaticBytesHandler(packageBytes));
+        var handler = new StaticUpdatePackageHandler(packageBytes, hash);
+        using var client = new HttpClient(handler);
         using var service = new AppUpdatePackageService(
             client,
             Path.Combine(_tempDirectory, "updates"),
@@ -103,6 +104,7 @@ public sealed class AppUpdatePackageServiceTests : IDisposable
         Assert.True(File.Exists(staged.ScriptPath));
         Assert.Equal(currentExecutablePath + ".old", staged.BackupExecutablePath);
         Assert.False(Directory.Exists(staleUpdateDirectory));
+        Assert.Contains(handler.RequestedUris, uri => uri.AbsoluteUri.EndsWith(".zip.sha256", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -113,6 +115,23 @@ public sealed class AppUpdatePackageServiceTests : IDisposable
         Assert.False(AppUpdateCompletionService.TryParseArguments(
             new[] { "--complete-update", arbitraryPath, arbitraryPath },
             out _));
+    }
+
+    [Fact]
+    public async Task CompleteAsync_DeletesBackupAndUpdateCache()
+    {
+        Directory.CreateDirectory(_tempDirectory);
+        var backupExecutablePath = Path.Combine(_tempDirectory, "FluxRAM.exe.old");
+        var cacheDirectory = Path.Combine(_tempDirectory, "updates", "0.4.1");
+        Directory.CreateDirectory(cacheDirectory);
+        File.WriteAllText(backupExecutablePath, "previous executable");
+        File.WriteAllText(Path.Combine(cacheDirectory, "package.zip"), "cached update");
+
+        await AppUpdateCompletionService.CompleteAsync(
+            new AppUpdateCompletionRequest(backupExecutablePath, cacheDirectory));
+
+        Assert.False(File.Exists(backupExecutablePath));
+        Assert.False(Directory.Exists(cacheDirectory));
     }
 
     [Fact]
@@ -201,12 +220,26 @@ public sealed class AppUpdatePackageServiceTests : IDisposable
         return Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(path))).ToLowerInvariant();
     }
 
-    private sealed class StaticBytesHandler(byte[] content) : HttpMessageHandler
+    private sealed class StaticUpdatePackageHandler(byte[] content, string sha256) : HttpMessageHandler
     {
+        public List<Uri> RequestedUris { get; } = [];
+
         protected override Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
             CancellationToken cancellationToken)
         {
+            RequestedUris.Add(request.RequestUri!);
+            if (request.RequestUri!.AbsoluteUri.EndsWith(".sha256", StringComparison.Ordinal))
+            {
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(
+                        sha256 + "  FluxRAM-Lite-Windows-x64.zip",
+                        Encoding.ASCII,
+                        "text/plain")
+                });
+            }
+
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new ByteArrayContent(content)

@@ -317,13 +317,14 @@
 
     <Style TargetType="ScrollBar">
       <Setter Property="Width" Value="16" />
-      <Setter Property="Height" Value="16" />
       <Setter Property="Background" Value="{DynamicResource ScrollBarTrackBrush}" />
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="ScrollBar">
             <Grid Background="{TemplateBinding Background}">
               <Track x:Name="PART_Track"
+                     Orientation="{TemplateBinding Orientation}"
+                     ViewportSize="NaN"
                      IsDirectionReversed="True">
                 <Track.DecreaseRepeatButton>
                   <RepeatButton Command="ScrollBar.PageUpCommand"
@@ -331,7 +332,9 @@
                                 Opacity="0" />
                 </Track.DecreaseRepeatButton>
                 <Track.Thumb>
-                  <Thumb x:Name="ScrollThumb">
+                  <Thumb x:Name="ScrollThumb"
+                         Width="16"
+                         Height="40">
                     <Thumb.Template>
                       <ControlTemplate TargetType="Thumb">
                         <Border x:Name="ThumbRoot"
@@ -357,11 +360,19 @@
             <ControlTemplate.Triggers>
               <Trigger Property="Orientation" Value="Horizontal">
                 <Setter TargetName="PART_Track" Property="IsDirectionReversed" Value="False" />
+                <Setter TargetName="ScrollThumb" Property="Width" Value="40" />
+                <Setter TargetName="ScrollThumb" Property="Height" Value="16" />
               </Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>
         </Setter.Value>
       </Setter>
+      <Style.Triggers>
+        <Trigger Property="Orientation" Value="Horizontal">
+          <Setter Property="Width" Value="Auto" />
+          <Setter Property="Height" Value="16" />
+        </Trigger>
+      </Style.Triggers>
     </Style>
   </Window.Resources>
 
@@ -587,6 +598,7 @@
                   Visibility="Collapsed"
                   VerticalScrollBarVisibility="Auto"
                   HorizontalScrollBarVisibility="Disabled"
+                  PreviewMouseWheel="DetailPanel_OnPreviewMouseWheel"
                   CanContentScroll="False">
       <Grid MinHeight="500">
         <Grid.ColumnDefinitions>
@@ -660,6 +672,8 @@
                        MaxHeight="150"
                        FontFamily="Consolas"
                        FontSize="11"
+                       MouseDoubleClick="DetailListBox_OnMouseDoubleClick"
+                       KeyDown="DetailListBox_OnKeyDown"
                        PreviewMouseWheel="DetailListBox_OnPreviewMouseWheel" />
             </Border>
 
@@ -903,6 +917,8 @@
                          MaxHeight="150"
                          FontFamily="Consolas"
                          FontSize="11"
+                         MouseDoubleClick="DetailListBox_OnMouseDoubleClick"
+                         KeyDown="DetailListBox_OnKeyDown"
                          PreviewMouseWheel="DetailListBox_OnPreviewMouseWheel" />
               </Border>
             </Grid>
@@ -926,6 +942,8 @@
                          MaxHeight="150"
                          FontFamily="Consolas"
                          FontSize="11"
+                         MouseDoubleClick="DetailListBox_OnMouseDoubleClick"
+                         KeyDown="DetailListBox_OnKeyDown"
                          PreviewMouseWheel="DetailListBox_OnPreviewMouseWheel" />
               </Border>
               <TextBlock x:Name="LicenseStatusCaptionTextBlock"
