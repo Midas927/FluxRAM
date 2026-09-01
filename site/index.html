@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="FluxRAM 是面向 Windows 的本地内存 Boost 工具。它先识别闲置后台，再由你决定是否释放。">
   <meta name="theme-color" content="#111d21">
-  <meta property="og:title" content="FluxRAM 0.4 | Windows 内存 Boost">
+  <meta property="og:title" content="FluxRAM 0.4.1 | Windows 内存 Boost">
   <meta property="og:description" content="先判断，再释放。面向 Windows 的本地内存 Boost 与深度释放工具。">
-  <title>FluxRAM 0.4 | Windows 内存 Boost</title>
+  <title>FluxRAM 0.4.1 | Windows 内存 Boost</title>
   <link rel="icon" href="assets/FluxRAM.ico">
   <script type="application/ld+json">
   {
@@ -16,8 +16,8 @@
     "name": "FluxRAM",
     "applicationCategory": "UtilitiesApplication",
     "operatingSystem": "Windows 10/11 x64",
-    "softwareVersion": "0.4",
-    "downloadUrl": "https://gitcode.com/Midas927/FluxRAM/releases/download/v0.4/FluxRAM-Portable-Windows-x64.zip",
+    "softwareVersion": "0.4.1",
+    "downloadUrl": "https://gitcode.com/Midas927/FluxRAM/releases/download/v0.4.1/FluxRAM-Portable-Windows-x64.zip",
     "codeRepository": "https://github.com/Midas927/FluxRAM"
   }
   </script>
@@ -26,11 +26,11 @@
 <body>
   <a class="skip-link" href="#main">跳到正文</a>
   <header class="site-header">
-    <a class="brand" href="#top" aria-label="FluxRAM 首页"><img src="assets/FluxRAM.ico" width="32" height="32" alt=""><span>FluxRAM</span><b>0.4</b></a>
+    <a class="brand" href="#top" aria-label="FluxRAM 首页"><img src="assets/FluxRAM.ico" width="32" height="32" alt=""><span>FluxRAM</span><b>0.4.1</b></a>
     <nav class="desktop-nav" aria-label="主导航">
       <a href="#mechanism">机制</a><a href="#safety">安全边界</a><a href="#editions">版本区别</a><a href="#download">下载</a><a href="#faq">常见问题</a><a href="https://github.com/Midas927/FluxRAM" target="_blank" rel="noreferrer">GitHub</a>
     </nav>
-    <a class="button button-primary header-download" href="https://gitcode.com/Midas927/FluxRAM/releases/download/v0.4/FluxRAM-Portable-Windows-x64.zip">国内下载</a>
+    <a class="button button-primary header-download" href="https://gitcode.com/Midas927/FluxRAM/releases/download/v0.4.1/FluxRAM-Portable-Windows-x64.zip">国内下载</a>
     <details class="mobile-menu"><summary>菜单</summary><nav aria-label="移动导航"><a href="#mechanism">机制</a><a href="#safety">安全边界</a><a href="#editions">版本区别</a><a href="#download">下载</a><a href="#faq">常见问题</a><a href="https://github.com/Midas927/FluxRAM" target="_blank" rel="noreferrer">GitHub</a></nav></details>
   </header>
 
@@ -39,11 +39,11 @@
       <canvas id="hero-memory-canvas" data-visual="memory-grid" aria-hidden="true"></canvas>
       <div class="page-shell hero-grid hero-grid-signal">
         <div class="hero-copy reveal">
-          <p class="eyebrow"><span></span>FluxRAM 0.4 · Windows 10/11 x64</p>
-          <p class="hero-product-name">FluxRAM 0.4</p>
+          <p class="eyebrow"><span></span>FluxRAM 0.4.1 · Windows 10/11 x64</p>
+          <p class="hero-product-name">FluxRAM 0.4.1</p>
           <h1 id="hero-title">先看清后台，<br>再释放内存。</h1>
           <p class="hero-lead">FluxRAM 按应用族汇总零碎进程，先识别正在工作的部分，再把可以回收的空间交回给你。</p>
-          <div class="hero-actions"><a class="button button-primary button-large" href="https://gitcode.com/Midas927/FluxRAM/releases/download/v0.4/FluxRAM-Portable-Windows-x64.zip">国内下载 Portable</a><a class="button button-quiet" href="https://github.com/Midas927/FluxRAM/releases/latest/download/FluxRAM-Portable-Windows-x64.zip">GitHub 备用</a></div>
+          <div class="hero-actions"><a class="button button-primary button-large" href="https://gitcode.com/Midas927/FluxRAM/releases/download/v0.4.1/FluxRAM-Portable-Windows-x64.zip">国内下载 Portable</a><a class="button button-quiet" href="https://github.com/Midas927/FluxRAM/releases/latest/download/FluxRAM-Portable-Windows-x64.zip">GitHub 备用</a></div>
           <dl class="hero-facts"><div><dt>运行方式</dt><dd>本地执行</dd></div><div><dt>默认策略</dt><dd>先保护活跃应用</dd></div><div><dt>下载校验</dt><dd>SHA256</dd></div></dl>
         </div>
         <div class="hero-stage reveal" aria-hidden="true"><p>后台状态</p><strong>观察后再决定</strong><span>活跃 / 保护 / 闲置 / 可释放</span></div>
@@ -79,8 +79,8 @@
     </div></section>
 
     <section class="section section-download" id="download" aria-labelledby="download-title"><div class="page-shell">
-      <div class="download-heading reveal"><div><p class="section-index">05 / 下载与校验</p><h2 id="download-title">下载 FluxRAM 0.4</h2></div><p>默认使用 GitCode 国内下载源。下载后可用 SHA256 校验文件核对完整性；GitHub 保留为备用。</p></div>
-      <div class="download-grid reveal"><article class="download-choice download-choice-primary"><div class="download-topline"><span>推荐</span><strong>Windows x64</strong></div><h3>Portable</h3><p>包含 .NET 8 Desktop Runtime。解压后直接运行 FluxRAM.exe。</p><a class="button button-primary button-large" href="https://gitcode.com/Midas927/FluxRAM/releases/download/v0.4/FluxRAM-Portable-Windows-x64.zip">国内下载 Portable</a><div class="download-links"><a href="https://github.com/Midas927/FluxRAM/releases/latest/download/FluxRAM-Portable-Windows-x64.zip">GitHub 备用</a><a href="https://gitcode.com/Midas927/FluxRAM/releases/download/v0.4/FluxRAM-Portable-Windows-x64.zip.sha256">SHA256 校验</a></div></article><article class="download-choice"><div class="download-topline"><span>更小</span><strong>需要 .NET 8</strong></div><h3>Lite</h3><p>适合已经安装 .NET 8 Desktop Runtime 的电脑，功能没有缩水。</p><a class="button button-secondary button-large" href="https://gitcode.com/Midas927/FluxRAM/releases/download/v0.4/FluxRAM-Lite-Windows-x64.zip">国内下载 Lite</a><div class="download-links"><a href="https://github.com/Midas927/FluxRAM/releases/latest/download/FluxRAM-Lite-Windows-x64.zip">GitHub 备用</a><a href="https://gitcode.com/Midas927/FluxRAM/releases/download/v0.4/FluxRAM-Lite-Windows-x64.zip.sha256">SHA256 校验</a></div></article></div>
+      <div class="download-heading reveal"><div><p class="section-index">05 / 下载与校验</p><h2 id="download-title">下载 FluxRAM 0.4.1</h2></div><p>默认使用 GitCode 国内下载源。下载后可用 SHA256 校验文件核对完整性；GitHub 保留为备用。</p></div>
+      <div class="download-grid reveal"><article class="download-choice download-choice-primary"><div class="download-topline"><span>推荐</span><strong>Windows x64</strong></div><h3>Portable</h3><p>包含 .NET 8 Desktop Runtime。解压后直接运行 FluxRAM.exe。</p><a class="button button-primary button-large" href="https://gitcode.com/Midas927/FluxRAM/releases/download/v0.4.1/FluxRAM-Portable-Windows-x64.zip">国内下载 Portable</a><div class="download-links"><a href="https://github.com/Midas927/FluxRAM/releases/latest/download/FluxRAM-Portable-Windows-x64.zip">GitHub 备用</a><a href="https://gitcode.com/Midas927/FluxRAM/releases/download/v0.4.1/FluxRAM-Portable-Windows-x64.zip.sha256">SHA256 校验</a></div></article><article class="download-choice"><div class="download-topline"><span>更小</span><strong>需要 .NET 8</strong></div><h3>Lite</h3><p>适合已经安装 .NET 8 Desktop Runtime 的电脑，功能没有缩水。</p><a class="button button-secondary button-large" href="https://gitcode.com/Midas927/FluxRAM/releases/download/v0.4.1/FluxRAM-Lite-Windows-x64.zip">国内下载 Lite</a><div class="download-links"><a href="https://github.com/Midas927/FluxRAM/releases/latest/download/FluxRAM-Lite-Windows-x64.zip">GitHub 备用</a><a href="https://gitcode.com/Midas927/FluxRAM/releases/download/v0.4.1/FluxRAM-Lite-Windows-x64.zip.sha256">SHA256 校验</a></div></article></div>
     </div></section>
 
     <section class="section section-faq" id="faq" aria-labelledby="faq-title"><div class="page-shell faq-layout">
