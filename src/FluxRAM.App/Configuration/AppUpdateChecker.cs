@@ -36,8 +36,9 @@ public sealed record AppUpdateAsset(
 
 public sealed class AppUpdateChecker : IDisposable
 {
-    private static readonly Uri LatestStableReleaseUri = new("https://api.github.com/repos/Midas927/FluxRAM/releases/latest");
-    private static readonly Uri BetaReleaseChannelUri = new("https://api.github.com/repos/Midas927/FluxRAM/releases?per_page=20");
+    private const string ReleasePageBaseUrl = "https://gitcode.com/Midas927/FluxRAM/releases/tag/";
+    private static readonly Uri LatestStableReleaseUri = new("https://api.gitcode.com/api/v5/repos/Midas927/FluxRAM/releases/latest");
+    private static readonly Uri BetaReleaseChannelUri = new("https://api.gitcode.com/api/v5/repos/Midas927/FluxRAM/releases?per_page=20");
     private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(10);
     private readonly HttpClient _httpClient;
     private readonly bool _disposeClient;
@@ -73,7 +74,7 @@ public sealed class AppUpdateChecker : IDisposable
                 : LatestStableReleaseUri;
             using var request = new HttpRequestMessage(HttpMethod.Get, releaseUri);
             request.Headers.UserAgent.Add(new ProductInfoHeaderValue("FluxRAM", _currentVersion.Split('+')[0]));
-            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
             using var response = await _httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
@@ -83,7 +84,7 @@ public sealed class AppUpdateChecker : IDisposable
                     currentVersion,
                     null,
                     null,
-                    $"GitHub returned {(int)response.StatusCode} {response.ReasonPhrase}.",
+                    $"GitCode returned {(int)response.StatusCode} {response.ReasonPhrase}.",
                     Array.Empty<AppUpdateAsset>());
             }
 
@@ -115,6 +116,11 @@ public sealed class AppUpdateChecker : IDisposable
                     releaseUrl,
                     null,
                     assets);
+            }
+
+            if (string.IsNullOrWhiteSpace(releaseUrl))
+            {
+                releaseUrl = ReleasePageBaseUrl + Uri.EscapeDataString(latestVersion);
             }
 
             var comparison = CompareReleaseVersions(_currentVersion, latestVersion);

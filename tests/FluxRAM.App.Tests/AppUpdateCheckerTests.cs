@@ -29,21 +29,20 @@ public sealed class AppUpdateCheckerTests
     }
 
     [Fact]
-    public async Task CheckLatestReleaseAsync_ReadsDownloadAssetsAndDigests()
+    public async Task CheckLatestReleaseAsync_ReadsGitCodeAssetsAndBuildsReleaseUrl()
     {
         const string json = """
             {
               "tag_name": "v9.9.9",
-              "html_url": "https://github.com/Midas927/FluxRAM/releases/tag/v9.9.9",
               "assets": [
                 {
                   "name": "FluxRAM-Lite-Windows-x64.zip",
-                  "browser_download_url": "https://example.test/lite.zip",
+                  "browser_download_url": "https://gitcode.com/Midas927/FluxRAM/releases/download/v9.9.9/FluxRAM-Lite-Windows-x64.zip",
                   "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
                 },
                 {
                   "name": "FluxRAM-Portable-Windows-x64.zip",
-                  "browser_download_url": "https://example.test/portable.zip",
+                  "browser_download_url": "https://gitcode.com/Midas927/FluxRAM/releases/download/v9.9.9/FluxRAM-Portable-Windows-x64.zip",
                   "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
                 }
               ]
@@ -58,8 +57,12 @@ public sealed class AppUpdateCheckerTests
         Assert.Equal(UpdateCheckState.UpdateAvailable, result.State);
         Assert.Equal(2, result.Assets.Count);
         var portable = Assert.Single(result.Assets, asset => asset.Name.Contains("Portable", StringComparison.Ordinal));
-        Assert.Equal(new Uri("https://example.test/portable.zip"), portable.DownloadUri);
+        Assert.Equal(
+            new Uri("https://gitcode.com/Midas927/FluxRAM/releases/download/v9.9.9/FluxRAM-Portable-Windows-x64.zip"),
+            portable.DownloadUri);
         Assert.Equal("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", portable.Sha256);
+        Assert.Equal("https://gitcode.com/Midas927/FluxRAM/releases/tag/v9.9.9", result.ReleaseUrl);
+        Assert.Equal("api.gitcode.com", handler.LastRequestUri?.Host);
         Assert.EndsWith("/releases/latest", handler.LastRequestUri?.AbsolutePath, StringComparison.Ordinal);
     }
 
@@ -70,14 +73,12 @@ public sealed class AppUpdateCheckerTests
             [
               {
                 "tag_name": "v0.3.8-beta.2",
-                "html_url": "https://github.com/Midas927/FluxRAM/releases/tag/v0.3.8-beta.2",
                 "draft": false,
                 "prerelease": true,
                 "assets": []
               },
               {
                 "tag_name": "v0.3.7",
-                "html_url": "https://github.com/Midas927/FluxRAM/releases/tag/v0.3.7",
                 "draft": false,
                 "prerelease": false,
                 "assets": []
@@ -92,6 +93,7 @@ public sealed class AppUpdateCheckerTests
 
         Assert.Equal(UpdateCheckState.UpdateAvailable, result.State);
         Assert.Equal("v0.3.8-beta.2", result.LatestVersion);
+        Assert.Equal("api.gitcode.com", handler.LastRequestUri?.Host);
         Assert.EndsWith("/releases?per_page=20", handler.LastRequestUri?.PathAndQuery, StringComparison.Ordinal);
     }
 

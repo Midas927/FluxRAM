@@ -37,6 +37,7 @@ public partial class MainWindow : Window
     private const double DetailWindowHeight = 690d;
     private const double DetailMinWindowWidth = 860d;
     private const double DetailMinWindowHeight = 560d;
+    private const double DetailWheelScrollStep = 32d;
     private const string GitHubRepositoryUrl = "https://github.com/Midas927/FluxRAM";
 
     private readonly MainWindowViewModel _viewModel;
@@ -324,18 +325,75 @@ public partial class MainWindow : Window
         var listScrollViewer = FindVisualChild<ScrollViewer>(listBox);
         if (CanScrollList(listScrollViewer, e.Delta))
         {
+            ScrollByMouseWheel(listScrollViewer!, e.Delta);
+            e.Handled = true;
+            return;
+        }
+
+        ScrollByMouseWheel(DetailPanel, e.Delta);
+        e.Handled = true;
+    }
+
+    private void DetailPanel_OnPreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (!_isDetailPanelVisible ||
+            sender is not ScrollViewer scrollViewer ||
+            e.OriginalSource is DependencyObject source &&
+            (ReferenceEquals(source, ProtectedAppsListBox) || ProtectedAppsListBox.IsAncestorOf(source) ||
+             ReferenceEquals(source, BoostDetailsListBox) || BoostDetailsListBox.IsAncestorOf(source) ||
+             ReferenceEquals(source, RecentEventsListBox) || RecentEventsListBox.IsAncestorOf(source)))
+        {
+            return;
+        }
+
+        ScrollByMouseWheel(scrollViewer, e.Delta);
+        e.Handled = true;
+    }
+
+    private void DetailListBox_OnMouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.ListBox listBox ||
+            e.OriginalSource is not DependencyObject source ||
+            System.Windows.Controls.ItemsControl.ContainerFromElement(listBox, source) is not ListBoxItem ||
+            !ShowSelectedListEntryDetails(listBox))
+        {
             return;
         }
 
         e.Handled = true;
+    }
 
-        var forwardedEvent = new MouseWheelEventArgs(e.MouseDevice, e.Timestamp, e.Delta)
+    private void DetailListBox_OnKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter ||
+            sender is not System.Windows.Controls.ListBox listBox ||
+            !ShowSelectedListEntryDetails(listBox))
         {
-            RoutedEvent = MouseWheelEvent,
-            Source = sender
-        };
+            return;
+        }
 
-        DetailPanel.RaiseEvent(forwardedEvent);
+        e.Handled = true;
+    }
+
+    private bool ShowSelectedListEntryDetails(System.Windows.Controls.ListBox listBox)
+    {
+        if (listBox.SelectedItem is not string detail || string.IsNullOrWhiteSpace(detail))
+        {
+            return false;
+        }
+
+        var title = ReferenceEquals(listBox, ProtectedAppsListBox)
+            ? T("Protected app details", "受保护应用详情")
+            : ReferenceEquals(listBox, BoostDetailsListBox)
+                ? T("Boost details", "Boost 明细")
+                : T("Activity details", "活动详情");
+        System.Windows.MessageBox.Show(
+            this,
+            detail,
+            title,
+            MessageBoxButton.OK,
+            MessageBoxImage.Information);
+        return true;
     }
 
     private static bool CanScrollList(ScrollViewer? scrollViewer, int wheelDelta)
@@ -348,6 +406,12 @@ public partial class MainWindow : Window
         return wheelDelta > 0
             ? scrollViewer.VerticalOffset > 0
             : scrollViewer.VerticalOffset < scrollViewer.ScrollableHeight;
+    }
+
+    private static void ScrollByMouseWheel(ScrollViewer scrollViewer, int wheelDelta)
+    {
+        var targetOffset = scrollViewer.VerticalOffset - wheelDelta / 120d * DetailWheelScrollStep;
+        scrollViewer.ScrollToVerticalOffset(Math.Clamp(targetOffset, 0d, scrollViewer.ScrollableHeight));
     }
 
     private static T? FindVisualChild<T>(DependencyObject parent)
@@ -479,7 +543,7 @@ public partial class MainWindow : Window
         UpdateCheckResult? result = null;
         CheckUpdateMenuItem.IsEnabled = false;
         CheckUpdateMenuItem.Header = T("Checking updates...", "检查更新中...");
-        _viewModel.SetStatus(T("Checking GitHub for FluxRAM updates...", "正在检查 FluxRAM 的 GitHub 更新..."));
+        _viewModel.SetStatus(T("Checking GitCode for FluxRAM updates...", "正在通过 GitCode 检查 FluxRAM 更新..."));
         DiagnosticLog.Info("User requested update check.");
 
         try
@@ -2431,8 +2495,8 @@ public partial class MainWindow : Window
                 $"Current build {result.CurrentVersion} is newer than the latest public release {result.LatestVersion}.",
                 $"当前构建 {result.CurrentVersion} 新于最新公开版本 {result.LatestVersion}。"),
             UpdateCheckState.ReleaseVersionUnavailable => T(
-                "GitHub release information was found, but the version could not be read.",
-                "已找到 GitHub 发布信息，但无法读取版本号。"),
+                "GitCode release information was found, but the version could not be read.",
+                "已找到 GitCode 发布信息，但无法读取版本号。"),
             _ => T(
                 $"Unable to check updates: {result.ErrorMessage ?? "unknown error"}",
                 $"无法检查更新：{result.ErrorMessage ?? "未知错误"}")

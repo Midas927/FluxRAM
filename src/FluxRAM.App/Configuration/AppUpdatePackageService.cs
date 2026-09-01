@@ -288,7 +288,7 @@ public sealed class AppUpdatePackageService : IDisposable
     private static bool IsTrustedReleaseAsset(Uri uri)
     {
         return uri.Scheme == Uri.UriSchemeHttps &&
-            string.Equals(uri.Host, "github.com", StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(uri.Host, "gitcode.com", StringComparison.OrdinalIgnoreCase) &&
             uri.AbsolutePath.StartsWith(
                 "/Midas927/FluxRAM/releases/download/",
                 StringComparison.OrdinalIgnoreCase);

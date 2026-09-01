@@ -39,7 +39,7 @@ docs/                  commercial and IT technical manuals
 3. FluxRAM does not inject code into remote processes.
 4. FluxRAM does not create startup entries by default.
 5. Normal Boost flow does not call cloud APIs.
-6. Update checks are user-initiated and query the public GitHub latest-release endpoint.
+6. Update checks are user-initiated and query the public GitCode release endpoint.
 7. Local diagnostic logs are written to `%LOCALAPPDATA%\FluxRAM\fluxram.log`.
 8. The runtime installer script only downloads the official .NET installer when `.NET 8 Desktop Runtime` is missing.
 
@@ -200,7 +200,7 @@ Script behavior:
 
 ## 10. Licensing And Release Safety
 
-1. Public download packages should be distributed through GitHub Release assets, not committed to the source tree.
+1. Public download packages should be distributed through GitCode and GitHub Release assets, not committed to the source tree.
 2. Production releases should use the official licensing configuration.
 3. Production executables should be code-signed before broad distribution.
 4. Release assets should include the generated `.sha256` file.
