@@ -6,6 +6,29 @@ namespace FluxRAM.Core.Tests;
 
 public sealed class PurgePolicyServiceTests
 {
+    [Fact]
+    public void AssessApplications_IncludesRejectedAndBeyondPassLimitWithoutChangingEligibility()
+    {
+        var service = new PurgePolicyService();
+        var now = DateTimeOffset.UtcNow;
+        var snapshots = Enumerable.Range(1, 45).Select(i =>
+            new ProcessSnapshot(i, $"app{i}", 512L * 1024 * 1024, false, ColdnessScore: 100)).ToArray();
+        snapshots[0] = snapshots[0] with { IsForeground = true };
+        snapshots[1] = snapshots[1] with { WorkingSetBytes = 1024 };
+        var settings = OptimizerSettings.SafeDefaults();
+        var times = new Dictionary<int, DateTimeOffset>();
+        var assessments = service.AssessApplications(snapshots, settings, now, times, ["app3"]);
+        Assert.Equal(45, assessments.Count);
+        Assert.Equal(PurgePolicyService.CandidateGroupRejectionReason.Foreground, assessments.Single(x => x.Group.ProcessName == "app1").RejectionReason);
+        Assert.Equal(PurgePolicyService.CandidateGroupRejectionReason.TooSmall, assessments.Single(x => x.Group.ProcessName == "app2").RejectionReason);
+        Assert.Equal(PurgePolicyService.CandidateGroupRejectionReason.Protected, assessments.Single(x => x.Group.ProcessName == "app3").RejectionReason);
+        var plan = service.CreatePlan(snapshots, new MemorySnapshot(4UL << 30, 16UL << 30, 75), settings, now, times,
+            forcePurge: true, protectedProcessNames: ["app3"]);
+        Assert.Equal(settings.MaxPurgeTargetsPerPass, plan.CandidateGroups.Count);
+        Assert.All(plan.CandidateGroups, group => Assert.Equal(PurgePolicyService.CandidateGroupRejectionReason.None,
+            assessments.Single(x => x.Group.ProcessName == group.ProcessName).RejectionReason));
+    }
+
     [Theory]
     [InlineData(OptimizerProfile.Conservative, false)]
     [InlineData(OptimizerProfile.Conservative, true)]
