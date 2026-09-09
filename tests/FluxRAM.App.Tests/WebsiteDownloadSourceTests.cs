@@ -5,9 +5,9 @@ namespace FluxRAM.App.Tests;
 public sealed class WebsiteDownloadSourceTests
 {
     private const string GitCodeReleaseBase =
-        "https://gitcode.com/Midas927/FluxRAM/releases/download/v0.4.1/";
+        "https://gitcode.com/Midas927/FluxRAM/releases/download/v0.4.2/";
     private const string GitHubReleaseBase =
-        "https://github.com/Midas927/FluxRAM/releases/latest/download/";
+        "https://github.com/Midas927/FluxRAM/releases/download/v0.4.2/";
 
     [Fact]
     public void Website_UsesGitCodeForPrimaryDownloadsAndKeepsGitHubFallbacks()
@@ -34,7 +34,7 @@ public sealed class WebsiteDownloadSourceTests
         Assert.Contains("后台状态", html);
         Assert.DoesNotContain("BACKGROUND FRAGMENTS", html);
         Assert.DoesNotContain("memory-field-manual", html);
-        Assert.Contains("FluxRAM 0.4.1", html);
+        Assert.Contains("FluxRAM 0.4.2", html);
         Assert.Contains("先判断，再释放。", html);
         Assert.Contains("普通 Boost 不替你关闭应用。", html);
         Assert.Contains("深度释放", html);

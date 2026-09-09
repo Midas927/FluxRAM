@@ -12,13 +12,26 @@ FluxRAM cannot make 8GB behave like 16GB, and it does not promise a fixed amount
 
 ## Download
 
-[China mirror (GitCode)](https://gitcode.com/Midas927/FluxRAM/releases) | [GitHub releases](https://github.com/Midas927/FluxRAM/releases/latest)
+Current stable release: **v0.4.2**.
+
+[China mirror (GitCode)](https://gitcode.com/Midas927/FluxRAM/releases/tag/v0.4.2) | [GitHub fallback](https://github.com/Midas927/FluxRAM/releases/tag/v0.4.2)
 
 Recommended package: `FluxRAM-Portable-Windows-x64.zip`. Unzip it and run `FluxRAM.exe`.
 
 FluxRAM and FluxRAM Pro use the same executable. Pro features can only be activated with a key generated for the current machine ID.
 
 `FluxRAM-Lite-Windows-x64.zip` is available as a smaller download with the same features. It requires `.NET 8 Desktop Runtime` to be installed. If you are unsure, use the Portable package.
+
+## What's New In v0.4.2
+
+- **Clearer interface**: sidebar icon navigation, a circular memory gauge and a two-minute memory trend. Long entries wrap, with selectable, copyable full details.
+- **Startup update prompts**: choose Update now, Skip this version or Later. Skipped versions are remembered; Later prevents repeat prompts during the current session.
+- **Background app search**: find apps by name or path and see why they qualify or are skipped. Pro Deep Release also supports search.
+- **Per-app yield tracking**: inspect working-set changes at 30, 60 and 120 seconds after trimming during the current session. Outside severe memory pressure, Auto Boost temporarily defers repeated trims of apps with consistently low yield.
+- **Clearer results**: available-memory changes and working-set reductions are shown separately, missing measurements are marked unknown, and skipped Auto Boost passes preserve the previous result.
+- **More control over Pro Deep Release**: follow batch progress and cancel remaining actions. Force-closing an app that has not exited normally requires a separate confirmation. Cancellation does not reopen closed apps.
+
+The free/Pro feature split is unchanged. Deep Release and Extreme remain Pro features. See the [v0.4.2 release notes (Chinese)](docs/releases/v0.4.2.md).
 
 ## Demo
 

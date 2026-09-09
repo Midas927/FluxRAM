@@ -12,13 +12,24 @@ FluxRAM 不能把 8GB 变成 16GB，也不承诺固定释放量。实际效果�
 
 ## 下载
 
-可直接从以下 Release 页面下载最新版：
+当前正式版为 **v0.4.2**，可从以下 Release 页面下载：
 
-[国内下载（GitCode）](https://gitcode.com/Midas927/FluxRAM/releases) | [GitHub 备用下载](https://github.com/Midas927/FluxRAM/releases/latest)
+[国内下载（GitCode）](https://gitcode.com/Midas927/FluxRAM/releases/tag/v0.4.2) | [GitHub 备用下载](https://github.com/Midas927/FluxRAM/releases/tag/v0.4.2)
 
 推荐下载 `FluxRAM-Portable-Windows-x64.zip`，解压后双击 `FluxRAM.exe` 即可运行。普通版和 Pro 版使用同一个主程序；Pro 功能需使用当前电脑机器标识对应的 Pro Key 激活。
 
 如果希望下载包更小，也可以选择 `FluxRAM-Lite-Windows-x64.zip`。Lite 版功能相同，但要求电脑已经安装 `.NET 8 Desktop Runtime`；若不确定，选择 Portable 版。
+
+## v0.4.2 更新
+
+- **界面更清晰**：侧栏图标导航、环形内存仪表与最近两分钟的内存趋势；长条目自动换行，详情可选择、复制全文。
+- **启动更新提醒**：发现新版本后，可选择立即更新、跳过此版本或稍后；跳过的版本会记住，选择稍后则本次运行不再重复提醒。
+- **后台应用搜索**：按名称、路径查找应用，查看符合条件或被跳过的原因；Pro 深度释放也支持搜索。
+- **应用收益观察**：查看本次运行中裁剪后 30、60、120 秒的工作集变化；内存未处于严重压力时，自动 Boost 会暂缓对反复低收益应用的重复裁剪。
+- **结果记录更准确**：区分可用内存变化与工作集裁剪量，测量缺失时标明未知；跳过自动 Boost 时保留上次结果。
+- **Pro 深度释放更可控**：显示批量处理进度，可取消后续操作；应用未正常退出时，另行确认是否强制关闭。取消不会恢复已关闭的应用。
+
+普通版与 Pro 的功能区别不变，深度释放和 Extreme 仍属于 Pro。详见 [v0.4.2 更新说明](docs/releases/v0.4.2.md)。
 
 ## 实际演示
 
