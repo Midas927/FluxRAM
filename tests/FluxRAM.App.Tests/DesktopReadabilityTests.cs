@@ -1,6 +1,10 @@
 using System.Reflection;
 using System.Windows;
+using System.Windows.Automation.Peers;
+using System.Windows.Automation.Provider;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
@@ -25,6 +29,7 @@ public sealed class DesktopReadabilityTests
             try
             {
                 var app = new System.Windows.Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+                AssertGaugeRendering();
                 window = new MainWindow(isUiPreview: true);
                 var vm = (MainWindowViewModel)window.DataContext;
                 var tabs = (TabControl)window.FindName("WorkspaceTabs");
@@ -37,37 +42,79 @@ public sealed class DesktopReadabilityTests
                 for (var i = 0; i < 30; i++) trend.AddSample(DateTimeOffset.UtcNow.AddSeconds(-120 + 4 * i), i < 20 ? 65 : 50);
 
                 foreach (var theme in new[] { AppTheme.Light, AppTheme.Dark })
-                    foreach (var language in new[] { UiLanguage.ChineseSimplified, UiLanguage.English })
+                    foreach (var language in UiLanguageCatalog.Options.Select(option => option.Language))
                     {
                         Invoke(window, "ApplyTheme", theme, false);
                         Invoke(window, "ApplyLanguage", language, false);
                         Invoke(window, "SelectLanguage", language);
                         vm.UpdateProcessMetrics(140, 6, "Example.exe");
                         vm.SetStatus(language == UiLanguage.English ? "Ready" : "就绪");
-                        vm.UpdateProtectedEntries(["Example.exe | Path and child-process protection | " + longPath]);
-                        vm.AddEvent("Background scan completed. No eligible candidates.");
+                        vm.UpdateProtectedEntries(Enumerable.Range(1, 20).Select(i => $"Example {i}.exe | Path and child-process protection | {longPath}").ToArray());
+                        for (var i = 0; i < 20; i++) vm.AddEvent($"Background scan {i} completed. No eligible candidates. | {longPath}");
                         for (var page = 0; page < tabs.Items.Count; page++)
                         {
                             tabs.SelectedIndex = page;
-                            root.Measure(new Size(820, 630));
-                            root.Arrange(new Rect(0, 0, 820, 630));
-                            root.UpdateLayout();
-                            var viewer = Descendants<ScrollViewer>(root).FirstOrDefault(v => v.Name == "DetailPanel");
-                            if (page == 0)
+                            foreach (var size in new[] { new Size(1040, 690), new Size(820, 630), new Size(820, 480) })
                             {
-                                Assert.NotNull(viewer);
-                                Assert.Equal(0, viewer.ScrollableWidth);
-                                Assert.True(((FrameworkElement)window.FindName("BoostNowButton")).ActualWidth > 120);
+                                Arrange(root, size);
+                                AssertNavigation(tabs, language);
+                                var content = (FrameworkElement)((TabItem)tabs.SelectedItem).Content;
+                                AssertFits(content, tabs);
+                                foreach (var viewer in Descendants<ScrollViewer>(root))
+                                {
+                                    Assert.Equal(0, viewer.ScrollableWidth);
+                                    Assert.True(viewer.ViewportHeight > 0, $"{theme}/{language}/{page}/{size}: empty scroll viewport");
+                                }
+                                if (page == 0)
+                                {
+                                    var viewer = (ScrollViewer)window.FindName("DetailPanel");
+                                    viewer.ScrollToTop();
+                                    root.UpdateLayout();
+                                    var boost = (FrameworkElement)window.FindName("BoostNowButton");
+                                    Assert.True(boost.ActualWidth > 120);
+                                    AssertFits(boost, viewer);
+                                    var gauge = (MemoryUsageGauge)window.FindName("MemoryGauge");
+                                    Assert.Equal(vm.MemoryLoadPercent, gauge.Value);
+                                    Assert.Equal(vm.MemoryLoadValue, System.Windows.Automation.AutomationProperties.GetName(gauge));
+                                    AssertFits(gauge, (FrameworkElement)window.FindName("MemoryOverviewPanel"));
+                                }
+                                foreach (var list in Descendants<ListBox>(content))
+                                {
+                                    var scroll = Descendants<ScrollViewer>(list).First();
+                                    AssertFits(scroll, list);
+                                    Assert.True(scroll.ScrollableHeight > 0, $"{list.Name}: long entries must scroll inside the list");
+                                    scroll.ScrollToBottom();
+                                    root.UpdateLayout();
+                                    Assert.Equal(scroll.ScrollableHeight, scroll.VerticalOffset, precision: 1);
+                                    scroll.ScrollToTop();
+                                    root.UpdateLayout();
+                                    Assert.Equal(0, scroll.VerticalOffset);
+                                }
+                                Capture(root, $"{theme}-{language}-{page}-{size.Width}x{size.Height}.png");
                             }
-                            foreach (var list in Descendants<ListBox>(root))
-                            {
-                                var scroll = Descendants<ScrollViewer>(list).FirstOrDefault();
-                                if (scroll is not null) Assert.Equal(0, scroll.ScrollableWidth);
-                            }
-                            Capture(root, $"{theme}-{language}-{page}.png");
                         }
+
+                        var details = vm.BoostDetails;
+                        var modeButton = (Button)window.FindName("DetailSettingsButton");
+                        modeButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                        Assert.Equal(0, tabs.SelectedIndex);
+                        foreach (var name in new[] { "ProtectionTab", "ActivityTab", "SettingsTab", "ResultsRegion", "TrendRegion" })
+                            Assert.Equal(Visibility.Collapsed, ((FrameworkElement)window.FindName(name)).Visibility);
+                        Arrange(root, new Size(720, 480));
+                        AssertNavigation(tabs, language);
+                        AssertFits((FrameworkElement)((TabItem)tabs.SelectedItem).Content, tabs);
+                        AssertFits((FrameworkElement)window.FindName("BoostNowButton"), (ScrollViewer)window.FindName("DetailPanel"));
+                        Capture(root, $"{theme}-{language}-compact-720x480.png");
+                        modeButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                        foreach (var name in new[] { "ProtectionTab", "ActivityTab", "SettingsTab", "ResultsRegion", "TrendRegion" })
+                            Assert.Equal(Visibility.Visible, ((FrameworkElement)window.FindName(name)).Visibility);
+                        Arrange(root, new Size(820, 630));
+                        AssertNavigation(tabs, language);
+                        Assert.Same(details, vm.BoostDetails);
                     }
 
+                Invoke(window, "ApplyLanguage", UiLanguage.English, false);
+                Invoke(window, "SelectLanguage", UiLanguage.English);
                 vm.UpdateBoostDetails(["Keep the last completed Boost"]);
                 var previousDetails = vm.BoostDetails;
                 SetField(window, "_optimizerSettings", OptimizerSettings.SafeDefaults());
@@ -84,6 +131,23 @@ public sealed class DesktopReadabilityTests
                 // Only preview windows and synthetic candidates are used; no purge is executed.
                 tabs.SelectedIndex = 0;
                 window.Show();
+                // Exercise native selector input without persisting test choices to user settings.
+                foreach (var (name, page, guard) in new[] { ("ProfileSelector", 0, "_isSettingProfileSelector"), ("LanguageSelector", 3, "_isSettingLanguageSelector") })
+                {
+                    tabs.SelectedIndex = page;
+                    window.UpdateLayout();
+                    var selector = (ComboBox)window.FindName(name);
+                    var selectedIndex = selector.SelectedIndex;
+                    SetField(window, guard, true);
+                    try { AssertSelectorKeyboardAndPopup(selector); }
+                    finally
+                    {
+                        selector.IsDropDownOpen = false;
+                        selector.SelectedIndex = selectedIndex;
+                        SetField(window, guard, false);
+                    }
+                }
+                tabs.SelectedIndex = 0;
                 var result = new UpdateCheckResult(UpdateCheckState.UpdateAvailable, "v0.4.1", "v9.9.9", null, null, []);
                 foreach (var (label, expected) in new[] { ("Update now", UpdatePromptChoice.UpdateNow), ("Skip this version", UpdatePromptChoice.SkipThisVersion), ("Later", UpdatePromptChoice.Later) })
                 {
@@ -199,12 +263,144 @@ public sealed class DesktopReadabilityTests
             foreach (var descendant in Descendants<T>(child)) yield return descendant;
         }
     }
+    private static void Arrange(FrameworkElement root, Size size)
+    {
+        root.Measure(size);
+        root.Arrange(new Rect(size));
+        root.UpdateLayout();
+    }
+
+    private static void AssertGaugeRendering()
+    {
+        var gauge = new MemoryUsageGauge();
+        foreach (var size in new[] { new Size(132, 126), new Size(16, 16), new Size(1, 1) })
+        {
+            var empty = Render(0);
+            var half = Render(50);
+            var full = Render(100);
+            Assert.Equal(empty, Render(-20));
+            Assert.Equal(full, Render(120));
+            if (size.Width > 14)
+            {
+                Assert.Contains(empty, value => value != 0);
+                Assert.False(empty.SequenceEqual(half), $"{size}: 50% must differ from 0%");
+                Assert.False(half.SequenceEqual(full), $"{size}: 100% must differ from 50%");
+            }
+
+            byte[] Render(double value)
+            {
+                gauge.Value = value;
+                Arrange(gauge, size);
+                var bitmap = new RenderTargetBitmap((int)size.Width, (int)size.Height, 96, 96, PixelFormats.Pbgra32);
+                bitmap.Render(gauge);
+                var bounds = VisualTreeHelper.GetDrawing(gauge)?.Bounds ?? Rect.Empty;
+                Assert.True(bounds.IsEmpty || new Rect(size).Contains(bounds), $"Gauge {value}/{size}: drawing exceeds element bounds: {bounds}");
+                var pixels = new byte[bitmap.PixelWidth * bitmap.PixelHeight * 4];
+                bitmap.CopyPixels(pixels, bitmap.PixelWidth * 4, 0);
+                return pixels;
+            }
+        }
+        foreach (var value in new[] { double.NaN, double.PositiveInfinity, double.NegativeInfinity })
+        {
+            var previous = gauge.Value;
+            Assert.Throws<ArgumentException>(() => gauge.Value = value);
+            Assert.Equal(previous, gauge.Value);
+        }
+        gauge.Value = 50d;
+        var peer = UIElementAutomationPeer.CreatePeerForElement(gauge);
+        Assert.NotNull(peer);
+        var range = Assert.IsAssignableFrom<IRangeValueProvider>(peer.GetPattern(PatternInterface.RangeValue));
+        Assert.True(range.IsReadOnly);
+        Assert.Equal(0d, range.Minimum);
+        Assert.Equal(100d, range.Maximum);
+        Assert.Equal(50d, range.Value);
+        Assert.Throws<InvalidOperationException>(() => range.SetValue(75d));
+        Assert.Equal(50d, range.Value);
+    }
+
+    private static void AssertSelectorKeyboardAndPopup(ComboBox selector)
+    {
+        Assert.False(selector.IsEditable);
+        selector.SelectedIndex = 0;
+        selector.Focus();
+        PressKey(Key.F4);
+        Assert.True(selector.IsDropDownOpen, $"{selector.Name}: F4 did not open the dropdown");
+        var popup = Assert.IsType<Popup>(selector.Template.FindName("PART_Popup", selector));
+        Assert.True(popup.IsOpen);
+        var popupRoot = Assert.IsAssignableFrom<FrameworkElement>(popup.Child);
+        Assert.True(popupRoot.ActualWidth >= selector.ActualWidth && popupRoot.ActualHeight > 0);
+        foreach (var item in selector.Items.OfType<ComboBoxItem>().Where(item => item.Visibility == Visibility.Visible))
+        {
+            AssertFits(item, popupRoot);
+            var label = Assert.Single(Descendants<TextBlock>(item).Where(text => text.Text == (string)item.Content));
+            AssertFits(label, item);
+        }
+        Capture(popupRoot, $"{selector.Name}-popup.png");
+        PressKey(Key.Down);
+        PressKey(Key.Enter);
+        Assert.False(selector.IsDropDownOpen);
+        Assert.Equal(1, selector.SelectedIndex);
+        PressKey(Key.F4);
+        Assert.True(popup.IsOpen);
+        PressKey(Key.Up);
+        PressKey(Key.Escape);
+        Assert.False(popup.IsOpen);
+        Assert.Equal(1, selector.SelectedIndex);
+
+        void PressKey(Key key)
+        {
+            selector.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice, PresentationSource.FromVisual(selector), 0, key)
+            {
+                RoutedEvent = Keyboard.KeyDownEvent
+            });
+            selector.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+        }
+    }
+
+    private static void AssertNavigation(TabControl tabs, UiLanguage language)
+    {
+        Assert.Equal(Dock.Left, tabs.TabStripPlacement);
+        var captions = new[] { ("Overview", "概览"), ("App protection", "应用保护"), ("Recent activity", "最近活动"), ("Settings", "设置") };
+        Assert.Equal(captions.Length, tabs.Items.Count);
+        var content = (FrameworkElement)((TabItem)tabs.SelectedItem).Content;
+        var contentLeft = content.TransformToAncestor(tabs).Transform(new Point()).X;
+        var previousBottom = 0d;
+        for (var i = 0; i < tabs.Items.Count; i++)
+        {
+            var tab = (TabItem)tabs.Items[i];
+            if (tab.Visibility != Visibility.Visible) continue;
+            AssertFits(tab, tabs);
+            var bounds = tab.TransformToAncestor(tabs).TransformBounds(new Rect(tab.RenderSize));
+            Assert.True(bounds.Top >= previousBottom - 1, $"{language}/{tab.Name}: navigation items overlap");
+            Assert.True(bounds.Right <= contentLeft + 1, $"{language}/{tab.Name}: navigation overlaps page content");
+            previousBottom = bounds.Bottom;
+            var caption = UiLanguageLocalizer.Localize(language, captions[i].Item1, captions[i].Item2);
+            var label = Assert.Single(Descendants<TextBlock>(tab).Where(text => text.Text == caption));
+            AssertFits(label, tab);
+            Assert.True(label.DesiredSize.Height <= label.ActualHeight + 1, $"{language}/{tab.Name}: clipped navigation label");
+            var iconText = Assert.IsType<string>(tab.Tag);
+            Assert.False(string.IsNullOrWhiteSpace(iconText));
+            var icon = Assert.Single(Descendants<TextBlock>(tab).Where(text => text.Text == iconText));
+            AssertFits(icon, tab);
+        }
+    }
+
+    private static void AssertFits(FrameworkElement element, FrameworkElement container)
+    {
+        var bounds = element.TransformToAncestor(container).TransformBounds(new Rect(element.RenderSize));
+        Assert.True(bounds.Width > 0 && bounds.Height > 0 &&
+            bounds.Left >= -1 && bounds.Top >= -1 &&
+            bounds.Right <= container.ActualWidth + 1 && bounds.Bottom <= container.ActualHeight + 1,
+            $"{element.Name} ({element.GetType().Name}): {bounds} exceeds {container.Name} ({container.RenderSize})");
+    }
+
     private static void Capture(FrameworkElement root, string name)
     {
         var folder = Environment.GetEnvironmentVariable("FLUXRAM_UI_CAPTURE_DIR");
         if (string.IsNullOrEmpty(folder)) return;
         Directory.CreateDirectory(folder);
-        var bitmap = new RenderTargetBitmap(820, 630, 96, 96, PixelFormats.Pbgra32);
+        var bitmap = new RenderTargetBitmap((int)Math.Ceiling(root.ActualWidth + root.Margin.Left + root.Margin.Right),
+            (int)Math.Ceiling(root.ActualHeight + root.Margin.Top + root.Margin.Bottom), 96, 96, PixelFormats.Pbgra32);
         bitmap.Render(root);
         var encoder = new PngBitmapEncoder();
         encoder.Frames.Add(BitmapFrame.Create(bitmap));

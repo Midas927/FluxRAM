@@ -9,6 +9,44 @@ public sealed class MainWindowLayoutContractTests
     private static readonly XNamespace XamlNamespace = "http://schemas.microsoft.com/winfx/2006/xaml";
 
     [Fact]
+    public void WorkspaceTabs_UsesLeftNavigationAndPreservesTheFourPages()
+    {
+        var document = LoadMainWindowXaml();
+        var tabs = FindNamedElement(document, "WorkspaceTabs");
+
+        Assert.Equal("Left", (string?)tabs.Attribute("TabStripPlacement"));
+        Assert.Equal(new[] { "OverviewTab", "ProtectionTab", "ActivityTab", "SettingsTab" },
+            tabs.Elements(PresentationNamespace + "TabItem").Select(tab => (string?)tab.Attribute(XamlNamespace + "Name")));
+    }
+
+    [Fact]
+    public void MemoryOverview_UsesBoundGaugeInsteadOfLinearProgressBar()
+    {
+        var document = LoadMainWindowXaml();
+        var memory = FindNamedElement(document, "MemoryOverviewPanel");
+        var gauge = FindNamedElement(document, "MemoryGauge");
+
+        Assert.Empty(memory.Descendants(PresentationNamespace + "ProgressBar"));
+        Assert.Contains(memory, gauge.Ancestors());
+        Assert.Equal("{Binding MemoryLoadPercent, Mode=OneWay}", (string?)gauge.Attribute("Value"));
+        Assert.Equal("{Binding MemoryLoadValue}", (string?)gauge.Attribute("AutomationProperties.Name"));
+    }
+
+    [Theory]
+    [InlineData("DetailSettingsButton", "Click", "DetailSettingsButton_OnClick")]
+    [InlineData("BoostNowButton", "Click", "BoostNowButton_OnClick")]
+    [InlineData("AutoBoostToggle", "Checked", "AutoBoostToggle_OnChecked")]
+    [InlineData("AutoBoostToggle", "Unchecked", "AutoBoostToggle_OnUnchecked")]
+    [InlineData("ViewBoostDetailsButton", "Click", "ViewBoostDetailsButton_OnClick")]
+    [InlineData("ViewProtectionDetailsButton", "Click", "ViewProtectionDetailsButton_OnClick")]
+    [InlineData("ViewActivityDetailsButton", "Click", "ViewActivityDetailsButton_OnClick")]
+    [InlineData("CheckUpdateMenuItem", "Click", "CheckUpdateMenuItem_OnClick")]
+    public void DashboardControls_PreserveTheirHandlers(string name, string eventName, string handler)
+    {
+        Assert.Equal(handler, (string?)FindNamedElement(LoadMainWindowXaml(), name).Attribute(eventName));
+    }
+
+    [Fact]
     public void ProtectedAppsList_FillsItsOwnScrollablePage()
     {
         var document = LoadMainWindowXaml();
@@ -144,6 +182,7 @@ public sealed class MainWindowLayoutContractTests
 
         Assert.Equal("DetailListBox_OnMouseDoubleClick", (string?)listBox.Attribute("MouseDoubleClick"));
         Assert.Equal("DetailListBox_OnKeyDown", (string?)listBox.Attribute("KeyDown"));
+        Assert.Equal("DetailListBox_OnPreviewMouseWheel", (string?)listBox.Attribute("PreviewMouseWheel"));
     }
 
     [Fact]

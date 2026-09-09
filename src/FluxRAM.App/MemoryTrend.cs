@@ -20,6 +20,7 @@ public sealed class MemoryTrend : FrameworkElement
 
     public void AddSample(DateTimeOffset time, double load)
     {
+        if (!double.IsFinite(load)) return;
         if (_samples.Count > 0 && time < _samples.Last().Time) _samples.Clear();
         _samples.Enqueue((time, Math.Clamp(load, 0, 100)));
         while (_samples.Count > 120 || _samples.Peek().Time < time.AddMinutes(-2)) _samples.Dequeue();
@@ -31,12 +32,14 @@ public sealed class MemoryTrend : FrameworkElement
         base.OnRender(drawingContext);
         var width = Math.Max(0, ActualWidth - 6);
         var height = Math.Max(0, ActualHeight - 6);
-        var gridPen = new Pen(GridBrush, 1);
+        var gridPen = new Pen(GridBrush, 0.7) { DashStyle = new DashStyle(new[] { 3d, 5d }, 0) };
         for (var i = 0; i <= 4; i++)
             drawingContext.DrawLine(gridPen, new Point(3, 3 + height * i / 4), new Point(3 + width, 3 + height * i / 4));
         if (_samples.Count == 0) return;
         var end = _samples.Last().Time;
         var geometry = new StreamGeometry();
+        var area = new StreamGeometry();
+        Point firstPoint = default;
         Point last = default;
         using (var context = geometry.Open())
         {
@@ -44,12 +47,27 @@ public sealed class MemoryTrend : FrameworkElement
             foreach (var sample in _samples)
             {
                 last = new Point(3 + width * (1 - (end - sample.Time).TotalSeconds / 120), 3 + height * (1 - sample.Load / 100));
-                if (first) context.BeginFigure(last, false, false);
+                if (first)
+                {
+                    firstPoint = last;
+                    context.BeginFigure(last, false, false);
+                }
                 else context.LineTo(last, true, false);
                 first = false;
             }
         }
+        using (var context = area.Open())
+        {
+            context.BeginFigure(new Point(firstPoint.X, height + 3), true, true);
+            foreach (var sample in _samples)
+                context.LineTo(new Point(3 + width * (1 - (end - sample.Time).TotalSeconds / 120), 3 + height * (1 - sample.Load / 100)), true, false);
+            context.LineTo(new Point(last.X, height + 3), true, false);
+        }
         geometry.Freeze();
+        area.Freeze();
+        drawingContext.PushOpacity(0.08);
+        drawingContext.DrawGeometry(LineBrush, null, area);
+        drawingContext.Pop();
         drawingContext.DrawGeometry(null, new Pen(LineBrush, 2), geometry);
         drawingContext.DrawEllipse(LineBrush, null, last, 3, 3);
     }

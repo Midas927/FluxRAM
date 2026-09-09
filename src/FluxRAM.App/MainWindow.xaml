@@ -13,6 +13,7 @@
         Icon="FluxRAM.ico"
         FontFamily="Segoe UI"
         Background="#0E1117"
+        UseLayoutRounding="True"
         TextOptions.TextFormattingMode="Display"
         TextOptions.TextRenderingMode="ClearType">
 
@@ -23,26 +24,31 @@
         <TextBlock Text="{Binding Converter={StaticResource DetailTextConverter}, ConverterParameter=Title}"
                    FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap" />
         <TextBlock Text="{Binding Converter={StaticResource DetailTextConverter}, ConverterParameter=Body}"
-                   FontSize="12" LineHeight="20" Margin="0,4,0,0" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+                   FontSize="12" FontWeight="Normal" LineHeight="20" Margin="0,4,0,0" Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
       </StackPanel>
     </DataTemplate>
     <Style TargetType="TabItem">
-      <Setter Property="Padding" Value="18,10" />
+      <Setter Property="Padding" Value="6,12" />
+      <Setter Property="Margin" Value="8,0,8,8" />
+      <Setter Property="Width" Value="72" />
+      <Setter Property="MinHeight" Value="64" />
       <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
-      <Setter Property="FontSize" Value="13" />
+      <Setter Property="FontSize" Value="11" />
       <Setter Property="Template">
         <Setter.Value><ControlTemplate TargetType="TabItem">
-          <Border x:Name="TabRoot" BorderThickness="0,0,0,2" BorderBrush="Transparent" Padding="{TemplateBinding Padding}" Background="Transparent">
-            <ContentPresenter ContentSource="Header" RecognizesAccessKey="True" HorizontalAlignment="Center" />
+          <Border x:Name="TabRoot" BorderThickness="1" CornerRadius="6" BorderBrush="Transparent" Padding="{TemplateBinding Padding}" Background="Transparent">
+            <StackPanel VerticalAlignment="Center">
+              <TextBlock Text="{TemplateBinding Tag}" FontFamily="Segoe MDL2 Assets" FontSize="19" HorizontalAlignment="Center" Margin="0,0,0,8" />
+              <TextBlock Text="{TemplateBinding Header}" TextAlignment="Center" TextWrapping="Wrap" />
+            </StackPanel>
           </Border>
           <ControlTemplate.Triggers>
             <Trigger Property="IsSelected" Value="True">
-              <Setter TargetName="TabRoot" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
               <Setter TargetName="TabRoot" Property="Background" Value="{DynamicResource AccentSoftBrush}" />
-              <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+              <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
               <Setter Property="FontWeight" Value="SemiBold" />
             </Trigger>
-            <Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter TargetName="TabRoot" Property="BorderThickness" Value="2" /><Setter TargetName="TabRoot" Property="BorderBrush" Value="{DynamicResource AccentBrush}" /></Trigger>
+            <Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter TargetName="TabRoot" Property="BorderBrush" Value="{DynamicResource AccentBrush}" /></Trigger>
             <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="TabRoot" Property="Background" Value="{DynamicResource ListItemHoverBrush}" /></Trigger>
           </ControlTemplate.Triggers>
         </ControlTemplate></Setter.Value>
@@ -111,7 +117,7 @@
     <Style x:Key="CaptionStyle" TargetType="TextBlock">
       <Setter Property="FontSize" Value="12" />
       <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
-      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="FontWeight" Value="Regular" />
       <Setter Property="TextWrapping" Value="Wrap" />
       <Setter Property="TextTrimming" Value="CharacterEllipsis" />
     </Style>
@@ -166,13 +172,54 @@
     </Style>
 
     <Style TargetType="ComboBox">
-      <Setter Property="Height" Value="30" />
-      <Setter Property="Padding" Value="6,0" />
-      <Setter Property="Foreground" Value="{DynamicResource ComboBoxForegroundBrush}" />
-      <Setter Property="Background" Value="{DynamicResource ComboBoxBackgroundBrush}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource ComboBoxBorderBrush}" />
+      <Setter Property="Height" Value="36" />
+      <Setter Property="Padding" Value="12,0" />
+      <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+      <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource BorderBrushSoft}" />
       <Setter Property="BorderThickness" Value="1" />
       <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="Template">
+        <Setter.Value><ControlTemplate TargetType="ComboBox">
+          <Grid>
+            <ToggleButton x:Name="SelectionToggle" Focusable="False" ClickMode="Press"
+                          IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
+              <ToggleButton.Template><ControlTemplate TargetType="ToggleButton">
+                <Border x:Name="SelectionBorder" CornerRadius="5" BorderThickness="1" Background="{DynamicResource SurfaceSoftBrush}" BorderBrush="{DynamicResource BorderBrushSoft}">
+                  <TextBlock Text="&#xE70D;" FontFamily="Segoe MDL2 Assets" FontSize="10" Margin="0,0,12,0" HorizontalAlignment="Right" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" />
+                </Border>
+                <ControlTemplate.Triggers>
+                  <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="SelectionBorder" Property="BorderBrush" Value="{DynamicResource AccentBrush}" /></Trigger>
+                </ControlTemplate.Triggers>
+              </ControlTemplate></ToggleButton.Template>
+            </ToggleButton>
+            <ContentPresenter Margin="12,0,32,0" VerticalAlignment="Center" IsHitTestVisible="False"
+                              Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}" />
+            <Border x:Name="ComboFocus" BorderThickness="1" BorderBrush="Transparent" CornerRadius="5" IsHitTestVisible="False" />
+            <Popup x:Name="PART_Popup" IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" AllowsTransparency="True" Focusable="False">
+              <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrushSoft}" BorderThickness="1" CornerRadius="5"
+                      MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}" MaxHeight="{TemplateBinding MaxDropDownHeight}" Padding="4">
+                <ScrollViewer CanContentScroll="True"><ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained" /></ScrollViewer>
+              </Border>
+            </Popup>
+          </Grid>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter TargetName="ComboFocus" Property="BorderBrush" Value="{DynamicResource AccentBrush}" /></Trigger>
+            <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.45" /></Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate></Setter.Value>
+      </Setter>
+    </Style>
+    <Style TargetType="ComboBoxItem">
+      <Setter Property="Padding" Value="10,8" />
+      <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+      <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ComboBoxItem">
+        <Border x:Name="Option" Padding="{TemplateBinding Padding}" CornerRadius="4" Background="Transparent"><ContentPresenter /></Border>
+        <ControlTemplate.Triggers>
+          <Trigger Property="IsHighlighted" Value="True"><Setter TargetName="Option" Property="Background" Value="{DynamicResource AccentSoftBrush}" /></Trigger>
+          <Trigger Property="IsSelected" Value="True"><Setter Property="FontWeight" Value="SemiBold" /></Trigger>
+        </ControlTemplate.Triggers>
+      </ControlTemplate></Setter.Value></Setter>
     </Style>
 
     <Style x:Key="BaseButtonStyle" TargetType="Button">
@@ -193,7 +240,7 @@
                     Background="{TemplateBinding Background}"
                     BorderBrush="{TemplateBinding BorderBrush}"
                     BorderThickness="{TemplateBinding BorderThickness}"
-                    CornerRadius="7"
+                    CornerRadius="5"
                     SnapsToDevicePixels="True">
               <ContentPresenter HorizontalAlignment="Center"
                                 VerticalAlignment="Center"
@@ -201,11 +248,13 @@
             </Border>
             <ControlTemplate.Triggers>
               <Trigger Property="IsMouseOver" Value="True">
-                <Setter TargetName="ButtonRoot" Property="Background" Value="{DynamicResource ButtonHoverBrush}" />
-                <Setter TargetName="ButtonRoot" Property="BorderBrush" Value="{DynamicResource ButtonHoverBorderBrush}" />
+                <Setter TargetName="ButtonRoot" Property="BorderBrush" Value="{DynamicResource TextPrimaryBrush}" />
               </Trigger>
               <Trigger Property="IsPressed" Value="True">
-                <Setter TargetName="ButtonRoot" Property="Background" Value="{DynamicResource ButtonPressedBrush}" />
+                <Setter TargetName="ButtonRoot" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+              </Trigger>
+              <Trigger Property="IsKeyboardFocused" Value="True">
+                <Setter TargetName="ButtonRoot" Property="BorderBrush" Value="{DynamicResource TextPrimaryBrush}" />
               </Trigger>
               <Trigger Property="IsEnabled" Value="False">
                 <Setter Property="Opacity" Value="0.45" />
@@ -261,9 +310,9 @@
       <Setter Property="FontSize" Value="13" />
       <Setter Property="FontWeight" Value="SemiBold" />
       <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
-      <Setter Property="Background" Value="{DynamicResource ToggleBackgroundBrush}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource ToggleBorderBrush}" />
-      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
       <Setter Property="Cursor" Value="Hand" />
       <Setter Property="Template">
         <Setter.Value>
@@ -272,34 +321,34 @@
                     Background="{TemplateBinding Background}"
                     BorderBrush="{TemplateBinding BorderBrush}"
                     BorderThickness="{TemplateBinding BorderThickness}"
-                    CornerRadius="7"
+                    CornerRadius="5"
                     SnapsToDevicePixels="True">
-              <Grid Margin="10,0">
+              <Grid>
                 <Grid.ColumnDefinitions>
-                  <ColumnDefinition Width="Auto" />
                   <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <Border x:Name="ToggleDot"
-                        Width="8"
-                        Height="8"
-                        CornerRadius="4"
-                        Background="{DynamicResource TextMutedBrush}"
-                        VerticalAlignment="Center" />
-                <ContentPresenter Grid.Column="1"
-                                  Margin="9,0,0,0"
-                                  HorizontalAlignment="Center"
+                <ContentPresenter Margin="0,0,12,0"
+                                  HorizontalAlignment="Left"
                                   VerticalAlignment="Center"
                                   RecognizesAccessKey="True" />
+                <Border x:Name="SwitchTrack" Grid.Column="1" Width="38" Height="22" CornerRadius="11"
+                        Background="{DynamicResource TextMutedBrush}" VerticalAlignment="Center">
+                  <Ellipse x:Name="SwitchThumb" Width="16" Height="16" Fill="{DynamicResource PrimaryButtonTextBrush}" Margin="3" HorizontalAlignment="Left" />
+                </Border>
               </Grid>
             </Border>
             <ControlTemplate.Triggers>
               <Trigger Property="IsChecked" Value="True">
-                <Setter TargetName="ToggleRoot" Property="Background" Value="{DynamicResource AccentSoftBrush}" />
-                <Setter TargetName="ToggleRoot" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
-                <Setter TargetName="ToggleDot" Property="Background" Value="{DynamicResource AccentBrush}" />
+                <Setter TargetName="SwitchTrack" Property="Background" Value="{DynamicResource AccentBrush}" />
+                <Setter TargetName="SwitchThumb" Property="HorizontalAlignment" Value="Right" />
               </Trigger>
               <Trigger Property="IsMouseOver" Value="True">
-                <Setter TargetName="ToggleRoot" Property="BorderBrush" Value="{DynamicResource ToggleHoverBorderBrush}" />
+                <Setter TargetName="SwitchTrack" Property="Opacity" Value="0.8" />
+              </Trigger>
+              <Trigger Property="IsKeyboardFocused" Value="True">
+                <Setter TargetName="SwitchTrack" Property="BorderThickness" Value="1" />
+                <Setter TargetName="SwitchTrack" Property="BorderBrush" Value="{DynamicResource TextPrimaryBrush}" />
               </Trigger>
               <Trigger Property="IsEnabled" Value="False">
                 <Setter Property="Opacity" Value="0.45" />
@@ -312,6 +361,7 @@
     </Style>
 
     <Style TargetType="ListBox">
+      <Setter Property="AlternationCount" Value="2" />
       <Setter Property="HorizontalContentAlignment" Value="Stretch" />
       <Setter Property="ScrollViewer.CanContentScroll" Value="False" />
       <Setter Property="BorderThickness" Value="0" />
@@ -337,6 +387,9 @@
               <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" />
             </Border>
             <ControlTemplate.Triggers>
+              <Trigger Property="ItemsControl.AlternationIndex" Value="1">
+                <Setter TargetName="ItemRoot" Property="Background" Value="{DynamicResource SurfaceSoftBrush}" />
+              </Trigger>
               <Trigger Property="IsSelected" Value="True">
                 <Setter TargetName="ItemRoot" Property="Background" Value="{DynamicResource ListItemSelectedBrush}" />
                 <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
@@ -411,27 +464,30 @@
     </Style>
   </Window.Resources>
 
-<Grid Margin="20" Background="{DynamicResource WindowBackgroundBrush}">
+<Grid Background="{DynamicResource SurfaceBrush}">
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto" />
-      <RowDefinition Height="16" />
+      <RowDefinition Height="8" />
       <RowDefinition Height="*" />
       <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
-    <Grid>
-      <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-      <Image Source="FluxRAM.ico" Width="36" Height="36" Margin="0,0,12,0" />
-      <StackPanel Grid.Column="1">
-        <StackPanel Orientation="Horizontal">
-          <TextBlock x:Name="AppTitleTextBlock" Text="FluxRAM" FontSize="22" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" />
-          <TextBlock x:Name="EditionValueTextBlock" Text="Free" Margin="12,7,0,0" Foreground="{DynamicResource EditionBadgeTextBrush}" />
-        </StackPanel>
-        <TextBlock x:Name="AppSubtitleTextBlock" Style="{StaticResource BodyTextStyle}" FontSize="12" />
+    <Border Grid.RowSpan="4" Width="88" HorizontalAlignment="Left" Background="{DynamicResource SurfaceSoftBrush}" BorderBrush="{DynamicResource InsetBorderBrush}" BorderThickness="0,0,1,0" />
+    <Grid Height="72">
+      <Grid.ColumnDefinitions><ColumnDefinition Width="88" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+      <Image Source="FluxRAM.ico" Width="32" Height="32" />
+      <StackPanel Grid.Column="1" Margin="24,0,16,0" VerticalAlignment="Center">
+        <DockPanel>
+          <TextBlock x:Name="AppTitleTextBlock" Text="FluxRAM" FontSize="20" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" />
+          <Border Background="{DynamicResource AccentSoftBrush}" CornerRadius="3" Padding="7,2" Margin="10,3,0,3" HorizontalAlignment="Left">
+            <TextBlock x:Name="EditionValueTextBlock" Text="Free" FontSize="11" Foreground="{DynamicResource EditionBadgeTextBrush}" />
+          </Border>
+        </DockPanel>
+        <TextBlock x:Name="AppSubtitleTextBlock" Style="{StaticResource BodyTextStyle}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" Margin="0,3,0,0" />
       </StackPanel>
-      <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+      <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,24,0">
         <Button x:Name="DetailSettingsButton" Width="36" Height="36" Padding="0" Margin="0,0,8,0" FontFamily="Segoe MDL2 Assets" Content="&#xE740;"
                 Click="DetailSettingsButton_OnClick" ToolTip="Compact view" AutomationProperties.Name="Compact view" />
-        <Button x:Name="ToolsMenuButton" Width="36" Height="36" Padding="0" FontFamily="Segoe MDL2 Assets" Content="&#xE713;"
+        <Button x:Name="ToolsMenuButton" Width="36" Height="36" Padding="0" FontFamily="Segoe MDL2 Assets" Content="&#xE712;"
                 Click="ToolsMenuButton_OnClick" ToolTip="Tools" AutomationProperties.Name="Tools">
           <Button.ContextMenu><ContextMenu>
             <MenuItem x:Name="CheckUpdateMenuItem" Header="Check update" Click="CheckUpdateMenuItem_OnClick" />
@@ -445,38 +501,50 @@
     </Grid>
 
     <TabControl x:Name="WorkspaceTabs" Grid.Row="2" Background="Transparent" BorderThickness="0"
-                Foreground="{DynamicResource TextPrimaryBrush}" Padding="0,16,0,0">
-      <TabItem x:Name="OverviewTab" Header="Overview">
+                Foreground="{DynamicResource TextPrimaryBrush}" TabStripPlacement="Left" Padding="24,8,24,0">
+      <TabControl.Template><ControlTemplate TargetType="TabControl">
+        <Grid>
+          <Grid.ColumnDefinitions><ColumnDefinition Width="88" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+          <TabPanel IsItemsHost="True" KeyboardNavigation.TabIndex="1" VerticalAlignment="Top" />
+          <Border Grid.Column="1" Padding="{TemplateBinding Padding}" KeyboardNavigation.TabNavigation="Local">
+            <ContentPresenter x:Name="PART_SelectedContentHost" ContentSource="SelectedContent" TextElement.FontWeight="Normal" />
+          </Border>
+        </Grid>
+      </ControlTemplate></TabControl.Template>
+      <TabItem x:Name="OverviewTab" Header="Overview" Tag="&#xE80F;">
         <ScrollViewer x:Name="DetailPanel" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
                       CanContentScroll="False" PreviewMouseWheel="DetailPanel_OnPreviewMouseWheel">
           <Grid Margin="0,0,6,0">
             <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="16" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
             <Grid x:Name="OverviewTopGrid">
-              <Grid.ColumnDefinitions><ColumnDefinition Width="1.65*" /><ColumnDefinition Width="24" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+              <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="24" /><ColumnDefinition Width="260" /></Grid.ColumnDefinitions>
               <StackPanel x:Name="MemoryOverviewPanel">
                 <TextBlock x:Name="MemoryMetricsTitleTextBlock" Text="Memory" Style="{StaticResource SectionTitleStyle}" />
-                <Grid Margin="0,14,0,0">
-                  <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                  <StackPanel>
+                <Grid Margin="0,8,0,0">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="124" /></Grid.ColumnDefinitions>
+                  <StackPanel VerticalAlignment="Center" Margin="0,0,12,0">
                     <TextBlock x:Name="AvailableCaptionTextBlock" Text="Available memory" Style="{StaticResource CaptionStyle}" />
-                    <TextBlock x:Name="AvailableValueTextBlock" Text="{Binding AvailableRamValue}" FontSize="32" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" />
+                    <TextBlock x:Name="AvailableValueTextBlock" Text="{Binding AvailableRamValue}" FontSize="34" FontWeight="SemiBold" Margin="0,3,0,8" Foreground="{DynamicResource TextPrimaryBrush}" />
+                    <TextBlock Text="{Binding PhysicalMemoryDisplay}" Style="{StaticResource BodyTextStyle}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" />
                   </StackPanel>
-                  <StackPanel Grid.Column="1" HorizontalAlignment="Right">
-                    <TextBlock x:Name="MemoryLoadCaptionTextBlock" Text="Memory load" Style="{StaticResource CaptionStyle}" />
-                    <TextBlock Text="{Binding MemoryLoadValue}" FontSize="32" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" />
-                  </StackPanel>
+                  <Grid Grid.Column="1" Width="120" Height="114">
+                    <local:MemoryUsageGauge x:Name="MemoryGauge" Value="{Binding MemoryLoadPercent, Mode=OneWay}" Foreground="{DynamicResource AccentBrush}" TrackBrush="{DynamicResource InsetBorderBrush}" AutomationProperties.Name="{Binding MemoryLoadValue}" />
+                    <StackPanel VerticalAlignment="Center" Margin="12,0,12,4">
+                      <TextBlock Text="{Binding MemoryLoadValue}" FontSize="26" FontWeight="SemiBold" TextAlignment="Center" Foreground="{DynamicResource TextPrimaryBrush}" />
+                      <TextBlock x:Name="MemoryLoadCaptionTextBlock" Text="Memory load" Style="{StaticResource CaptionStyle}" TextAlignment="Center" FontSize="10" Margin="0,3,0,0" />
+                    </StackPanel>
+                  </Grid>
                 </Grid>
-                <ProgressBar Height="6" Margin="0,8,0,6" Maximum="100" Value="{Binding MemoryLoadPercent, Mode=OneWay}"
-                             Foreground="{DynamicResource AccentBrush}" Background="{DynamicResource InsetBorderBrush}"
-                             AutomationProperties.Name="{Binding MemoryLoadValue}" />
-                <TextBlock Text="{Binding PhysicalMemoryDisplay}" Style="{StaticResource BodyTextStyle}" FontSize="12" />
-                <Grid x:Name="TrendRegion" Margin="0,12,0,0">
-                  <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="74" /></Grid.RowDefinitions>
-                  <TextBlock x:Name="TrendCaptionTextBlock" Text="Memory load · last 2 minutes" Style="{StaticResource CaptionStyle}" />
-                  <local:MemoryTrend x:Name="MemoryTrendChart" Grid.Row="1" Margin="0,8,0,0"
+                <Grid x:Name="TrendRegion" Margin="0,8,0,0">
+                  <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="64" /></Grid.RowDefinitions>
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="30" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                  <TextBlock x:Name="TrendCaptionTextBlock" Grid.ColumnSpan="2" Text="Memory load · last 2 minutes" Style="{StaticResource CaptionStyle}" FontSize="11" Margin="0,0,0,6" />
+                  <TextBlock Grid.Row="1" Text="100%" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" />
+                  <TextBlock Grid.Row="1" Text="0%" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Bottom" />
+                  <local:MemoryTrend x:Name="MemoryTrendChart" Grid.Row="1" Grid.Column="1"
                                      LineBrush="{DynamicResource AccentBrush}" GridBrush="{DynamicResource InsetBorderBrush}" />
                 </Grid>
-                <Grid Margin="0,18,0,0">
+                <Grid Margin="0,14,0,0">
                   <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                   <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                   <StackPanel>
@@ -497,9 +565,10 @@
                   </StackPanel>
                 </Grid>
               </StackPanel>
-              <StackPanel Grid.Column="2">
+              <Border Grid.Column="2" BorderThickness="1,0,0,0" BorderBrush="{DynamicResource InsetBorderBrush}" Padding="24,0,0,0">
+              <StackPanel>
                 <TextBlock x:Name="RuntimeSummaryTitleTextBlock" Text="Optimization" Style="{StaticResource SectionTitleStyle}" />
-                <Grid Margin="0,14,0,8">
+                <Grid Margin="0,8,0,6">
                   <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                   <TextBlock x:Name="ProfileCaptionTextBlock" Text="Profile" Style="{StaticResource CaptionStyle}" VerticalAlignment="Center" />
                   <Button x:Name="ProfileHelpButton" Grid.Column="1" Style="{StaticResource IconButtonStyle}" Content="?" Click="ProfileHelpButton_OnClick" />
@@ -509,21 +578,22 @@
                   <ComboBoxItem x:Name="GamingHandheldProfileItem" Tag="GamingHandheld" Content="Gaming" />
                   <ComboBoxItem x:Name="AggressiveProfileItem" Tag="Aggressive" Content="Extreme" Visibility="Collapsed" />
                 </ComboBox>
-                <Button x:Name="BoostNowButton" Height="42" Margin="0,14,0,0" FontSize="14" Style="{StaticResource PrimaryButtonStyle}"
+                <Button x:Name="BoostNowButton" Height="40" Margin="0,12,0,0" FontSize="14" Style="{StaticResource PrimaryButtonStyle}"
                         Content="Boost now" Click="BoostNowButton_OnClick" />
                 <ToggleButton x:Name="AutoBoostToggle" Margin="0,8,0,0" Style="{StaticResource ToggleBoostStyle}"
                               Content="Auto Boost" Checked="AutoBoostToggle_OnChecked" Unchecked="AutoBoostToggle_OnUnchecked" />
                 <Button x:Name="DeepReleaseButton" Height="38" Margin="0,8,0,0" Content="Deep Release"
                         Style="{StaticResource DeepReleaseButtonStyle}" Click="DeepReleaseButton_OnClick" />
-                <TextBlock Text="{Binding AutoBoostDisplay}" Style="{StaticResource BodyTextStyle}" FontSize="12" Margin="0,12,0,0" />
+                <Border BorderThickness="0,1,0,0" BorderBrush="{DynamicResource InsetBorderBrush}" Margin="0,12,0,6" />
                 <TextBlock Text="{Binding ReboundRateDisplay}" Style="{StaticResource BodyTextStyle}" FontSize="12" Margin="0,4,0,0" />
                 <TextBlock Text="{Binding ProcessSummaryDisplay}" Style="{StaticResource BodyTextStyle}" FontSize="12" Margin="0,4,0,0" />
                 <TextBlock Text="{Binding ForegroundProcessDisplay}" Style="{StaticResource BodyTextStyle}" FontSize="12" Margin="0,4,0,0" />
               </StackPanel>
+              </Border>
             </Grid>
-            <Grid x:Name="ResultsRegion" Grid.Row="2">
+            <Grid x:Name="ResultsRegion" Grid.Row="2" Margin="0,12,0,0">
               <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-              <DockPanel>
+              <DockPanel Margin="0,12,0,0">
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
                   <Button x:Name="ViewBoostDetailsButton" Content="Details" Click="ViewBoostDetailsButton_OnClick" Margin="0,0,8,0" />
                   <Button x:Name="PreviewBoostCandidatesButton" Content="Preview" Click="PreviewBoostCandidatesButton_OnClick" />
@@ -544,7 +614,7 @@
         </ScrollViewer>
       </TabItem>
 
-      <TabItem x:Name="ProtectionTab" Header="App protection">
+      <TabItem x:Name="ProtectionTab" Header="App protection" Tag="&#xE73E;">
         <Grid x:Name="ProtectedAppsCard">
           <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
           <DockPanel>
@@ -574,7 +644,7 @@
         </Grid>
       </TabItem>
 
-      <TabItem x:Name="ActivityTab" Header="Recent activity">
+      <TabItem x:Name="ActivityTab" Header="Recent activity" Tag="&#xE81C;">
         <Grid>
           <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
           <DockPanel Margin="0,0,0,12">
@@ -587,7 +657,7 @@
         </Grid>
       </TabItem>
 
-      <TabItem x:Name="SettingsTab" Header="Settings">
+      <TabItem x:Name="SettingsTab" Header="Settings" Tag="&#xE713;">
         <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" PreviewMouseWheel="DetailPanel_OnPreviewMouseWheel">
           <StackPanel Margin="0,0,16,0">
             <TextBlock x:Name="PreferencesTitleTextBlock" Text="Preferences" Style="{StaticResource SectionTitleStyle}" />
@@ -625,7 +695,7 @@
         </ScrollViewer>
       </TabItem>
     </TabControl>
-    <Border Grid.Row="3" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource BorderBrushSoft}" Margin="0,14,0,0" Padding="0,10,0,0">
+    <Border Grid.Row="3" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource InsetBorderBrush}" Margin="112,14,24,0" Padding="0,10,0,12">
       <DockPanel>
         <TextBlock Text="{Binding LastUpdatedDisplay}" DockPanel.Dock="Right" Style="{StaticResource BodyTextStyle}" FontSize="11" Margin="16,0,0,0" />
         <TextBlock x:Name="StatusCaptionTextBlock" DockPanel.Dock="Left" Style="{StaticResource CaptionStyle}" Text="Status" Margin="0,0,8,0" />
