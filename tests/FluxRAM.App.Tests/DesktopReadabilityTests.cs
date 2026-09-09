@@ -131,6 +131,15 @@ public sealed class DesktopReadabilityTests
                 // Only preview windows and synthetic candidates are used; no purge is executed.
                 tabs.SelectedIndex = 0;
                 window.Show();
+                var overview = (TabItem)tabs.Items[0];
+                overview.Focus();
+                window.UpdateLayout();
+                AssertNavigation(tabs, UiLanguage.English);
+                Capture(root, "sidebar-focused.png");
+                Assert.True(overview.MoveFocus(new TraversalRequest(FocusNavigationDirection.Down)));
+                Assert.Equal(1, tabs.SelectedIndex);
+                Assert.True(((TabItem)tabs.Items[1]).MoveFocus(new TraversalRequest(FocusNavigationDirection.Up)));
+                Assert.Equal(0, tabs.SelectedIndex);
                 // Exercise native selector input without persisting test choices to user settings.
                 foreach (var (name, page, guard) in new[] { ("ProfileSelector", 0, "_isSettingProfileSelector"), ("LanguageSelector", 3, "_isSettingLanguageSelector") })
                 {
@@ -382,6 +391,12 @@ public sealed class DesktopReadabilityTests
             Assert.False(string.IsNullOrWhiteSpace(iconText));
             var icon = Assert.Single(Descendants<TextBlock>(tab).Where(text => text.Text == iconText));
             AssertFits(icon, tab);
+            var border = (Border)tab.Template.FindName("TabRoot", tab);
+            AssertFits(border, tab);
+            var borderBounds = border.TransformToAncestor(tab).TransformBounds(new Rect(border.RenderSize));
+            var clip = VisualTreeHelper.GetClip(tab);
+            Assert.True(clip is null || clip.Bounds.Contains(borderBounds),
+                $"{language}/{tab.Name}: navigation border {borderBounds} is clipped to {clip?.Bounds}");
         }
     }
 

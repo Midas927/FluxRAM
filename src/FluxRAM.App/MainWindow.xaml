@@ -505,7 +505,8 @@
       <TabControl.Template><ControlTemplate TargetType="TabControl">
         <Grid>
           <Grid.ColumnDefinitions><ColumnDefinition Width="88" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-          <TabPanel IsItemsHost="True" KeyboardNavigation.TabIndex="1" VerticalAlignment="Top" />
+          <StackPanel IsItemsHost="True" KeyboardNavigation.TabIndex="1" VerticalAlignment="Top"
+                      KeyboardNavigation.TabNavigation="Once" KeyboardNavigation.DirectionalNavigation="Cycle" />
           <Border Grid.Column="1" Padding="{TemplateBinding Padding}" KeyboardNavigation.TabNavigation="Local">
             <ContentPresenter x:Name="PART_SelectedContentHost" ContentSource="SelectedContent" TextElement.FontWeight="Normal" />
           </Border>
