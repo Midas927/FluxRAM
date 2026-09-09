@@ -6,6 +6,94 @@ namespace FluxRAM.Core.Tests;
 
 public sealed class PurgePolicyServiceTests
 {
+    [Theory]
+    [InlineData(OptimizerProfile.Conservative, false)]
+    [InlineData(OptimizerProfile.Conservative, true)]
+    [InlineData(OptimizerProfile.Aggressive, false)]
+    public void CreatePlan_RequiresBothActivityMeasurementsWithoutDelayingKnownApplications(
+        OptimizerProfile profile,
+        bool forcePurge)
+    {
+        var service = new PurgePolicyService();
+        var snapshots = new[]
+        {
+            new ProcessSnapshot(801, "unknown-cpu", 512L * 1024 * 1024, false,
+                ColdnessScore: 100, HasCpuMeasurement: false),
+            new ProcessSnapshot(802, "unknown-io", 512L * 1024 * 1024, false,
+                ColdnessScore: 100, HasIoMeasurement: false),
+            new ProcessSnapshot(803, "new-app", 512L * 1024 * 1024, false,
+                ColdnessScore: 100, HasCpuMeasurement: false, HasIoMeasurement: false),
+            new ProcessSnapshot(804, "measured-app", 512L * 1024 * 1024, false, ColdnessScore: 100)
+        };
+
+        var plan = service.CreatePlan(
+            snapshots,
+            new MemorySnapshot(512UL * 1024 * 1024, 8UL * 1024 * 1024 * 1024, 94),
+            OptimizerSettingsCatalog.FromProfile(profile),
+            DateTimeOffset.UtcNow,
+            new Dictionary<int, DateTimeOffset>(),
+            forcePurge);
+
+        Assert.True(plan.ShouldPurge);
+        var candidate = Assert.Single(plan.Candidates);
+        Assert.Equal(804, candidate.ProcessId);
+        Assert.True(candidate.HasMeasuredActivity);
+    }
+
+    [Theory]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    public void CreatePlan_UnmeasuredSmallMemberBlocksOnlyItsApplicationUntilMeasured(
+        bool hasCpuMeasurement,
+        bool hasIoMeasurement)
+    {
+        var service = new PurgePolicyService();
+        var settings = OptimizerSettings.SafeDefaults();
+        var snapshots = new[]
+        {
+            new ProcessSnapshot(811, "browser", 512L * 1024 * 1024, false,
+                ColdnessScore: 100, ExecutablePath: @"C:\Apps\Browser\browser.exe"),
+            new ProcessSnapshot(812, "helper", 1L * 1024 * 1024, false,
+                ColdnessScore: 100, ExecutablePath: @"C:\Apps\Browser\helper.exe",
+                HasCpuMeasurement: hasCpuMeasurement, HasIoMeasurement: hasIoMeasurement),
+            new ProcessSnapshot(813, "measured-app", 512L * 1024 * 1024, false, ColdnessScore: 100)
+        };
+        var memory = new MemorySnapshot(512UL * 1024 * 1024, 8UL * 1024 * 1024 * 1024, 94);
+        var now = DateTimeOffset.UtcNow;
+
+        var initial = service.CreatePlan(snapshots, memory, settings, now, new Dictionary<int, DateTimeOffset>());
+
+        Assert.Equal(813, Assert.Single(initial.Candidates).ProcessId);
+        snapshots[1] = snapshots[1] with { HasCpuMeasurement = true, HasIoMeasurement = true };
+
+        var measured = service.CreatePlan(snapshots, memory, settings, now, new Dictionary<int, DateTimeOffset>());
+
+        Assert.Equal(2, measured.CandidateGroups.Count);
+        Assert.Contains(measured.Candidates, candidate => candidate.ProcessId == 811);
+        Assert.Contains(measured.Candidates, candidate => candidate.ProcessId == 813);
+        Assert.DoesNotContain(measured.Candidates, candidate => candidate.ProcessId == 812);
+    }
+
+    [Fact]
+    public void CreatePlan_ExplainsMissingActivityMeasurements()
+    {
+        var plan = new PurgePolicyService().CreatePlan(
+            new[]
+            {
+                new ProcessSnapshot(821, "new-app", 512L * 1024 * 1024, false,
+                    HasCpuMeasurement: false, HasIoMeasurement: false)
+            },
+            new MemorySnapshot(512UL * 1024 * 1024, 8UL * 1024 * 1024 * 1024, 94),
+            OptimizerSettings.SafeDefaults(),
+            DateTimeOffset.UtcNow,
+            new Dictionary<int, DateTimeOffset>());
+
+        Assert.False(plan.ShouldPurge);
+        Assert.Empty(plan.Candidates);
+        Assert.Empty(plan.CandidateGroups);
+        Assert.Contains("awaiting CPU/I/O measurements", plan.DecisionMessage);
+    }
+
     [Fact]
     public void CreatePlan_WhenMemoryPressureIsLow_ReturnsSkipPlan()
     {

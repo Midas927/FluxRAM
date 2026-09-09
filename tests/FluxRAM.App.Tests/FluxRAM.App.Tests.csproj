@@ -1,6 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
   </PropertyGroup>
@@ -19,6 +20,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Using Include="System.Net.Http" />
+    <Using Include="System.IO" />
     <ProjectReference Include="..\..\src\FluxRAM.App\FluxRAM.App.csproj" />
     <ProjectReference Include="..\..\src\FluxRAM.Core\FluxRAM.Core.csproj" />
   </ItemGroup>

@@ -173,6 +173,11 @@ public sealed class PurgePolicyService
             return CandidateGroupRejectionReason.TooSmall;
         }
 
+        if (group.ObservedProcesses.Any(snapshot => !snapshot.HasMeasuredActivity))
+        {
+            return CandidateGroupRejectionReason.UnmeasuredActivity;
+        }
+
         if (group.ColdnessScore < settings.MinimumColdnessScore)
         {
             return CandidateGroupRejectionReason.NotCold;
@@ -359,6 +364,7 @@ public sealed class PurgePolicyService
         var reasons = new List<string>();
         AddReason(reasons, CountRejected(assessedGroups, CandidateGroupRejectionReason.Foreground), "foreground application(s)");
         AddReason(reasons, CountRejected(assessedGroups, CandidateGroupRejectionReason.TooSmall), "below size threshold");
+        AddReason(reasons, CountRejected(assessedGroups, CandidateGroupRejectionReason.UnmeasuredActivity), "awaiting CPU/I/O measurements");
         AddReason(reasons, CountRejected(assessedGroups, CandidateGroupRejectionReason.NotCold), "not cold enough");
         AddReason(reasons, CountRejected(assessedGroups, CandidateGroupRejectionReason.Active), "active CPU/I/O");
         AddReason(reasons, CountRejected(assessedGroups, CandidateGroupRejectionReason.Protected), "protected");
@@ -416,6 +422,7 @@ public sealed class PurgePolicyService
         None,
         Foreground,
         TooSmall,
+        UnmeasuredActivity,
         NotCold,
         Active,
         Protected,

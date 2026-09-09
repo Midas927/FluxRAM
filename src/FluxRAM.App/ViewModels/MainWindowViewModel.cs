@@ -13,6 +13,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private UiLanguage _language = UiLanguage.English;
     private long _ramDeltaBytes;
     private ulong _availableRamBytes;
+    private ulong _totalRamBytes;
+    private double _memoryLoadPercent;
+    private bool _hasMemorySample;
     private long _lastBoostTrimmedBytes;
     private long _totalTrimmedBytes;
     private long _boostNetGainBytes;
@@ -49,6 +52,17 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
+
+    public string AvailableRamValue => _hasMemorySample ? FormatBytes(_availableRamBytes) : "--";
+    public string MemoryLoadValue => _hasMemorySample ? $"{_memoryLoadPercent:0}%" : "--";
+    public double MemoryLoadPercent => _memoryLoadPercent;
+    public string PhysicalMemoryDisplay => !_hasMemorySample ? L("Waiting for memory sample", "等待内存采样") : L(
+        $"Used {FormatBytes(_totalRamBytes - Math.Min(_availableRamBytes, _totalRamBytes))} / Total {FormatBytes(_totalRamBytes)}",
+        $"已用 {FormatBytes(_totalRamBytes - Math.Min(_availableRamBytes, _totalRamBytes))} / 总计 {FormatBytes(_totalRamBytes)}");
+    public string RamDeltaValue => SignedBytes(_ramDeltaBytes);
+    public string LastBoostTrimmedValue => SignedBytes(_lastBoostTrimmedBytes);
+    public string TotalTrimmedValue => SignedBytes(_totalTrimmedBytes);
+    public string BoostNetGainValue => SignedBytes(_boostNetGainBytes);
 
     public string RamDeltaDisplay
     {
@@ -132,6 +146,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         RefreshProtectionSummary();
         RefreshProProtectionSummary();
         RaisePropertyChanged(nameof(LastUpdatedDisplay));
+        RaisePropertyChanged(nameof(PhysicalMemoryDisplay));
 
         if (_lastOverheadSnapshot.HasValue)
         {
@@ -143,12 +158,25 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         _ramDeltaBytes = ramDeltaBytes;
         RaisePropertyChanged(nameof(RamDeltaDisplay));
+        RaisePropertyChanged(nameof(RamDeltaValue));
     }
 
     public void UpdateAvailableMemory(ulong availableRamBytes)
     {
         _availableRamBytes = availableRamBytes;
         RaisePropertyChanged(nameof(AvailableRamDisplay));
+        RaisePropertyChanged(nameof(AvailableRamValue));
+    }
+
+    public void UpdateMemorySnapshot(MemorySnapshot snapshot)
+    {
+        _totalRamBytes = snapshot.TotalPhysicalMemoryBytes;
+        _hasMemorySample = _totalRamBytes > 0;
+        _memoryLoadPercent = Math.Clamp(snapshot.MemoryLoadPercent, 0, 100);
+        UpdateAvailableMemory(snapshot.AvailablePhysicalMemoryBytes);
+        RaisePropertyChanged(nameof(MemoryLoadPercent));
+        RaisePropertyChanged(nameof(MemoryLoadValue));
+        RaisePropertyChanged(nameof(PhysicalMemoryDisplay));
     }
 
     public void UpdateBoostMetrics(
@@ -162,6 +190,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         RaisePropertyChanged(nameof(LastBoostTrimmedDisplay));
         RaisePropertyChanged(nameof(TotalTrimmedDisplay));
         RaisePropertyChanged(nameof(BoostNetGainDisplay));
+        RaisePropertyChanged(nameof(LastBoostTrimmedValue));
+        RaisePropertyChanged(nameof(TotalTrimmedValue));
+        RaisePropertyChanged(nameof(BoostNetGainValue));
     }
 
     public void UpdateReboundRate(double reboundRatePercent)
@@ -181,11 +212,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         RaisePropertyChanged(nameof(AutoBoostDisplay));
     }
 
-    public void UpdateProcessMetrics(int scannedProcessCount, int purgeCandidateAppCount, string foregroundProcessName)
+    public void UpdateProcessMetrics(int scannedProcessCount, int? purgeCandidateAppCount, string foregroundProcessName)
     {
-        _processSummaryDisplay = L(
-            $"Processes: scanned {scannedProcessCount}, candidate apps {purgeCandidateAppCount}",
-            $"进程：已扫描 {scannedProcessCount}，候选应用 {purgeCandidateAppCount}");
+        _processSummaryDisplay = purgeCandidateAppCount.HasValue
+            ? L($"Processes: scanned {scannedProcessCount}, candidate apps {purgeCandidateAppCount}",
+                $"进程：已扫描 {scannedProcessCount}，候选应用 {purgeCandidateAppCount}")
+            : L($"Processes: scanned {scannedProcessCount}", $"进程：已扫描 {scannedProcessCount}");
         _foregroundProcessDisplay = L(
             $"Foreground: {foregroundProcessName}",
             $"前台：{foregroundProcessName}");
@@ -363,6 +395,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         return UiLanguageLocalizer.Localize(_language, english, chinese);
     }
+
+    private static string SignedBytes(long bytes) => (bytes >= 0 ? "+" : string.Empty) + FormatBytes(bytes);
 
     private string Metric(string englishLabel, string chineseLabel, string value)
     {

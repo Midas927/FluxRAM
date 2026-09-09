@@ -9,21 +9,16 @@ public sealed class MainWindowLayoutContractTests
     private static readonly XNamespace XamlNamespace = "http://schemas.microsoft.com/winfx/2006/xaml";
 
     [Fact]
-    public void ProtectedAppsList_UsesBoundedNestedScrolling()
+    public void ProtectedAppsList_FillsItsOwnScrollablePage()
     {
         var document = LoadMainWindowXaml();
         var protectedAppsList = FindNamedElement(document, "ProtectedAppsListBox");
         var protectedAppsCard = FindNamedElement(document, "ProtectedAppsCard");
 
-        Assert.Equal("150", (string?)protectedAppsList.Attribute("MaxHeight"));
         Assert.Equal("DetailListBox_OnPreviewMouseWheel", (string?)protectedAppsList.Attribute("PreviewMouseWheel"));
-
-        var columnGrid = protectedAppsCard.Parent;
-        var firstRow = columnGrid?
-            .Element(PresentationNamespace + "Grid.RowDefinitions")?
-            .Elements(PresentationNamespace + "RowDefinition")
-            .First();
-        Assert.Equal("Auto", (string?)firstRow?.Attribute("Height"));
+        Assert.Equal("ProtectionTab", (string?)protectedAppsCard.Parent?.Attribute(XamlNamespace + "Name"));
+        Assert.Contains(protectedAppsCard.Element(PresentationNamespace + "Grid.RowDefinitions")!.Elements(),
+            row => (string?)row.Attribute("Height") == "*");
     }
 
     [Fact]
@@ -32,7 +27,6 @@ public sealed class MainWindowLayoutContractTests
         var document = LoadMainWindowXaml();
         var selfOverhead = FindNamedElement(document, "SelfOverheadValueTextBlock");
 
-        Assert.Equal("3", (string?)selfOverhead.Attribute("Grid.ColumnSpan"));
         Assert.Equal("Wrap", (string?)selfOverhead.Attribute("TextWrapping"));
         Assert.Equal("None", (string?)selfOverhead.Attribute("TextTrimming"));
     }
@@ -48,20 +42,12 @@ public sealed class MainWindowLayoutContractTests
     }
 
     [Fact]
-    public void DeepRelease_IsAThreeColumnPrimaryActionAndNotDuplicatedInToolsMenu()
+    public void DeepRelease_IsAvailableOnOverviewAndNotDuplicatedInToolsMenu()
     {
         var document = LoadMainWindowXaml();
         var deepReleaseButton = FindNamedElement(document, "DeepReleaseButton");
-        var actionGrid = deepReleaseButton.Parent;
-        var columnWidths = actionGrid?
-            .Element(PresentationNamespace + "Grid.ColumnDefinitions")?
-            .Elements(PresentationNamespace + "ColumnDefinition")
-            .Select(column => (string?)column.Attribute("Width"))
-            .ToArray();
-
-        Assert.Equal("2", (string?)deepReleaseButton.Attribute("Grid.Column"));
         Assert.Equal("DeepReleaseButton_OnClick", (string?)deepReleaseButton.Attribute("Click"));
-        Assert.Equal(new[] { "*", "10", "*", "10", "*" }, columnWidths);
+        Assert.Contains(deepReleaseButton.Ancestors(), element => (string?)element.Attribute(XamlNamespace + "Name") == "OverviewTab");
         Assert.DoesNotContain(document.Descendants(), element =>
             (string?)element.Attribute(XamlNamespace + "Name") == "ExtremeCloseMenuItem");
     }

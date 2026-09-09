@@ -30,6 +30,20 @@ public sealed class BackgroundActivityTracker
             seenKeys.Add(family.Key);
             var hasForegroundProcess = family.Processes.Any(snapshot => snapshot.IsForeground);
             var hasVisibleWindow = family.Processes.Any(snapshot => snapshot.HasVisibleWindow);
+            if (family.Processes.Any(snapshot => !snapshot.HasMeasuredActivity))
+            {
+                _historyByFamilyKey.Remove(family.Key);
+                assessments[family.Key] = new BackgroundActivityAssessment(
+                    family.Key,
+                    hasForegroundProcess || hasVisibleWindow
+                        ? BackgroundActivityState.Visible
+                        : BackgroundActivityState.Observing,
+                    TimeSpan.Zero,
+                    TimeSpan.Zero,
+                    0);
+                continue;
+            }
+
             var cpuUsagePercent = family.Processes.Sum(snapshot => Math.Max(0d, snapshot.CpuUsagePercent));
             var ioBytesPerSecond = family.Processes.Sum(snapshot => Math.Max(0d, snapshot.IoBytesPerSecond));
             var isActive = hasForegroundProcess ||

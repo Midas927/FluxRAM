@@ -29,14 +29,14 @@ namespace FluxRAM.App;
 
 public partial class MainWindow : Window
 {
-    private const double CompactWindowWidth = 720d;
-    private const double CompactWindowHeight = 380d;
+    private const double CompactWindowWidth = 800d;
+    private const double CompactWindowHeight = 570d;
     private const double CompactMinWindowWidth = 720d;
-    private const double CompactMinWindowHeight = 380d;
+    private const double CompactMinWindowHeight = 520d;
     private const double DetailWindowWidth = 1060d;
-    private const double DetailWindowHeight = 690d;
+    private const double DetailWindowHeight = 760d;
     private const double DetailMinWindowWidth = 860d;
-    private const double DetailMinWindowHeight = 560d;
+    private const double DetailMinWindowHeight = 600d;
     private const double DetailWheelScrollStep = 32d;
     private const string GitHubRepositoryUrl = "https://github.com/Midas927/FluxRAM";
 
@@ -91,9 +91,14 @@ public partial class MainWindow : Window
     private bool _isSettingAutoBoostToggle;
     private bool _isSettingStartupAutoBoostCheckBox;
     private bool _isMonitoringTickRunning;
+    private readonly bool _isUiPreview;
+    private bool _isCheckingUpdate;
+    private bool _hasHandledStartupUpdate;
+    private readonly System.Threading.CancellationTokenSource _updateCancellation = new();
 
     public MainWindow(bool isUiPreview = false)
     {
+        _isUiPreview = isUiPreview;
         InitializeComponent();
 
         _viewModel = new MainWindowViewModel();
@@ -173,13 +178,14 @@ public partial class MainWindow : Window
             EnsureStartupAutoBoostRegistration(initialStartupAutoBoost);
         }
         RefreshStartupAutoBoostStatus();
-        ApplyDetailPanelState(false);
+        ApplyDetailPanelState(true);
         SetAutoBoostState(
             !isUiPreview && (initialAutoBoost || initialStartupAutoBoost || launchedForAutoBoost),
             addEvent: false,
             persist: false);
 
         _viewModel.AddEvent(T("Engine initialized in simplified boost mode.", "引擎已按精简 Boost 模式初始化。"));
+        _viewModel.SetStatus(T("Ready.", "就绪。"));
     }
 
     protected override void OnSourceInitialized(EventArgs e)
@@ -194,6 +200,8 @@ public partial class MainWindow : Window
     {
         Loaded -= MainWindow_OnLoaded;
         await RunMonitoringTickAsync();
+        if (!StartupAutoBoostService.WasLaunchedForAutoBoost(Environment.GetCommandLineArgs()))
+            await CheckForUpdatesAsync(automatic: true);
     }
 
     public void StartInTray()
@@ -317,7 +325,7 @@ public partial class MainWindow : Window
 
     private void DetailListBox_OnPreviewMouseWheel(object sender, MouseWheelEventArgs e)
     {
-        if (!_isDetailPanelVisible || sender is not System.Windows.Controls.ListBox listBox)
+        if (sender is not System.Windows.Controls.ListBox listBox)
         {
             return;
         }
@@ -330,14 +338,13 @@ public partial class MainWindow : Window
             return;
         }
 
-        ScrollByMouseWheel(DetailPanel, e.Delta);
+        if (ReferenceEquals(listBox, BoostDetailsListBox)) ScrollByMouseWheel(DetailPanel, e.Delta);
         e.Handled = true;
     }
 
     private void DetailPanel_OnPreviewMouseWheel(object sender, MouseWheelEventArgs e)
     {
-        if (!_isDetailPanelVisible ||
-            sender is not ScrollViewer scrollViewer ||
+        if (sender is not ScrollViewer scrollViewer ||
             e.OriginalSource is DependencyObject source &&
             (ReferenceEquals(source, ProtectedAppsListBox) || ProtectedAppsListBox.IsAncestorOf(source) ||
              ReferenceEquals(source, BoostDetailsListBox) || BoostDetailsListBox.IsAncestorOf(source) ||
@@ -375,9 +382,13 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
+    private void ViewBoostDetailsButton_OnClick(object sender, RoutedEventArgs e) => ShowSelectedListEntryDetails(BoostDetailsListBox);
+    private void ViewProtectionDetailsButton_OnClick(object sender, RoutedEventArgs e) => ShowSelectedListEntryDetails(ProtectedAppsListBox);
+    private void ViewActivityDetailsButton_OnClick(object sender, RoutedEventArgs e) => ShowSelectedListEntryDetails(RecentEventsListBox);
+
     private bool ShowSelectedListEntryDetails(System.Windows.Controls.ListBox listBox)
     {
-        if (listBox.SelectedItem is not string detail || string.IsNullOrWhiteSpace(detail))
+        if ((listBox.SelectedItem ?? listBox.Items.Cast<object>().FirstOrDefault()) is not string detail || string.IsNullOrWhiteSpace(detail))
         {
             return false;
         }
@@ -387,12 +398,50 @@ public partial class MainWindow : Window
             : ReferenceEquals(listBox, BoostDetailsListBox)
                 ? T("Boost details", "Boost 明细")
                 : T("Activity details", "活动详情");
-        System.Windows.MessageBox.Show(
-            this,
-            detail,
-            title,
-            MessageBoxButton.OK,
-            MessageBoxImage.Information);
+        var dialog = new Window
+        {
+            Owner = this,
+            Title = title,
+            Width = Math.Min(680, SystemParameters.WorkArea.Width - 48),
+            Height = Math.Min(360, SystemParameters.WorkArea.Height - 48),
+            MinWidth = 360,
+            MinHeight = 220,
+            ResizeMode = ResizeMode.CanResize,
+            ShowInTaskbar = false,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            FontFamily = FontFamily,
+            Background = ThemeBrush("WindowBackgroundBrush")
+        };
+        ApplyDialogResources(dialog);
+        var textBox = new System.Windows.Controls.TextBox
+        {
+            Text = detail,
+            IsReadOnly = true,
+            TextWrapping = TextWrapping.Wrap,
+            Height = double.NaN,
+            VerticalContentAlignment = VerticalAlignment.Top,
+            Padding = new Thickness(12),
+            FontSize = 14,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled
+        };
+        var close = new System.Windows.Controls.Button { Content = T("Close", "关闭"), IsCancel = true, MinWidth = 80 };
+        close.Click += (_, _) => dialog.Close();
+        var copy = new System.Windows.Controls.Button { Content = T("Copy", "复制"), MinWidth = 80, Margin = new Thickness(0, 0, 8, 0) };
+        copy.Click += (_, _) =>
+        {
+            try { System.Windows.Clipboard.SetText(detail); copy.Content = T("Copied", "已复制"); }
+            catch (System.Runtime.InteropServices.COMException) { copy.Content = T("Try again", "重试复制"); }
+        };
+        var buttons = new StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal, HorizontalAlignment = System.Windows.HorizontalAlignment.Right, Margin = new Thickness(0, 12, 0, 0) };
+        buttons.Children.Add(copy);
+        buttons.Children.Add(close);
+        var layout = new DockPanel { Margin = new Thickness(18) };
+        DockPanel.SetDock(buttons, Dock.Bottom);
+        layout.Children.Add(buttons);
+        layout.Children.Add(textBox);
+        dialog.Content = layout;
+        dialog.ShowDialog();
         return true;
     }
 
@@ -538,90 +587,88 @@ public partial class MainWindow : Window
         }
     }
 
-    private async void CheckUpdateMenuItem_OnClick(object sender, RoutedEventArgs e)
-    {
-        UpdateCheckResult? result = null;
-        CheckUpdateMenuItem.IsEnabled = false;
-        CheckUpdateMenuItem.Header = T("Checking updates...", "检查更新中...");
-        _viewModel.SetStatus(T("Checking GitCode for FluxRAM updates...", "正在通过 GitCode 检查 FluxRAM 更新..."));
-        DiagnosticLog.Info("User requested update check.");
+    private async void CheckUpdateMenuItem_OnClick(object sender, RoutedEventArgs e) =>
+        await CheckForUpdatesAsync(automatic: false);
 
+    private async Task CheckForUpdatesAsync(bool automatic)
+    {
+        if (_isUiPreview || _isCheckingUpdate || _isExitRequested || automatic && _hasHandledStartupUpdate) return;
+        _isCheckingUpdate = true;
+        UpdateCheckResult? result = null;
+        var installing = false;
+        CheckUpdateMenuItem.IsEnabled = false;
         try
         {
-            result = await _updateChecker.CheckLatestReleaseAsync();
-            var message = LocalizeUpdateCheckResult(result);
-            _viewModel.SetStatus(message);
-            _viewModel.AddEvent(message);
-            DiagnosticLog.Info($"Update check completed. State={result.State}, Current={result.CurrentVersion}, Latest={result.LatestVersion}.");
-
-            if (result.State == UpdateCheckState.UpdateAvailable && !string.IsNullOrWhiteSpace(result.ReleaseUrl))
+            if (!automatic) _viewModel.SetStatus(T("Checking for updates...", "正在检查更新..."));
+            result = await _updateChecker.CheckLatestReleaseAsync(_updateCancellation.Token);
+            if (_isExitRequested || _updateCancellation.IsCancellationRequested) return;
+            if (!automatic)
             {
-                var package = AppDistributionInfo.SelectAsset(result.Assets, AppDistributionInfo.CurrentMode);
-                if (package is null)
-                {
-                    OpenUrl(result.ReleaseUrl);
-                    return;
-                }
-
-                var shouldInstall = System.Windows.MessageBox.Show(
-                    this,
-                    T(
-                        $"FluxRAM {result.LatestVersion} is available. Download, install and restart now?",
-                        $"发现 FluxRAM {result.LatestVersion}。是否立即下载、安装并重启？"),
-                    "FluxRAM",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Information);
-                if (shouldInstall == MessageBoxResult.Yes)
-                {
-                    var progress = new Progress<int>(percent =>
-                    {
-                        CheckUpdateMenuItem.Header = T(
-                            $"Downloading update... {percent}%",
-                            $"正在下载更新... {percent}%");
-                        _viewModel.SetStatus(T(
-                            $"Downloading and verifying FluxRAM {result.LatestVersion}: {percent}%",
-                            $"正在下载并校验 FluxRAM {result.LatestVersion}：{percent}%"));
-                    });
-                    var stagedUpdate = await _updatePackageService.DownloadAndStageAsync(
-                        result,
-                        AppDistributionInfo.CurrentMode,
-                        progress);
-                    _viewModel.SetStatus(T(
-                        "Update verified. FluxRAM is restarting...",
-                        "更新校验完成，FluxRAM 正在重启..."));
-                    DiagnosticLog.Info(
-                        $"Update staged. Version={result.LatestVersion}, Mode={AppDistributionInfo.CurrentMode}.");
-                    _updatePackageService.LaunchReplacement(stagedUpdate, Environment.ProcessId);
-                    _isExitRequested = true;
-                    _trayIcon.Visible = false;
-                    System.Windows.Application.Current.Shutdown();
-                }
+                _viewModel.SetStatus(LocalizeUpdateCheckResult(result));
+                _viewModel.AddEvent(LocalizeUpdateCheckResult(result));
             }
+
+            if (!StartupUpdatePolicy.ShouldPrompt(result, automatic ? _userSettingsStore.LoadSkippedUpdateVersion() : null))
+                return;
+            if (automatic && (!IsVisible || !IsEnabled || WindowState == WindowState.Minimized)) return;
+            var package = AppDistributionInfo.SelectAsset(result.Assets, AppDistributionInfo.CurrentMode);
+            if (package is null)
+            {
+                if (!automatic)
+                {
+                    _viewModel.SetStatus(T("This release has no matching package yet.", "此版本暂未提供匹配的安装包，请稍后再试。"));
+                    if (!string.IsNullOrWhiteSpace(result.ReleaseUrl) && System.Windows.MessageBox.Show(this,
+                        T("Open the release page?", "是否打开版本下载页面？"), "FluxRAM",
+                        MessageBoxButton.YesNo, MessageBoxImage.Information) == MessageBoxResult.Yes)
+                        OpenUrl(result.ReleaseUrl);
+                }
+                return;
+            }
+
+            _hasHandledStartupUpdate = true;
+            var choice = StartupUpdateDialog.Show(this, result, _uiLanguage);
+            if (choice == UpdatePromptChoice.SkipThisVersion)
+            {
+                _userSettingsStore.SaveSkippedUpdateVersion(result.LatestVersion);
+                return;
+            }
+            if (choice != UpdatePromptChoice.UpdateNow) return;
+
+            installing = true;
+            var progress = new Progress<int>(percent =>
+            {
+                if (_isExitRequested) return;
+                CheckUpdateMenuItem.Header = T($"Downloading update... {percent}%", $"正在下载更新... {percent}%");
+                _viewModel.SetStatus(T(
+                    $"Downloading and verifying FluxRAM {result.LatestVersion}: {percent}%",
+                    $"正在下载并校验 FluxRAM {result.LatestVersion}：{percent}%"));
+            });
+            var stagedUpdate = await _updatePackageService.DownloadAndStageAsync(
+                result, AppDistributionInfo.CurrentMode, progress, _updateCancellation.Token);
+            if (_isExitRequested) return;
+            _viewModel.SetStatus(T("Update verified. Restarting...", "更新校验完成，正在重启..."));
+            _updatePackageService.LaunchReplacement(stagedUpdate, Environment.ProcessId);
+            _isExitRequested = true;
+            _trayIcon.Visible = false;
+            System.Windows.Application.Current.Shutdown();
         }
+        catch (OperationCanceledException) when (_updateCancellation.IsCancellationRequested) { }
         catch (Exception ex)
         {
-            DiagnosticLog.Error("Update check failed unexpectedly.", ex);
-            _viewModel.SetStatus(T(
-                "The update could not be completed. You can still use the download page.",
-                "本次更新未能完成，仍可前往下载页面手动更新。"));
-            if (!string.IsNullOrWhiteSpace(result?.ReleaseUrl))
+            DiagnosticLog.Warning("Update could not be completed.", ex);
+            if ((!automatic || installing) && !_isExitRequested)
             {
-                var shouldOpen = System.Windows.MessageBox.Show(
-                    this,
-                    T(
-                        "The update could not be completed automatically. Open the download page?",
-                        "自动更新未能完成，是否打开下载页面？"),
-                    "FluxRAM",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Information);
-                if (shouldOpen == MessageBoxResult.Yes)
-                {
+                _viewModel.SetStatus(T("Update failed. Please try again later.", "更新未完成，请稍后重试。"));
+                if (installing && !string.IsNullOrWhiteSpace(result?.ReleaseUrl) &&
+                    System.Windows.MessageBox.Show(this,
+                        T("Open the download page to update manually?", "是否打开下载页面手动更新？"),
+                        "FluxRAM", MessageBoxButton.YesNo, MessageBoxImage.Information) == MessageBoxResult.Yes)
                     OpenUrl(result.ReleaseUrl);
-                }
             }
         }
         finally
         {
+            _isCheckingUpdate = false;
             CheckUpdateMenuItem.IsEnabled = true;
             UpdateToolsMenuText();
         }
@@ -1042,7 +1089,7 @@ public partial class MainWindow : Window
             UpdateStatusMetrics(memorySnapshot, now);
             var snapshots = sample.Snapshots;
             var foreground = snapshots.Where(x => x.IsForeground).Select(x => x.ProcessName).FirstOrDefault() ?? T("Unknown", "未知");
-            _viewModel.UpdateProcessMetrics(snapshots.Count, 0, foreground);
+            _viewModel.UpdateProcessMetrics(snapshots.Count, null, foreground);
 
             if (AutoBoostPolicy.CanRun(_isAutoBoostEnabled, _optimizerSettings, _lastAutoBoostAt, now))
             {
@@ -1146,6 +1193,12 @@ public partial class MainWindow : Window
             _viewModel.AddEvent(LocalizePolicyMessage(plan.DecisionMessage));
         }
 
+        if (!plan.ShouldPurge)
+        {
+            _viewModel.SetStatus(LocalizePolicyMessage(plan.DecisionMessage));
+            return false;
+        }
+
         var trimmed = 0L;
         var success = 0;
         var successfulGroups = 0;
@@ -1232,7 +1285,8 @@ public partial class MainWindow : Window
     {
         var delta = checked((long)snapshot.AvailablePhysicalMemoryBytes - (long)_baselineAvailableMemoryBytes);
         _viewModel.UpdateRamDelta(delta);
-        _viewModel.UpdateAvailableMemory(snapshot.AvailablePhysicalMemoryBytes);
+        _viewModel.UpdateMemorySnapshot(snapshot);
+        MemoryTrendChart.AddSample(now, snapshot.MemoryLoadPercent);
         UpdateReboundRate(snapshot.AvailablePhysicalMemoryBytes);
         _viewModel.TouchLastUpdated(now);
         UpdateSelfOverhead();
@@ -2039,7 +2093,7 @@ public partial class MainWindow : Window
         var edition = _licenseStatus.Features;
         Title = edition.ProductTitle;
         AppTitleTextBlock.Text = edition.ProductTitle;
-        AppSubtitleTextBlock.Text = BuildAppSubtitleText();
+        AppSubtitleTextBlock.Text = T("Windows memory utility", "Windows 内存管理") + " · " + AppVersionInfo.CurrentDisplayVersion;
         StatusCaptionTextBlock.Text = T("STATUS", "状态");
         ProfileCaptionTextBlock.Text = T("PROFILE", "档位");
         ProfileHelpButton.ToolTip = T("Profile details", "档位说明");
@@ -2056,13 +2110,19 @@ public partial class MainWindow : Window
         EditionHelpButton.ToolTip = T("Edition details", "版本功能明细");
         EditionValueTextBlock.Text = T(edition.EditionLabelEnglish, edition.EditionLabelChinese);
         UpdateToolsMenuText();
-        DetailSettingsButton.Content = _isDetailPanelVisible
-            ? T("Hide", "收起")
-            : T("Settings", "设置");
-        DetailSettingsButton.ToolTip = T("Show or hide detailed settings", "显示或收起详细设置");
-        ToolsMenuButton.Content = T("Tools", "工具");
+        OverviewTab.Header = T("Overview", "概览");
+        ProtectionTab.Header = T("App protection", "应用保护");
+        ActivityTab.Header = T("Recent activity", "最近活动");
+        SettingsTab.Header = T("Settings", "设置");
+        PreferencesTitleTextBlock.Text = T("Preferences", "偏好设置");
+        MemoryLoadCaptionTextBlock.Text = T("Memory load", "内存负载");
+        TrendCaptionTextBlock.Text = T("Memory load · last 2 minutes", "内存负载 · 最近 2 分钟");
+        BoostEmptyTextBlock.Text = T("No Boost results yet. Preview to check candidates.", "暂无 Boost 结果，可先预览候选应用。");
+        ViewBoostDetailsButton.Content = ViewProtectionDetailsButton.Content = ViewActivityDetailsButton.Content = T("Details", "查看详情");
+        DetailSettingsButton.ToolTip = _isDetailPanelVisible ? T("Compact view", "精简视图") : T("Full view", "完整视图");
+        System.Windows.Automation.AutomationProperties.SetName(DetailSettingsButton, (string)DetailSettingsButton.ToolTip);
         ToolsMenuButton.ToolTip = T("Open app tools menu", "打开应用工具菜单");
-        MinimizeButton.Content = T("Minimize", "最小化");
+        System.Windows.Automation.AutomationProperties.SetName(ToolsMenuButton, T("Tools", "工具"));
         MachineIdCaptionTextBlock.Text = T("MACHINE ID", "机器标识");
         CopyMachineIdButton.Content = T("Copy", "复制");
         LicenseKeyCaptionTextBlock.Text = T("PRO KEY", "专业版 Key");
@@ -2091,15 +2151,15 @@ public partial class MainWindow : Window
         ProtectListLockedTextBlock.Text = T(
             "Protected app management is unavailable in this build.",
             "当前构建不可用应用保护管理。");
-        RamDeltaCaptionTextBlock.Text = T("RAM DELTA", "内存变化");
+        RamDeltaCaptionTextBlock.Text = T("Available change since launch", "本次运行可用内存变化");
         AvailableCaptionTextBlock.Text = T("AVAILABLE", "可用内存");
-        LastBoostTrimmedCaptionTextBlock.Text = T("LAST BOOST TRIMMED", "最近 Boost 裁剪量");
-        TotalTrimmedCaptionTextBlock.Text = T("TOTAL TRIMMED", "累计裁剪量");
-        BoostNetGainCaptionTextBlock.Text = T("BOOST NET GAIN", "Boost 净收益");
-        MemoryMetricsTitleTextBlock.Text = T("Memory Metrics", "内存指标");
+        LastBoostTrimmedCaptionTextBlock.Text = T("Last working-set trim", "最近工作集裁剪量");
+        TotalTrimmedCaptionTextBlock.Text = T("Trim this session", "本次运行累计裁剪");
+        BoostNetGainCaptionTextBlock.Text = T("Observed available-memory gain", "Boost 后可用内存净变化");
+        MemoryMetricsTitleTextBlock.Text = T("Memory overview", "内存概况");
         SelfOverheadCaptionTextBlock.Text = T("SELF OVERHEAD", "自身开销");
-        RuntimeSummaryTitleTextBlock.Text = T("Runtime Summary", "运行摘要");
-        BoostDetailsTitleTextBlock.Text = T("Boost Details", "Boost 明细");
+        RuntimeSummaryTitleTextBlock.Text = T("Optimization", "优化中心");
+        BoostDetailsTitleTextBlock.Text = T("Boost results / preview", "Boost 结果 / 候选预览");
         PreviewBoostCandidatesButton.Content = T("Preview", "预览");
         PreviewBoostCandidatesButton.ToolTip = T("Preview manual Boost candidates without trimming memory", "预览手动 Boost 候选，不执行内存裁剪");
         RecentActivityTitleTextBlock.Text = T("Recent Activity", "最近活动");
@@ -2141,15 +2201,15 @@ public partial class MainWindow : Window
     {
         _uiTheme = theme;
         var light = theme == AppTheme.Light;
-        SetThemeBrush("WindowBackgroundBrush", "#0E1117", "#F4F7FB", light);
-        SetThemeBrush("SurfaceBrush", "#121821", "#FFFFFF", light);
-        SetThemeBrush("SurfaceSoftBrush", "#0D131A", "#EEF3F8", light);
-        SetThemeBrush("BorderBrushSoft", "#243244", "#C8D4E3", light);
-        SetThemeBrush("InsetBorderBrush", "#243040", "#D1DCE8", light);
-        SetThemeBrush("TextPrimaryBrush", "#F4F7FB", "#101827", light);
-        SetThemeBrush("TextSecondaryBrush", "#D8E2F0", "#243247", light);
-        SetThemeBrush("TextMutedBrush", "#C4D0E2", "#526174", light);
-        SetThemeBrush("AccentBrush", "#3DD6A3", "#0EAD7C", light);
+        SetThemeBrush("WindowBackgroundBrush", "#161A19", "#F5F7F6", light);
+        SetThemeBrush("SurfaceBrush", "#1E2321", "#FFFFFF", light);
+        SetThemeBrush("SurfaceSoftBrush", "#1B201E", "#ECF1EE", light);
+        SetThemeBrush("BorderBrushSoft", "#39443F", "#CBD6CF", light);
+        SetThemeBrush("InsetBorderBrush", "#344139", "#D4DED8", light);
+        SetThemeBrush("TextPrimaryBrush", "#F1F5F3", "#17241E", light);
+        SetThemeBrush("TextSecondaryBrush", "#C6D1CA", "#3E5247", light);
+        SetThemeBrush("TextMutedBrush", "#A5B6AC", "#54695D", light);
+        SetThemeBrush("AccentBrush", "#3DD6A3", "#087C5D", light);
         SetThemeBrush("AccentSoftBrush", "#18362B", "#DDF7ED", light);
         SetThemeBrush("WarningBrush", "#F7C873", "#B7791F", light);
         SetThemeBrush("TextBoxBackgroundBrush", "#0D141D", "#FFFFFF", light);
@@ -2427,14 +2487,6 @@ public partial class MainWindow : Window
         };
     }
 
-    private string BuildAppSubtitleText()
-    {
-        return T(
-            "Simplified boost-first memory tool for local Windows workloads",
-            "面向本地 Windows 负载的精简 Boost 优先内存工具") +
-            $" · {AppVersionInfo.CurrentDisplayVersion}";
-    }
-
     private void RefreshStartupAutoBoostStatus()
     {
         if (StartupAutoBoostCheckBox.IsChecked != true)
@@ -2693,6 +2745,7 @@ public partial class MainWindow : Window
             .Replace("no safe background candidate remained", "没有剩余安全后台候选", StringComparison.Ordinal)
             .Replace("foreground application(s)", "前台应用", StringComparison.Ordinal)
             .Replace("below size threshold", "低于大小阈值", StringComparison.Ordinal)
+            .Replace("awaiting CPU/I/O measurements", "等待 CPU/磁盘活动采样", StringComparison.Ordinal)
             .Replace("not cold enough", "冷度不足", StringComparison.Ordinal)
             .Replace("active CPU/I/O", "CPU/I/O 活跃", StringComparison.Ordinal)
             .Replace("protected", "受保护", StringComparison.Ordinal)
@@ -2738,20 +2791,20 @@ public partial class MainWindow : Window
 
     private void RefreshMetricCards()
     {
-        RamDeltaValueTextBlock.Text = _viewModel.RamDeltaDisplay;
-        AvailableValueTextBlock.Text = _viewModel.AvailableRamDisplay;
-        LastBoostTrimmedValueTextBlock.Text = _viewModel.LastBoostTrimmedDisplay;
-        TotalTrimmedValueTextBlock.Text = _viewModel.TotalTrimmedDisplay;
-        BoostNetGainValueTextBlock.Text = _viewModel.BoostNetGainDisplay;
+        RamDeltaValueTextBlock.Text = _viewModel.RamDeltaValue;
+        AvailableValueTextBlock.Text = _viewModel.AvailableRamValue;
+        LastBoostTrimmedValueTextBlock.Text = _viewModel.LastBoostTrimmedValue;
+        TotalTrimmedValueTextBlock.Text = _viewModel.TotalTrimmedValue;
+        BoostNetGainValueTextBlock.Text = _viewModel.BoostNetGainValue;
     }
 
     private void ApplyDetailPanelState(bool isVisible)
     {
         _isDetailPanelVisible = isVisible;
-        DetailPanel.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
-        DetailSettingsButton.Content = isVisible
-            ? T("Hide", "收起")
-            : T("Settings", "设置");
+        WorkspaceTabs.SelectedIndex = 0;
+        ProtectionTab.Visibility = ActivityTab.Visibility = SettingsTab.Visibility = ResultsRegion.Visibility = TrendRegion.Visibility = isVisible ? Visibility.Visible : Visibility.Collapsed;
+        DetailSettingsButton.ToolTip = isVisible ? T("Compact view", "精简视图") : T("Full view", "完整视图");
+        System.Windows.Automation.AutomationProperties.SetName(DetailSettingsButton, (string)DetailSettingsButton.ToolTip);
 
         if (isVisible)
         {
@@ -2792,6 +2845,8 @@ public partial class MainWindow : Window
 
     private void MainWindow_OnClosed(object? sender, EventArgs e)
     {
+        _isExitRequested = true;
+        _updateCancellation.Cancel();
         _optimizerTimer.Stop();
         _trayIcon.Visible = false;
         _trayIcon.Dispose();
@@ -2822,6 +2877,7 @@ public partial class MainWindow : Window
         Show();
         WindowState = WindowState.Normal;
         Activate();
+        _ = CheckForUpdatesAsync(automatic: true);
     }
 
     private void ExitFromTray()

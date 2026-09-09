@@ -11,4 +11,10 @@ public readonly record struct ProcessSnapshot(
     string? ExecutablePath = null,
     double IoBytesPerSecond = 0d,
     int? ParentProcessId = null,
-    string? MainWindowTitle = null);
+    string? MainWindowTitle = null,
+    // Explicit snapshots describe measured values; the live scraper sets validity for each reading.
+    bool HasCpuMeasurement = true,
+    bool HasIoMeasurement = true)
+{
+    public bool HasMeasuredActivity => HasCpuMeasurement && HasIoMeasurement;
+}

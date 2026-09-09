@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using FluxRAM.App.Diagnostics;
 using FluxRAM.App.Licensing;
 using FluxRAM.App.ViewModels;
@@ -39,6 +40,11 @@ public sealed class UserSettingsStore
     public bool LoadAutoBoost()
     {
         return LoadSettings().AutoBoost;
+    }
+
+    public string? LoadSkippedUpdateVersion()
+    {
+        return LoadSettings().SkippedUpdateVersion;
     }
 
     public OptimizerProfile LoadProfile()
@@ -85,6 +91,13 @@ public sealed class UserSettingsStore
     {
         var settings = LoadSettings();
         settings.ProfileCode = profile.ToString();
+        SaveSettings(settings);
+    }
+
+    public void SaveSkippedUpdateVersion(string? version)
+    {
+        var settings = LoadSettings();
+        settings.SkippedUpdateVersion = version;
         SaveSettings(settings);
     }
 
@@ -135,5 +148,10 @@ public sealed class UserSettingsStore
         public bool AutoBoost { get; set; }
 
         public string? ProfileCode { get; set; }
+
+        public string? SkippedUpdateVersion { get; set; }
+
+        [JsonExtensionData]
+        public Dictionary<string, JsonElement>? AdditionalSettings { get; set; }
     }
 }

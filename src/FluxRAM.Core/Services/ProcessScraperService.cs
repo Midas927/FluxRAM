@@ -40,17 +40,18 @@ public sealed class ProcessScraperService
                 var hasVisibleWindow = TryHasVisibleWindow(process);
                 var cpuUsagePercent = TryGetCpuUsagePercent(process, sampledAt);
                 var ioBytesPerSecond = TryGetIoBytesPerSecond(process.Id, sampledAt);
+                var hasMeasuredActivity = cpuUsagePercent.HasValue && ioBytesPerSecond.HasValue;
                 var wasRecentlyPurged = WasRecentlyPurged(process.Id, sampledAt, lastPurgeTimesByProcessId);
                 var executablePath = TryGetExecutablePath(process);
                 var parentProcessId = parentProcessIds.TryGetValue(process.Id, out var parentId) ? parentId : null;
                 var mainWindowTitle = TryGetMainWindowTitle(process);
-                var coldnessScore = CalculateColdnessScore(
+                var coldnessScore = hasMeasuredActivity ? CalculateColdnessScore(
                     workingSetBytes,
-                    cpuUsagePercent,
-                    ioBytesPerSecond,
+                    cpuUsagePercent.GetValueOrDefault(),
+                    ioBytesPerSecond.GetValueOrDefault(),
                     isForeground,
                     hasVisibleWindow,
-                    wasRecentlyPurged);
+                    wasRecentlyPurged) : 0d;
 
                 snapshots.Add(
                     new ProcessSnapshot(
@@ -58,13 +59,15 @@ public sealed class ProcessScraperService
                         processName,
                         workingSetBytes,
                         isForeground,
-                        cpuUsagePercent,
+                        cpuUsagePercent.GetValueOrDefault(),
                         hasVisibleWindow,
                         coldnessScore,
                         executablePath,
-                        ioBytesPerSecond,
+                        ioBytesPerSecond.GetValueOrDefault(),
                         parentProcessId,
-                        mainWindowTitle));
+                        mainWindowTitle,
+                        HasCpuMeasurement: cpuUsagePercent.HasValue,
+                        HasIoMeasurement: ioBytesPerSecond.HasValue));
             }
         }
 
@@ -76,7 +79,7 @@ public sealed class ProcessScraperService
             .ToArray();
     }
 
-    private double TryGetCpuUsagePercent(Process process, DateTimeOffset sampledAt)
+    private double? TryGetCpuUsagePercent(Process process, DateTimeOffset sampledAt)
     {
         TimeSpan totalProcessorTime;
         try
@@ -85,30 +88,37 @@ public sealed class ProcessScraperService
         }
         catch
         {
-            return 0d;
+            return RecordCpuSample(process.Id, null, sampledAt);
         }
 
-        if (!_cpuSamplesByProcessId.TryGetValue(process.Id, out var previous))
+        return RecordCpuSample(process.Id, totalProcessorTime, sampledAt);
+    }
+
+    private double? RecordCpuSample(int processId, TimeSpan? totalProcessorTime, DateTimeOffset sampledAt)
+    {
+        if (!totalProcessorTime.HasValue)
         {
-            _cpuSamplesByProcessId[process.Id] = new CpuSample(totalProcessorTime, sampledAt);
-            return 0d;
+            _cpuSamplesByProcessId.Remove(processId);
+            return null;
+        }
+
+        if (!_cpuSamplesByProcessId.TryGetValue(processId, out var previous) ||
+            sampledAt <= previous.SampledAt ||
+            totalProcessorTime.Value < previous.TotalProcessorTime)
+        {
+            _cpuSamplesByProcessId[processId] = new CpuSample(totalProcessorTime.Value, sampledAt);
+            return null;
         }
 
         var elapsed = sampledAt - previous.SampledAt;
         if (elapsed <= TimeSpan.FromMilliseconds(100))
         {
-            _cpuSamplesByProcessId[process.Id] = new CpuSample(totalProcessorTime, sampledAt);
-            return 0d;
+            return null;
         }
 
-        var processorDelta = totalProcessorTime - previous.TotalProcessorTime;
-        if (processorDelta < TimeSpan.Zero)
-        {
-            processorDelta = TimeSpan.Zero;
-        }
-
+        var processorDelta = totalProcessorTime.Value - previous.TotalProcessorTime;
         var cpuPercent = processorDelta.TotalMilliseconds / (elapsed.TotalMilliseconds * Environment.ProcessorCount) * 100d;
-        _cpuSamplesByProcessId[process.Id] = new CpuSample(totalProcessorTime, sampledAt);
+        _cpuSamplesByProcessId[processId] = new CpuSample(totalProcessorTime.Value, sampledAt);
         return Math.Clamp(cpuPercent, 0d, 100d);
     }
 
@@ -224,7 +234,7 @@ public sealed class ProcessScraperService
         }
     }
 
-    private double TryGetIoBytesPerSecond(int processId, DateTimeOffset sampledAt)
+    private double? TryGetIoBytesPerSecond(int processId, DateTimeOffset sampledAt)
     {
         var processHandle = NativeMethods.OpenProcess(
             NativeMethods.PROCESS_QUERY_LIMITED_INFORMATION,
@@ -232,40 +242,50 @@ public sealed class ProcessScraperService
             processId);
         if (processHandle == IntPtr.Zero)
         {
-            return 0d;
+            return RecordIoSample(processId, null, sampledAt);
         }
 
         try
         {
             if (!NativeMethods.GetProcessIoCounters(processHandle, out var ioCounters))
             {
-                return 0d;
+                return RecordIoSample(processId, null, sampledAt);
             }
 
             var totalBytes = ioCounters.ReadTransferCount + ioCounters.WriteTransferCount;
-            if (!_ioSamplesByProcessId.TryGetValue(processId, out var previous))
-            {
-                _ioSamplesByProcessId[processId] = new IoSample(totalBytes, sampledAt);
-                return 0d;
-            }
-
-            var elapsed = sampledAt - previous.SampledAt;
-            if (elapsed <= TimeSpan.FromMilliseconds(100))
-            {
-                _ioSamplesByProcessId[processId] = new IoSample(totalBytes, sampledAt);
-                return 0d;
-            }
-
-            var deltaBytes = totalBytes >= previous.TotalBytes
-                ? totalBytes - previous.TotalBytes
-                : 0UL;
-            _ioSamplesByProcessId[processId] = new IoSample(totalBytes, sampledAt);
-            return deltaBytes / elapsed.TotalSeconds;
+            return RecordIoSample(processId, totalBytes, sampledAt);
         }
         finally
         {
             _ = NativeMethods.CloseHandle(processHandle);
         }
+    }
+
+    private double? RecordIoSample(int processId, ulong? totalBytes, DateTimeOffset sampledAt)
+    {
+        if (!totalBytes.HasValue)
+        {
+            _ioSamplesByProcessId.Remove(processId);
+            return null;
+        }
+
+        if (!_ioSamplesByProcessId.TryGetValue(processId, out var previous) ||
+            sampledAt <= previous.SampledAt ||
+            totalBytes.Value < previous.TotalBytes)
+        {
+            _ioSamplesByProcessId[processId] = new IoSample(totalBytes.Value, sampledAt);
+            return null;
+        }
+
+        var elapsed = sampledAt - previous.SampledAt;
+        if (elapsed <= TimeSpan.FromMilliseconds(100))
+        {
+            return null;
+        }
+
+        var deltaBytes = totalBytes.Value - previous.TotalBytes;
+        _ioSamplesByProcessId[processId] = new IoSample(totalBytes.Value, sampledAt);
+        return deltaBytes / elapsed.TotalSeconds;
     }
 
     private static bool TryHasVisibleWindow(Process process)
