@@ -13,4 +13,5 @@ public sealed record ExtremeCloseCandidate(
     bool IsDefaultSelected,
     BackgroundActivityState ActivityState = BackgroundActivityState.Observing,
     TimeSpan ObservedFor = default,
-    TimeSpan IdleFor = default);
+    TimeSpan IdleFor = default,
+    IReadOnlyList<ProcessSnapshot>? CapturedSnapshots = null);

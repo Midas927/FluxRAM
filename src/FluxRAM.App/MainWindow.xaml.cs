@@ -59,6 +59,8 @@ public partial class MainWindow : Window
     private readonly Forms.ToolStripMenuItem _boostTrayMenuItem;
     private readonly Forms.ToolStripMenuItem _exitTrayMenuItem;
     private readonly object _processScraperLock = new();
+    private readonly ApplicationYieldTracker _applicationYieldTracker = new();
+    private ApplicationPreviewDialog? _yieldHistoryDialog;
 
     private readonly Dictionary<int, DateTimeOffset> _lastPurgeTimesByProcessId = new();
     private readonly HashSet<string> _protectedProcessNames = new(StringComparer.OrdinalIgnoreCase);
@@ -93,6 +95,8 @@ public partial class MainWindow : Window
     private bool _isMonitoringTickRunning;
     private readonly bool _isUiPreview;
     private bool _isCheckingUpdate;
+    private bool _isDeepReleaseRunning;
+    private System.Threading.CancellationTokenSource? _deepReleaseCancellation;
     private bool _hasHandledStartupUpdate;
     private readonly System.Threading.CancellationTokenSource _updateCancellation = new();
 
@@ -220,65 +224,51 @@ public partial class MainWindow : Window
         UpdateMonitoringState();
     }
 
-    private void PreviewBoostCandidatesButton_OnClick(object sender, RoutedEventArgs e)
+    private async void PreviewBoostCandidatesButton_OnClick(object sender, RoutedEventArgs e)
     {
-        if (!_memoryStatusService.TryGetSnapshot(out var memorySnapshot))
+        if (!PreviewBoostCandidatesButton.IsEnabled) return;
+        PreviewBoostCandidatesButton.IsEnabled = false;
+        try
         {
-            DiagnosticLog.Warning("Boost candidate preview could not read memory snapshot.");
-            _viewModel.SetStatus(T("Unable to read memory snapshot.", "无法读取内存快照。"));
-            return;
-        }
-
-        var now = DateTimeOffset.Now;
-        var snapshots = ScrapeProcesses(_lastPurgeTimesByProcessId);
-        var foreground = snapshots.Where(x => x.IsForeground).Select(x => x.ProcessName).FirstOrDefault() ?? T("Unknown", "未知");
-        IReadOnlyCollection<string> protectedProcessNames = _licenseStatus.Features.SupportsProtectList
-            ? _protectedProcessNames
-            : Array.Empty<string>();
-        IReadOnlyCollection<string> protectedProcessPaths = _licenseStatus.Features.SupportsProtectList
-            ? _protectedProcessPaths
-            : Array.Empty<string>();
-        var manualSettings = CreateManualBoostSettings(_optimizerSettings);
-        var plan = _purgePolicyService.CreatePlan(
-            snapshots,
-            memorySnapshot,
-            manualSettings,
-            now,
-            _lastPurgeTimesByProcessId,
-            forcePurge: true,
-            protectedProcessNames,
-            protectedProcessPaths,
-            enableAdvancedProtection: _licenseStatus.Features.SupportsAdvancedProtection);
-        _viewModel.UpdateProProtectionSummary(
-            plan.ProtectionSummary,
-            _licenseStatus.Features.SupportsAdvancedProtection);
-
-        var details = plan.CandidateGroups
-            .Take(20)
-            .Select(group =>
+            var times = _lastPurgeTimesByProcessId.ToDictionary(pair => pair.Key, pair => pair.Value);
+            var snapshots = await Task.Run(() => ScrapeProcesses(times));
+            if (_isExitRequested) return;
+            var assessments = _purgePolicyService.AssessApplications(snapshots, CreateManualBoostSettings(_optimizerSettings),
+                DateTimeOffset.Now, times, _protectedProcessNames, _protectedProcessPaths, _licenseStatus.Features.SupportsAdvancedProtection);
+            var rows = assessments.OrderByDescending(item => item.Group.WorkingSetBytes).Select(item =>
             {
-                var signals = FormatCandidateGroupSignals(group);
-                return T(
-                    $"PREVIEW | {group.ProcessName} | {group.Processes.Count} process(es) | total WS {MainWindowViewModel.FormatBytes(group.WorkingSetBytes)} | {signals}",
-                    $"预览 | {group.ProcessName} | {group.Processes.Count} 个进程 | 总工作集 {MainWindowViewModel.FormatBytes(group.WorkingSetBytes)} | {signals}");
-            })
-            .ToArray();
-
-        if (details.Length == 0)
-        {
-            details = [$"PREVIEW | {LocalizePolicyMessage(plan.DecisionMessage)}"];
+                var group = item.Group;
+                var status = item.RejectionReason switch
+                {
+                    PurgePolicyService.CandidateGroupRejectionReason.Foreground => T("Foreground", "前台应用"),
+                    PurgePolicyService.CandidateGroupRejectionReason.TooSmall => T("Below size threshold", "占用较小"),
+                    PurgePolicyService.CandidateGroupRejectionReason.UnmeasuredActivity => T("Observing", "观察不足"),
+                    PurgePolicyService.CandidateGroupRejectionReason.NotCold => T("Recent activity", "近期有活动"),
+                    PurgePolicyService.CandidateGroupRejectionReason.Active => T("Active CPU/I/O", "正在工作"),
+                    PurgePolicyService.CandidateGroupRejectionReason.Protected => T("Protected", "已保护"),
+                    PurgePolicyService.CandidateGroupRejectionReason.Cooldown => T("Cooldown", "冷却中"),
+                    _ => T("Eligible", "符合条件")
+                };
+                var text = $"{group.ProcessName} | {status} | {MainWindowViewModel.FormatBytes(group.WorkingSetBytes)}\n" +
+                    T($"Processes: {group.ObservedProcesses.Count}", $"进程：{group.ObservedProcesses.Count}") +
+                    $" | {FormatCandidateGroupSignals(group)}\n{group.ExecutablePath}";
+                if (_applicationYieldTracker.HasPendingObservation(group, DateTimeOffset.Now))
+                    text += "\n" + T("Auto Boost: observing the last trim", "自动 Boost：正在观察上次裁剪");
+                else if (_applicationYieldTracker.IsDeferred(group, DateTimeOffset.Now))
+                    text += "\n" + T("Auto Boost: temporarily paused after low yield", "自动 Boost：近期收益偏低，暂缓重复裁剪");
+                return new ApplicationPreviewRow(text, item.RejectionReason == PurgePolicyService.CandidateGroupRejectionReason.None);
+            }).ToArray();
+            var dialog = new ApplicationPreviewDialog(this, _uiLanguage, rows,
+                (owner, text) => ShowEntryDetails(text, T("App details", "应用详情"), owner))
+            { Title = T("Manual Boost application preview", "手动 Boost 应用预览") };
+            dialog.ShowDialog();
         }
-
-        _viewModel.UpdateProcessMetrics(snapshots.Count, plan.CandidateGroups.Count, foreground);
-        _viewModel.UpdateBoostDetails(details);
-        _viewModel.SetStatus(plan.CandidateGroups.Count == 0
-            ? LocalizePolicyMessage(plan.DecisionMessage)
-            : T(
-                $"Preview ready: {plan.CandidateGroups.Count} app(s), {plan.Candidates.Count} process(es).",
-                $"预览完成：{plan.CandidateGroups.Count} 个应用、{plan.Candidates.Count} 个进程。"));
-        _viewModel.AddEvent(T("Manual Boost candidates previewed.", "已预览手动 Boost 候选。"));
-        DiagnosticLog.Info(
-            $"Boost candidate preview completed. Applications={plan.CandidateGroups.Count}, processes={plan.Candidates.Count}.");
+        catch (Exception ex)
+        {
+            DiagnosticLog.Warning("Application preview failed.", ex);
+            _viewModel.SetStatus(T("Unable to load application preview.", "无法加载应用预览。"));
+        }
+        finally { PreviewBoostCandidatesButton.IsEnabled = true; }
     }
 
     private void AutoBoostToggle_OnChecked(object sender, RoutedEventArgs e)
@@ -398,9 +388,15 @@ public partial class MainWindow : Window
             : ReferenceEquals(listBox, BoostDetailsListBox)
                 ? T("Boost details", "Boost 明细")
                 : T("Activity details", "活动详情");
+        ShowEntryDetails(detail, title);
+        return true;
+    }
+
+    private void ShowEntryDetails(string detail, string title, Window? owner = null)
+    {
         var dialog = new Window
         {
-            Owner = this,
+            Owner = owner ?? this,
             Title = title,
             Width = Math.Min(680, SystemParameters.WorkArea.Width - 48),
             Height = Math.Min(360, SystemParameters.WorkArea.Height - 48),
@@ -442,7 +438,6 @@ public partial class MainWindow : Window
         layout.Children.Add(textBox);
         dialog.Content = layout;
         dialog.ShowDialog();
-        return true;
     }
 
     private static bool CanScrollList(ScrollViewer? scrollViewer, int wheelDelta)
@@ -496,8 +491,9 @@ public partial class MainWindow : Window
         OpenGitHubRepository();
     }
 
-    private void DeepReleaseButton_OnClick(object sender, RoutedEventArgs e)
+    private async void DeepReleaseButton_OnClick(object sender, RoutedEventArgs e)
     {
+        if (_isDeepReleaseRunning || _isCheckingUpdate) return;
         if (!_licenseStatus.Features.SupportsExtremeClose)
         {
             _viewModel.SetStatus(T(
@@ -507,67 +503,84 @@ public partial class MainWindow : Window
             return;
         }
 
-        var snapshots = ScrapeProcesses(_lastPurgeTimesByProcessId);
-        var protectionContext = ProcessProtectionMatcher.CreateContext(
-            snapshots,
-            _protectedProcessNames,
-            _protectedProcessPaths);
-        var protectionSummary = ProcessProtectionMatcher.Summarize(
-            snapshots,
-            protectionContext,
-            enableAdvancedProtection: true);
-        _viewModel.UpdateProProtectionSummary(protectionSummary, isPro: true);
-        var candidates = ExtremeCloseCandidateFactory.FromSnapshots(
-                snapshots,
-                _licenseStatus.Features.SupportsProtectList ? _protectedProcessNames : Array.Empty<string>(),
-                _licenseStatus.Features.SupportsProtectList ? _protectedProcessPaths : Array.Empty<string>(),
-                Environment.ProcessId,
-                enableAdvancedProtection: _licenseStatus.Features.SupportsAdvancedProtection,
-                activityAssessments: _backgroundActivityTracker.CurrentAssessments)
-            .ToArray();
-        var serviceCandidates = _serviceKillerService.GetRunningTargets(
-            candidates.SelectMany(candidate => candidate.ProcessIds).ToHashSet(),
-            candidates.Select(candidate => candidate.ProcessName).ToHashSet(StringComparer.OrdinalIgnoreCase));
-        candidates = DeepReleaseCandidateDeduplicator
-            .RemoveServiceDuplicates(candidates, serviceCandidates)
-            .ToArray();
-
-        if (candidates.Length == 0 && serviceCandidates.Count == 0)
+        _isDeepReleaseRunning = true;
+        DeepReleaseButton.IsEnabled = BoostNowButton.IsEnabled = false;
+        try
         {
-            var message = T(
-                "Deep Release found no background application suitable for closing.",
-                "深度释放没有找到适合关闭的后台应用。");
-            _viewModel.SetStatus(message);
+            var times = _lastPurgeTimesByProcessId.ToDictionary(pair => pair.Key, pair => pair.Value);
+            var snapshots = await Task.Run(() => ScrapeProcesses(times));
+            if (_isExitRequested) return;
+            var protectionContext = ProcessProtectionMatcher.CreateContext(
+                snapshots,
+                _protectedProcessNames,
+                _protectedProcessPaths);
+            var protectionSummary = ProcessProtectionMatcher.Summarize(
+                snapshots,
+                protectionContext,
+                enableAdvancedProtection: true);
+            _viewModel.UpdateProProtectionSummary(protectionSummary, isPro: true);
+            var candidates = ExtremeCloseCandidateFactory.FromSnapshots(
+                    snapshots,
+                    _licenseStatus.Features.SupportsProtectList ? _protectedProcessNames : Array.Empty<string>(),
+                    _licenseStatus.Features.SupportsProtectList ? _protectedProcessPaths : Array.Empty<string>(),
+                    Environment.ProcessId,
+                    enableAdvancedProtection: _licenseStatus.Features.SupportsAdvancedProtection,
+                    activityAssessments: _backgroundActivityTracker.CurrentAssessments)
+                .ToArray();
+            var serviceCandidates = await Task.Run(() => _serviceKillerService.GetRunningTargets(
+                candidates.SelectMany(candidate => candidate.ProcessIds).ToHashSet(),
+                candidates.Select(candidate => candidate.ProcessName).ToHashSet(StringComparer.OrdinalIgnoreCase)));
+            if (_isExitRequested) return;
+            candidates = DeepReleaseCandidateDeduplicator
+                .RemoveServiceDuplicates(candidates, serviceCandidates)
+                .ToArray();
+
+            if (candidates.Length == 0 && serviceCandidates.Count == 0)
+            {
+                var message = T(
+                    "Deep Release found no background application suitable for closing.",
+                    "深度释放没有找到适合关闭的后台应用。");
+                _viewModel.SetStatus(message);
+                _viewModel.UpdateBoostDetails([
+                    BuildProProtectionDetail(protectionSummary),
+                message
+                ]);
+                return;
+            }
+
+            var selection = ShowExtremeCloseDialog(candidates, serviceCandidates);
+            if (selection.Applications.Count == 0 && selection.Services.Count == 0)
+            {
+                _viewModel.SetStatus(T("Deep Release cancelled.", "深度释放已取消。"));
+                return;
+            }
+
+            var result = ShowDeepReleaseProgress(selection);
+            if (result is null) return;
             _viewModel.UpdateBoostDetails([
                 BuildProProtectionDetail(protectionSummary),
-                message
+            .. result.Items.Select(FormatDeepReleaseItem)
             ]);
-            return;
+            _viewModel.SetStatus(T(
+                $"Deep Release: closed {result.ClosedProcessCount}/{result.TotalProcessCount} process(es), stopped {result.StoppedServiceCount}/{result.TotalServiceCount} service(s).",
+                $"深度释放：已退出 {result.ClosedProcessCount}/{result.TotalProcessCount} 个进程，已停止 {result.StoppedServiceCount}/{result.TotalServiceCount} 项服务。"));
+            _viewModel.AddEvent(T(
+                $"Deep Release handled {result.ClosedProcessCount} process(es) and {result.StoppedServiceCount} service(s).",
+                $"深度释放已处理 {result.ClosedProcessCount} 个进程和 {result.StoppedServiceCount} 项服务。"));
+            DiagnosticLog.Info(
+                $"Deep Release completed. Closed={result.ClosedProcessCount}/{result.TotalProcessCount}, services={result.StoppedServiceCount}/{result.TotalServiceCount}.");
+            if (_memoryStatusService.TryGetSnapshot(out var memory)) UpdateStatusMetrics(memory, DateTimeOffset.Now);
         }
-
-        var selection = ShowExtremeCloseDialog(candidates, serviceCandidates);
-        if (selection.Applications.Count == 0 && selection.Services.Count == 0)
+        catch (Exception ex)
         {
-            _viewModel.SetStatus(T("Deep Release cancelled.", "深度释放已取消。"));
-            return;
+            DiagnosticLog.Warning("Deep Release could not start.", ex);
+            _viewModel.SetStatus(T("Deep Release could not start.", "深度释放未能启动。"));
         }
-
-        var serviceResult = StopOptionalServices(selection.Services);
-        var result = CloseExtremeCandidates(selection.Applications);
-        _viewModel.UpdateBoostDetails([
-            BuildProProtectionDetail(protectionSummary),
-            .. result.Details,
-            .. serviceResult.Details
-        ]);
-        _viewModel.SetStatus(T(
-            $"Deep Release: closed {result.ClosedProcessCount}/{result.TotalProcessCount} process(es), stopped {serviceResult.StoppedCount}/{serviceResult.TotalCount} service(s).",
-            $"深度释放：已关闭 {result.ClosedProcessCount}/{result.TotalProcessCount} 个进程，停止 {serviceResult.StoppedCount}/{serviceResult.TotalCount} 项服务。"));
-        _viewModel.AddEvent(T(
-            $"Deep Release handled {result.ClosedProcessCount} process(es) and {serviceResult.StoppedCount} service(s).",
-            $"深度释放已处理 {result.ClosedProcessCount} 个进程和 {serviceResult.StoppedCount} 项服务。"));
-        DiagnosticLog.Info(
-            $"Deep Release completed. Closed={result.ClosedProcessCount}/{result.TotalProcessCount}, services={serviceResult.StoppedCount}/{serviceResult.TotalCount}.");
-        CaptureBaselineMemory();
+        finally
+        {
+            _isDeepReleaseRunning = false;
+            DeepReleaseButton.IsEnabled = BoostNowButton.IsEnabled = true;
+        }
     }
 
     private void DiagnosticLogMenuItem_OnClick(object sender, RoutedEventArgs e)
@@ -592,7 +605,7 @@ public partial class MainWindow : Window
 
     private async Task CheckForUpdatesAsync(bool automatic)
     {
-        if (_isUiPreview || _isCheckingUpdate || _isExitRequested || automatic && _hasHandledStartupUpdate) return;
+        if (_isUiPreview || _isCheckingUpdate || _isDeepReleaseRunning || _isExitRequested || automatic && _hasHandledStartupUpdate) return;
         _isCheckingUpdate = true;
         UpdateCheckResult? result = null;
         var installing = false;
@@ -1088,6 +1101,8 @@ public partial class MainWindow : Window
             var memorySnapshot = sample.MemorySnapshot;
             UpdateStatusMetrics(memorySnapshot, now);
             var snapshots = sample.Snapshots;
+            _applicationYieldTracker.Observe(snapshots, DateTimeOffset.Now);
+            _yieldHistoryDialog?.UpdateRows(BuildYieldHistoryRows());
             var foreground = snapshots.Where(x => x.IsForeground).Select(x => x.ProcessName).FirstOrDefault() ?? T("Unknown", "未知");
             _viewModel.UpdateProcessMetrics(snapshots.Count, null, foreground);
 
@@ -1150,6 +1165,7 @@ public partial class MainWindow : Window
         IReadOnlyList<ProcessSnapshot>? snapshots = null,
         DateTimeOffset? now = null)
     {
+        if (_isDeepReleaseRunning) return false;
         var startedAt = now ?? DateTimeOffset.Now;
         MemorySnapshot sampled = default;
         if (!memorySnapshot.HasValue && !_memoryStatusService.TryGetSnapshot(out sampled))
@@ -1180,7 +1196,8 @@ public partial class MainWindow : Window
             forcePurge,
             protectedProcessNames,
             protectedProcessPaths,
-            enableAdvancedProtection: _licenseStatus.Features.SupportsAdvancedProtection);
+            enableAdvancedProtection: _licenseStatus.Features.SupportsAdvancedProtection,
+            deferApplication: group => ShouldDeferAutomaticApplication(group, forcePurge, beforeMemory.MemoryLoadPercent, startedAt));
         _viewModel.UpdateProProtectionSummary(
             plan.ProtectionSummary,
             _licenseStatus.Features.SupportsAdvancedProtection);
@@ -1202,24 +1219,33 @@ public partial class MainWindow : Window
         var trimmed = 0L;
         var success = 0;
         var successfulGroups = 0;
+        var measuredCount = 0;
         var details = new List<string>();
 
         foreach (var group in plan.CandidateGroups)
         {
+            var groupResults = new List<(ProcessSnapshot Snapshot, MemoryPurgeResult Result)>();
             var groupTrimmed = 0L;
             var groupBefore = 0L;
             var groupAfter = 0L;
             var groupSuccess = 0;
+            var groupMeasured = 0;
             foreach (var candidate in group.Processes)
             {
                 var result = _memoryPurgeService.Purge(candidate.ProcessId);
+                groupResults.Add((candidate, result));
                 if (result.Success)
                 {
-                    var delta = Math.Max(0L, result.DeltaBytes);
-                    groupBefore += Math.Max(0L, result.BeforeWorkingSetBytes);
-                    groupAfter += Math.Max(0L, result.AfterWorkingSetBytes);
-                    groupTrimmed += delta;
-                    trimmed += delta;
+                    if (result.HasMeasurement)
+                    {
+                        var delta = Math.Max(0L, result.DeltaBytes);
+                        groupBefore += Math.Max(0L, result.BeforeWorkingSetBytes);
+                        groupAfter += Math.Max(0L, result.AfterWorkingSetBytes);
+                        groupTrimmed += delta;
+                        trimmed += delta;
+                        groupMeasured++;
+                        measuredCount++;
+                    }
                     groupSuccess += 1;
                     success += 1;
                     _lastPurgeTimesByProcessId[candidate.ProcessId] = startedAt;
@@ -1236,10 +1262,16 @@ public partial class MainWindow : Window
                 successfulGroups += 1;
             }
 
+            _applicationYieldTracker.Record(group, groupResults, DateTimeOffset.Now);
+
             var reason = FormatCandidateGroupSignals(group);
-            details.Add(T(
-                $"{group.ProcessName} | processes {groupSuccess}/{group.Processes.Count} | {MainWindowViewModel.FormatBytes(groupBefore)} -> {MainWindowViewModel.FormatBytes(groupAfter)} | trim {MainWindowViewModel.FormatBytes(groupTrimmed)} | {reason}",
-                $"{group.ProcessName} | 进程 {groupSuccess}/{group.Processes.Count} | {MainWindowViewModel.FormatBytes(groupBefore)} -> {MainWindowViewModel.FormatBytes(groupAfter)} | 裁剪 {MainWindowViewModel.FormatBytes(groupTrimmed)} | {reason}"));
+            var measurement = groupMeasured == group.Processes.Count && groupMeasured > 0
+                ? $"{MainWindowViewModel.FormatBytes(groupBefore)} -> {MainWindowViewModel.FormatBytes(groupAfter)} | " +
+                  T($"trim {MainWindowViewModel.FormatBytes(groupTrimmed)}", $"裁剪 {MainWindowViewModel.FormatBytes(groupTrimmed)}")
+                : T($"measurement incomplete ({groupMeasured}/{groupSuccess}); verified trim {MainWindowViewModel.FormatBytes(groupTrimmed)}",
+                    $"测量不完整（{groupMeasured}/{groupSuccess}）；已确认裁剪 {MainWindowViewModel.FormatBytes(groupTrimmed)}");
+            details.Add(T($"{group.ProcessName} | processes {groupSuccess}/{group.Processes.Count} | {measurement} | {reason}",
+                $"{group.ProcessName} | 进程 {groupSuccess}/{group.Processes.Count} | {measurement} | {reason}"));
         }
 
         if (details.Count == 0)
@@ -1251,12 +1283,13 @@ public partial class MainWindow : Window
         _totalTrimmedBytes += Math.Max(0L, trimmed);
         _lastBoostAt = startedAt;
 
-        if (_memoryStatusService.TryGetSnapshot(out var after))
+        var hasNetMeasurement = _memoryStatusService.TryGetSnapshot(out var after);
+        if (hasNetMeasurement)
         {
             _lastBoostBaselineAvailableMemoryBytes = beforeMemory.AvailablePhysicalMemoryBytes;
             _lastBoostNetGainBytes = checked((long)after.AvailablePhysicalMemoryBytes - (long)beforeMemory.AvailablePhysicalMemoryBytes);
-            UpdateReboundRate(after.AvailablePhysicalMemoryBytes);
             _reboundTrackingUntil = _lastBoostNetGainBytes > 0 ? startedAt.AddSeconds(120) : null;
+            UpdateReboundRate(after.AvailablePhysicalMemoryBytes);
             UpdateStatusMetrics(after, DateTimeOffset.Now);
         }
         else
@@ -1268,18 +1301,23 @@ public partial class MainWindow : Window
             _viewModel.UpdateReboundRate(0);
         }
 
-        _viewModel.UpdateBoostMetrics(_lastBoostTrimmedBytes = trimmed, _totalTrimmedBytes, _lastBoostNetGainBytes);
+        _viewModel.UpdateBoostMetrics(_lastBoostTrimmedBytes = trimmed, _totalTrimmedBytes, _lastBoostNetGainBytes,
+            hasTrimMeasurement: measuredCount == plan.Candidates.Count && measuredCount > 0, hasNetMeasurement: hasNetMeasurement);
         RefreshMetricCards();
         _viewModel.SetStatus(T(
-            $"{trigger} | load {beforeMemory.MemoryLoadPercent}% | trim {MainWindowViewModel.FormatBytes(trimmed)} | net {MainWindowViewModel.FormatBytes(_lastBoostNetGainBytes)}",
-            $"{trigger} | 负载 {beforeMemory.MemoryLoadPercent}% | 裁剪 {MainWindowViewModel.FormatBytes(trimmed)} | 净增 {MainWindowViewModel.FormatBytes(_lastBoostNetGainBytes)}"));
+            $"{trigger} | load {beforeMemory.MemoryLoadPercent}% | trim {_viewModel.LastBoostTrimmedValue} | net {_viewModel.BoostNetGainValue}",
+            $"{trigger} | 负载 {beforeMemory.MemoryLoadPercent}% | 裁剪 {_viewModel.LastBoostTrimmedValue} | 净变化 {_viewModel.BoostNetGainValue}"));
         _viewModel.AddEvent(T(
             $"{trigger}: processed {successfulGroups}/{plan.CandidateGroups.Count} app(s), {success}/{plan.Candidates.Count} process(es).",
             $"{trigger}：已处理 {successfulGroups}/{plan.CandidateGroups.Count} 个应用、{success}/{plan.Candidates.Count} 个进程。"));
         DiagnosticLog.Info(
-            $"{trigger}: applications={plan.CandidateGroups.Count}, processes={plan.Candidates.Count}, success={success}, trimmed={trimmed}, net={_lastBoostNetGainBytes}, load={beforeMemory.MemoryLoadPercent}%.");
+            $"{trigger}: applications={plan.CandidateGroups.Count}, processes={plan.Candidates.Count}, success={success}, measured={measuredCount}/{plan.Candidates.Count}, verifiedTrim={trimmed}, net={_viewModel.BoostNetGainValue}, load={beforeMemory.MemoryLoadPercent}%.");
         return plan.ShouldPurge;
     }
+
+    private bool ShouldDeferAutomaticApplication(PurgeCandidateGroup group, bool manual, uint memoryLoad, DateTimeOffset now) =>
+        !manual && memoryLoad < 90 &&
+        (_applicationYieldTracker.HasPendingObservation(group, now) || _applicationYieldTracker.IsDeferred(group, now));
 
     private void UpdateStatusMetrics(MemorySnapshot snapshot, DateTimeOffset now)
     {
@@ -1301,6 +1339,8 @@ public partial class MainWindow : Window
             _viewModel.UpdateReboundRate(0d);
             return;
         }
+
+        if (!_reboundTrackingUntil.HasValue || DateTimeOffset.Now > _reboundTrackingUntil.Value) return;
 
         var currentGain = checked((long)currentAvailableMemoryBytes - (long)_lastBoostBaselineAvailableMemoryBytes);
         var reboundBytes = Math.Max(0L, _lastBoostNetGainBytes - Math.Max(0L, currentGain));
@@ -1649,6 +1689,9 @@ public partial class MainWindow : Window
         var checkBoxes = new List<System.Windows.Controls.CheckBox>();
         var serviceCheckBoxes = new List<System.Windows.Controls.CheckBox>();
         var candidatePanel = new StackPanel();
+        var search = new System.Windows.Controls.TextBox { Margin = new Thickness(0, 10, 0, 0) };
+        System.Windows.Automation.AutomationProperties.SetName(search, T("Search app or service", "搜索应用或服务"));
+        search.ToolTip = T("Search app or service", "搜索应用或服务");
 
         if (candidates.Count > 0)
         {
@@ -1674,7 +1717,7 @@ public partial class MainWindow : Window
                 Margin = new Thickness(0, 0, 0, 8),
                 IsChecked = candidate.IsDefaultSelected,
                 Tag = candidate,
-                Content = FormatExtremeCloseCandidate(candidate),
+                Content = new TextBlock { Text = FormatExtremeCloseCandidate(candidate), TextWrapping = TextWrapping.Wrap },
                 Foreground = ThemeBrush(candidate.ActivityState switch
                 {
                     BackgroundActivityState.Idle => "AccentBrush",
@@ -1708,7 +1751,7 @@ public partial class MainWindow : Window
                     Margin = new Thickness(0, 0, 0, 8),
                     IsChecked = false,
                     Tag = serviceCandidate,
-                    Content = serviceDisplay.Line,
+                    Content = new TextBlock { Text = serviceDisplay.Line, TextWrapping = TextWrapping.Wrap },
                     Foreground = ThemeBrush(serviceCandidate.StopGuidance == OptionalServiceStopGuidance.KeepRunning
                         ? "WarningBrush"
                         : "TextPrimaryBrush"),
@@ -1797,6 +1840,18 @@ public partial class MainWindow : Window
 
         RefreshConfirmState();
 
+        search.TextChanged += (_, _) =>
+        {
+            var query = search.Text.Trim();
+            foreach (var item in checkBoxes.Concat(serviceCheckBoxes))
+            {
+                var text = ((TextBlock)item.Content).Text;
+                item.Visibility = query.Length == 0 || text.Contains(query, StringComparison.OrdinalIgnoreCase)
+                    ? Visibility.Visible : Visibility.Collapsed;
+                if (item.Visibility != Visibility.Visible) item.IsChecked = false;
+            }
+        };
+
         var buttonPanel = new StackPanel
         {
             HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
@@ -1817,8 +1872,18 @@ public partial class MainWindow : Window
 
         Grid.SetRow(warningTextBlock, 0);
         root.Children.Add(warningTextBlock);
-        Grid.SetRow(selectionSummaryTextBlock, 1);
-        root.Children.Add(selectionSummaryTextBlock);
+        var searchRegion = new StackPanel();
+        searchRegion.Children.Add(selectionSummaryTextBlock);
+        searchRegion.Children.Add(new TextBlock
+        {
+            Text = T("Search app or service", "搜索应用或服务"),
+            Foreground = ThemeBrush("TextSecondaryBrush"),
+            FontSize = 12,
+            Margin = new Thickness(0, 10, 0, 0)
+        });
+        searchRegion.Children.Add(search);
+        Grid.SetRow(searchRegion, 1);
+        root.Children.Add(searchRegion);
         Grid.SetRow(scrollViewer, 2);
         root.Children.Add(scrollViewer);
         Grid.SetRow(buttonPanel, 3);
@@ -1857,115 +1922,6 @@ public partial class MainWindow : Window
         return new DeepReleaseSelection(selectedApplications, selectedServices);
     }
 
-    private ExtremeCloseResult CloseExtremeCandidates(IReadOnlyList<ExtremeCloseCandidate> candidates)
-    {
-        var details = new List<string>();
-        var totalProcessCount = 0;
-        var closedProcessCount = 0;
-
-        foreach (var candidate in candidates)
-        {
-            var processes = candidate.ProcessIds
-                .Distinct()
-                .Select(TryGetProcess)
-                .Where(process => process is not null)
-                .Cast<Process>()
-                .ToArray();
-            totalProcessCount += processes.Length;
-
-            foreach (var process in processes)
-            {
-                try
-                {
-                    if (!process.HasExited && process.MainWindowHandle != IntPtr.Zero)
-                    {
-                        _ = process.CloseMainWindow();
-                    }
-                }
-                catch
-                {
-                }
-            }
-
-            System.Threading.Thread.Sleep(900);
-
-            var closedForCandidate = 0;
-            foreach (var process in processes)
-            {
-                using (process)
-                {
-                    try
-                    {
-                        if (process.HasExited)
-                        {
-                            closedForCandidate += 1;
-                            continue;
-                        }
-
-                        process.Kill(entireProcessTree: false);
-                        if (process.WaitForExit(800))
-                        {
-                            closedForCandidate += 1;
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        DiagnosticLog.Warning($"Deep Release could not close process {process.Id}.", ex);
-                    }
-                }
-            }
-
-            closedProcessCount += closedForCandidate;
-            details.Add(T(
-                $"{candidate.ProcessName}.exe | closed {closedForCandidate}/{processes.Length} | {MainWindowViewModel.FormatBytes(candidate.WorkingSetBytes)}",
-                $"{candidate.ProcessName}.exe | 已关闭 {closedForCandidate}/{processes.Length} | {MainWindowViewModel.FormatBytes(candidate.WorkingSetBytes)}"));
-        }
-
-        return new ExtremeCloseResult(totalProcessCount, closedProcessCount, details);
-    }
-
-    private OptionalServiceReleaseResult StopOptionalServices(
-        IReadOnlyList<OptionalServiceCandidate> candidates)
-    {
-        var stoppedCount = 0;
-        var details = new List<string>();
-
-        foreach (var candidate in candidates)
-        {
-            var result = _serviceKillerService.StopSingleService(candidate.ServiceName);
-            if (result.Success)
-            {
-                stoppedCount += 1;
-                details.Add(T(
-                    $"Service | {candidate.DisplayName} ({candidate.ServiceName}) | stop requested",
-                    $"服务 | {candidate.DisplayName}（{candidate.ServiceName}）| 已请求停止"));
-            }
-            else
-            {
-                details.Add(T(
-                    $"Service | {candidate.DisplayName} ({candidate.ServiceName}) | stop failed",
-                    $"服务 | {candidate.DisplayName}（{candidate.ServiceName}）| 停止失败"));
-                DiagnosticLog.Warning(
-                    $"Deep Release could not stop service {candidate.ServiceName}: {result.Message}");
-            }
-        }
-
-        return new OptionalServiceReleaseResult(candidates.Count, stoppedCount, details);
-    }
-
-    private static Process? TryGetProcess(int processId)
-    {
-        try
-        {
-            return processId == Environment.ProcessId
-                ? null
-                : Process.GetProcessById(processId);
-        }
-        catch
-        {
-            return null;
-        }
-    }
 
     private string FormatExtremeCloseCandidate(ExtremeCloseCandidate candidate)
     {
@@ -2042,7 +1998,8 @@ public partial class MainWindow : Window
 
     private void UpdateMonitoringState()
     {
-        var hasReboundTracking = _reboundTrackingUntil.HasValue && DateTimeOffset.Now < _reboundTrackingUntil.Value;
+        var hasReboundTracking = _reboundTrackingUntil.HasValue && DateTimeOffset.Now < _reboundTrackingUntil.Value ||
+            _applicationYieldTracker.Reports.Any(report => report.CompletedAt is null);
         var desiredInterval = hasReboundTracking || _isAutoBoostEnabled
             ? TimeSpan.FromSeconds(3)
             : TimeSpan.FromSeconds(15);
@@ -2119,6 +2076,7 @@ public partial class MainWindow : Window
         TrendCaptionTextBlock.Text = T("Memory load · last 2 minutes", "内存负载 · 最近 2 分钟");
         BoostEmptyTextBlock.Text = T("No Boost results yet. Preview to check candidates.", "暂无 Boost 结果，可先预览候选应用。");
         ViewBoostDetailsButton.Content = ViewProtectionDetailsButton.Content = ViewActivityDetailsButton.Content = T("Details", "查看详情");
+        ViewYieldHistoryButton.Content = T("Yield history", "收益观察");
         DetailSettingsButton.ToolTip = _isDetailPanelVisible ? T("Compact view", "精简视图") : T("Full view", "完整视图");
         System.Windows.Automation.AutomationProperties.SetName(DetailSettingsButton, (string)DetailSettingsButton.ToolTip);
         ToolsMenuButton.ToolTip = T("Open app tools menu", "打开应用工具菜单");
@@ -2710,19 +2668,9 @@ public partial class MainWindow : Window
         MemorySnapshot MemorySnapshot,
         IReadOnlyList<ProcessSnapshot> Snapshots);
 
-    private sealed record ExtremeCloseResult(
-        int TotalProcessCount,
-        int ClosedProcessCount,
-        IReadOnlyList<string> Details);
-
     private sealed record DeepReleaseSelection(
         IReadOnlyList<ExtremeCloseCandidate> Applications,
         IReadOnlyList<OptionalServiceCandidate> Services);
-
-    private sealed record OptionalServiceReleaseResult(
-        int TotalCount,
-        int StoppedCount,
-        IReadOnlyList<string> Details);
 
     private string LocalizePolicyMessage(string message)
     {
@@ -2747,6 +2695,7 @@ public partial class MainWindow : Window
             .Replace("below size threshold", "低于大小阈值", StringComparison.Ordinal)
             .Replace("awaiting CPU/I/O measurements", "等待 CPU/磁盘活动采样", StringComparison.Ordinal)
             .Replace("not cold enough", "冷度不足", StringComparison.Ordinal)
+            .Replace("yield observation or backoff", "正在观察收益或暂缓重复裁剪", StringComparison.Ordinal)
             .Replace("active CPU/I/O", "CPU/I/O 活跃", StringComparison.Ordinal)
             .Replace("protected", "受保护", StringComparison.Ordinal)
             .Replace("cooldown", "冷却期", StringComparison.Ordinal);
@@ -2847,6 +2796,7 @@ public partial class MainWindow : Window
     {
         _isExitRequested = true;
         _updateCancellation.Cancel();
+        _deepReleaseCancellation?.Cancel();
         _optimizerTimer.Stop();
         _trayIcon.Visible = false;
         _trayIcon.Dispose();

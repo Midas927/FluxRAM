@@ -11,7 +11,6 @@ public static class ExtremeCloseCandidateFactory
     private const long DefaultSelectionWorkingSetBytes = 96L * 1024 * 1024;
     private const double ActiveCpuPercent = 20d;
     private const double ActiveIoBytesPerSecond = 16d * 1024 * 1024;
-    private const int MaximumCandidateCount = 40;
 
     public static IReadOnlyList<ExtremeCloseCandidate> FromSnapshots(
         IReadOnlyList<ProcessSnapshot> snapshots,
@@ -41,7 +40,6 @@ public static class ExtremeCloseCandidateFactory
             .OrderBy(candidate => ActivitySortOrder(candidate.ActivityState))
             .ThenByDescending(candidate => candidate.WorkingSetBytes)
             .ThenBy(candidate => candidate.ProcessName, StringComparer.OrdinalIgnoreCase)
-            .Take(MaximumCandidateCount)
             .ToArray();
     }
 
@@ -79,7 +77,8 @@ public static class ExtremeCloseCandidateFactory
                 activity.State == BackgroundActivityState.Idle,
             activity.State,
             activity.ObservedFor,
-            activity.IdleFor);
+            activity.IdleFor,
+            snapshots.ToArray());
     }
 
     private static BackgroundActivityAssessment ResolveActivityAssessment(

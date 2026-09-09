@@ -18,4 +18,5 @@ public sealed record OptionalServiceCandidate(
     string DisplayName,
     int ProcessId = 0,
     OptionalServiceKind Kind = OptionalServiceKind.System,
-    OptionalServiceStopGuidance StopGuidance = OptionalServiceStopGuidance.KeepRunning);
+    OptionalServiceStopGuidance StopGuidance = OptionalServiceStopGuidance.KeepRunning,
+    ProcessSnapshot? CapturedSnapshot = null);

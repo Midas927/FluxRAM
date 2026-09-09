@@ -7,6 +7,26 @@ namespace FluxRAM.Core.Tests;
 public sealed class PurgePolicyServiceTests
 {
     [Fact]
+    public void DeferredApplicationsDoNotConsumeThePassBudget()
+    {
+        var snapshots = Enumerable.Range(1, 8).Select(i => new ProcessSnapshot(i, $"app{i}", 512L << 20, false, ColdnessScore: 100)).ToArray();
+        var plan = new PurgePolicyService().CreatePlan(snapshots, new MemorySnapshot(4UL << 30, 16UL << 30, 75),
+            OptimizerSettings.SafeDefaults(), DateTimeOffset.UtcNow, new Dictionary<int, DateTimeOffset>(),
+            forcePurge: true, deferApplication: group => group.Processes[0].ProcessId <= 5);
+        Assert.Equal(3, plan.CandidateGroups.Count);
+        Assert.All(plan.Candidates, candidate => Assert.True(candidate.ProcessId > 5));
+    }
+
+    [Fact]
+    public void UnmeasuredWorkingSetCannotBecomeACandidate()
+    {
+        var snapshots = new[] { new ProcessSnapshot(1, "unknown", 512L << 20, false, ColdnessScore: 100, HasWorkingSetMeasurement: false) };
+        var assessments = new PurgePolicyService().AssessApplications(snapshots, OptimizerSettings.SafeDefaults(),
+            DateTimeOffset.UtcNow, new Dictionary<int, DateTimeOffset>());
+        Assert.Equal(PurgePolicyService.CandidateGroupRejectionReason.UnmeasuredActivity, Assert.Single(assessments).RejectionReason);
+    }
+
+    [Fact]
     public void AssessApplications_IncludesRejectedAndBeyondPassLimitWithoutChangingEligibility()
     {
         var service = new PurgePolicyService();

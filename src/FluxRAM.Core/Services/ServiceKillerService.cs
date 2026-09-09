@@ -1,4 +1,6 @@
 ﻿using System.Runtime.InteropServices;
+using System.ComponentModel;
+using System.Diagnostics;
 using FluxRAM.Core.Interop;
 using FluxRAM.Core.Models;
 
@@ -8,10 +10,28 @@ namespace FluxRAM.Core.Services;
 
 public sealed class ServiceKillerService
 {
+    private readonly Func<IReadOnlyCollection<int>?, IReadOnlyCollection<string>?, IReadOnlyList<OptionalServiceCandidate>>? _getTargets;
+    private readonly Func<string, IServiceStopHandle> _openService;
+
+    public ServiceKillerService(
+        Func<IReadOnlyCollection<int>?, IReadOnlyCollection<string>?, IReadOnlyList<OptionalServiceCandidate>>? getRunningTargets = null,
+        Func<string, IServiceStopHandle>? openService = null)
+    {
+        _getTargets = getRunningTargets;
+        _openService = openService ?? (name => new NativeServiceStopHandle(name));
+    }
+
     public IReadOnlyList<OptionalServiceCandidate> GetRunningTargets(
         IReadOnlyCollection<int>? relatedProcessIds = null,
         IReadOnlyCollection<string>? relatedApplicationNames = null)
+        => GetTargets(relatedProcessIds, relatedApplicationNames, includeStopping: false);
+
+    private IReadOnlyList<OptionalServiceCandidate> GetTargets(
+        IReadOnlyCollection<int>? relatedProcessIds,
+        IReadOnlyCollection<string>? relatedApplicationNames,
+        bool includeStopping)
     {
+        if (_getTargets is not null) return _getTargets(relatedProcessIds, relatedApplicationNames);
         var installedServiceNames = GetInstalledServiceNames();
         if (installedServiceNames.Count == 0)
         {
@@ -39,7 +59,8 @@ public sealed class ServiceKillerService
                     serviceName,
                     knownCandidatesByName,
                     relatedIds,
-                    relatedNames))
+                    relatedNames,
+                    includeStopping))
                 .Where(candidate => candidate is not null)
                 .Cast<OptionalServiceCandidate>()
                 .OrderBy(candidate => candidate.Kind == OptionalServiceKind.Application ? 0 : 1)
@@ -56,74 +77,122 @@ public sealed class ServiceKillerService
     public IReadOnlyList<ServiceStopResult> StopTargets()
     {
         return GetRunningTargets()
-            .Select(candidate => StopSingleService(candidate.ServiceName))
+            .Select(candidate =>
+            {
+                var result = StopSingleServiceAsync(candidate, _ => true).GetAwaiter().GetResult();
+                return new ServiceStopResult(candidate.ServiceName, result.Success, result.Message);
+            })
             .ToArray();
     }
 
     public ServiceStopResult StopSingleService(string serviceName)
     {
-        var managerHandle = NativeMethods.OpenSCManager(null, null, NativeMethods.SC_MANAGER_CONNECT);
-        if (managerHandle == IntPtr.Zero)
-        {
-            return new ServiceStopResult(
-                serviceName,
-                false,
-                $"OpenSCManager failed with Win32Error={Marshal.GetLastWin32Error()}");
-        }
+        var candidate = GetRunningTargets().FirstOrDefault(target =>
+            string.Equals(target.ServiceName, serviceName, StringComparison.OrdinalIgnoreCase));
+        if (candidate is null) return new(serviceName, false, "Not a current optional service target.");
+        var result = StopSingleServiceAsync(candidate, _ => true).GetAwaiter().GetResult();
+        return new(serviceName, result.Success, result.Message);
+    }
 
+    public Task<ServiceStopCompletion> StopSingleServiceAsync(
+        OptionalServiceCandidate candidate,
+        Func<OptionalServiceCandidate, bool> revalidate,
+        CancellationToken cancellationToken = default,
+        TimeSpan? timeout = null)
+    {
+        ArgumentNullException.ThrowIfNull(candidate);
+        ArgumentNullException.ThrowIfNull(revalidate);
+        var wait = timeout ?? TimeSpan.FromSeconds(10);
+        if (wait < TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(timeout));
+        return Task.Run(() => StopCoreAsync(candidate, revalidate, cancellationToken, wait));
+    }
+
+    private async Task<ServiceStopCompletion> StopCoreAsync(OptionalServiceCandidate candidate,
+        Func<OptionalServiceCandidate, bool> revalidate, CancellationToken cancellationToken, TimeSpan timeout)
+    {
+        ServiceStopCompletion Result(ServiceStopOutcome outcome, string message) => new(candidate.ServiceName, outcome, message);
         try
         {
-            var serviceHandle = NativeMethods.OpenService(
-                managerHandle,
-                serviceName,
-                NativeMethods.SERVICE_QUERY_STATUS | NativeMethods.SERVICE_STOP);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!IsAllowedCandidate(candidate))
+                return Result(ServiceStopOutcome.Skipped, "Unknown identity or service outside the optional target catalog.");
 
-            if (serviceHandle == IntPtr.Zero)
+            cancellationToken.ThrowIfCancellationRequested();
+            using var handle = _openService(candidate.ServiceName);
+            var status = handle.QueryStatus();
+            if (status.State == NativeMethods.ServiceCurrentState.SERVICE_STOPPED)
+                return Result(ServiceStopOutcome.Stopped, "Already stopped (observed).");
+            if (!IsCurrentTarget(candidate) || !revalidate(candidate))
+                return Result(ServiceStopOutcome.Skipped, "Target catalog or protection eligibility changed.");
+
+            // The callback can refresh a changing system, so recheck catalog and association after it.
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!IsCurrentTarget(candidate) || !revalidate(candidate))
+                return Result(ServiceStopOutcome.Skipped, "Target catalog changed during revalidation.");
+            status = handle.QueryStatus();
+            if (status.State == NativeMethods.ServiceCurrentState.SERVICE_STOPPED)
+                return Result(ServiceStopOutcome.Stopped, "Stopped (observed).");
+            if (status.ProcessId != candidate.ProcessId || !handle.MatchesProcess(candidate.CapturedSnapshot!.Value))
+                return Result(ServiceStopOutcome.Skipped, "Service process identity or association changed.");
+
+            status = handle.QueryStatus();
+            if (status.State == NativeMethods.ServiceCurrentState.SERVICE_STOPPED)
+                return Result(ServiceStopOutcome.Stopped, "Stopped (observed).");
+            if (status.ProcessId != candidate.ProcessId)
+                return Result(ServiceStopOutcome.Skipped, "Service association changed while checking process identity.");
+
+            cancellationToken.ThrowIfCancellationRequested();
+            var started = Stopwatch.GetTimestamp();
+            if (status.State != NativeMethods.ServiceCurrentState.SERVICE_STOP_PENDING)
             {
-                return new ServiceStopResult(
-                    serviceName,
-                    false,
-                    $"OpenService failed with Win32Error={Marshal.GetLastWin32Error()}");
+                if (status.State != NativeMethods.ServiceCurrentState.SERVICE_RUNNING || !status.CanStop)
+                    return Result(ServiceStopOutcome.Skipped, "Service is not currently stoppable.");
+                handle.RequestStop();
             }
 
-            try
+            while (true)
             {
-                var statusResult = TryGetServiceStatus(serviceHandle);
-                if (!statusResult.Success)
-                {
-                    return new ServiceStopResult(serviceName, false, statusResult.Message);
-                }
-
-                if (statusResult.State == NativeMethods.ServiceCurrentState.SERVICE_STOPPED)
-                {
-                    return new ServiceStopResult(serviceName, true, "Already stopped.");
-                }
-
-                var stopRequested = NativeMethods.ControlService(
-                    serviceHandle,
-                    NativeMethods.SERVICE_CONTROL_STOP,
-                    out _);
-
-                if (!stopRequested)
-                {
-                    return new ServiceStopResult(
-                        serviceName,
-                        false,
-                        $"ControlService failed with Win32Error={Marshal.GetLastWin32Error()}");
-                }
-
-                return new ServiceStopResult(serviceName, true, "Stop requested.");
-            }
-            finally
-            {
-                _ = NativeMethods.CloseServiceHandle(serviceHandle);
+                cancellationToken.ThrowIfCancellationRequested();
+                status = handle.QueryStatus();
+                if (status.State == NativeMethods.ServiceCurrentState.SERVICE_STOPPED)
+                    return Result(ServiceStopOutcome.Stopped, "Stopped (observed).");
+                if (status.ProcessId != candidate.ProcessId)
+                    return Result(ServiceStopOutcome.Skipped, "Service restarted or changed its process association.");
+                var remaining = timeout - Stopwatch.GetElapsedTime(started);
+                if (remaining <= TimeSpan.Zero)
+                    return Result(ServiceStopOutcome.TimedOut, "Stop not observed before timeout; the request may still complete later.");
+                await Task.Delay(remaining < TimeSpan.FromMilliseconds(100) ? remaining : TimeSpan.FromMilliseconds(100),
+                    cancellationToken).ConfigureAwait(false);
             }
         }
-        finally
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            _ = NativeMethods.CloseServiceHandle(managerHandle);
+            return Result(ServiceStopOutcome.Cancelled, "Cancelled; an already submitted stop request is not undone.");
         }
+        catch (Exception ex) { return Result(ServiceStopOutcome.Failed, ex.Message); }
     }
+
+    private static bool IsAllowedCandidate(OptionalServiceCandidate candidate)
+    {
+        if (string.IsNullOrWhiteSpace(candidate.ServiceName) || candidate.ProcessId == Environment.ProcessId ||
+            candidate.CapturedSnapshot is not { } snapshot || !ProcessIdentity.IsKnown(snapshot) ||
+            snapshot.ProcessId != candidate.ProcessId)
+            return false;
+        var known = ServiceTargets.ResolveCandidates([candidate.ServiceName]).SingleOrDefault();
+        if (known is not null)
+            return known.Kind == candidate.Kind && known.StopGuidance == candidate.StopGuidance;
+        return candidate.Kind == OptionalServiceKind.Application &&
+            candidate.StopGuidance == OptionalServiceStopGuidance.WithApplication &&
+            !SystemProcessWhitelist.Contains(snapshot.ProcessName) &&
+            !GamingProcessProtectionCatalog.Contains(snapshot.ProcessName);
+    }
+
+    private bool IsCurrentTarget(OptionalServiceCandidate candidate) =>
+        GetTargets([candidate.ProcessId], [candidate.CapturedSnapshot!.Value.ProcessName], includeStopping: true).Any(current =>
+            string.Equals(current.ServiceName, candidate.ServiceName, StringComparison.OrdinalIgnoreCase) &&
+            current.ProcessId == candidate.ProcessId && current.Kind == candidate.Kind &&
+            current.StopGuidance == candidate.StopGuidance && current.CapturedSnapshot is { } snapshot &&
+            ProcessIdentity.Matches(candidate.CapturedSnapshot.Value, snapshot));
 
     private static ServiceStateResult TryGetServiceStatus(IntPtr serviceHandle)
     {
@@ -158,7 +227,8 @@ public sealed class ServiceKillerService
         string serviceName,
         IReadOnlyDictionary<string, OptionalServiceCandidate> knownCandidatesByName,
         IReadOnlySet<int> relatedProcessIds,
-        IReadOnlyCollection<string> relatedApplicationNames)
+        IReadOnlyCollection<string> relatedApplicationNames,
+        bool includeStopping)
     {
         var isKnownTarget = knownCandidatesByName.TryGetValue(serviceName, out var knownCandidate);
         var isRelatedByName = ServiceTargets.IsRelatedApplicationService(
@@ -181,9 +251,10 @@ public sealed class ServiceKillerService
         try
         {
             var status = TryGetServiceStatus(serviceHandle);
-            if (!status.Success ||
-                status.State != NativeMethods.ServiceCurrentState.SERVICE_RUNNING ||
-                (status.ControlsAccepted & NativeMethods.SERVICE_ACCEPT_STOP) == 0)
+            var running = status.State == NativeMethods.ServiceCurrentState.SERVICE_RUNNING &&
+                (status.ControlsAccepted & NativeMethods.SERVICE_ACCEPT_STOP) != 0;
+            var stopping = includeStopping && status.State == NativeMethods.ServiceCurrentState.SERVICE_STOP_PENDING;
+            if (!status.Success || (!running && !stopping))
             {
                 return null;
             }
@@ -194,18 +265,88 @@ public sealed class ServiceKillerService
                 return null;
             }
 
+            var captured = TryCaptureProcess((int)status.ProcessId);
+            var latest = TryGetServiceStatus(serviceHandle);
+            if (!latest.Success || latest.ProcessId != status.ProcessId || latest.State != status.State)
+                return null;
+
+            if (!isKnownTarget && (captured is not { } identity ||
+                SystemProcessWhitelist.Contains(identity.ProcessName) || GamingProcessProtectionCatalog.Contains(identity.ProcessName)))
+                return null;
+
             return isKnownTarget
-                ? knownCandidate! with { ProcessId = (int)status.ProcessId }
+                ? knownCandidate! with { ProcessId = (int)status.ProcessId, CapturedSnapshot = captured }
                 : new OptionalServiceCandidate(
                     serviceName,
                     GetServiceDisplayName(serviceName),
                     (int)status.ProcessId,
                     OptionalServiceKind.Application,
-                    OptionalServiceStopGuidance.WithApplication);
+                    OptionalServiceStopGuidance.WithApplication,
+                    captured);
         }
         finally
         {
             _ = NativeMethods.CloseServiceHandle(serviceHandle);
+        }
+    }
+
+    private static ProcessSnapshot? TryCaptureProcess(int processId)
+    {
+        try
+        {
+            using var process = Process.GetProcessById(processId);
+            var snapshot = ProcessIdentity.Capture(process);
+            return process.HasExited ? null : snapshot;
+        }
+        catch { return null; }
+    }
+
+    private sealed class NativeServiceStopHandle : IServiceStopHandle
+    {
+        private readonly IntPtr _handle;
+        private Process? _process;
+
+        public NativeServiceStopHandle(string serviceName)
+        {
+            var manager = NativeMethods.OpenSCManager(null, null, NativeMethods.SC_MANAGER_CONNECT);
+            if (manager == IntPtr.Zero) throw new Win32Exception(Marshal.GetLastWin32Error());
+            try
+            {
+                _handle = NativeMethods.OpenService(manager, serviceName,
+                    NativeMethods.SERVICE_QUERY_STATUS | NativeMethods.SERVICE_STOP);
+                if (_handle == IntPtr.Zero) throw new Win32Exception(Marshal.GetLastWin32Error());
+            }
+            finally { _ = NativeMethods.CloseServiceHandle(manager); }
+        }
+
+        public ServiceStopState QueryStatus()
+        {
+            var status = TryGetServiceStatus(_handle);
+            if (!status.Success) throw new InvalidOperationException(status.Message);
+            return new(status.State, (int)status.ProcessId, (status.ControlsAccepted & NativeMethods.SERVICE_ACCEPT_STOP) != 0);
+        }
+
+        public bool MatchesProcess(ProcessSnapshot captured)
+        {
+            try
+            {
+                _process ??= Process.GetProcessById(captured.ProcessId);
+                var current = ProcessIdentity.Capture(_process);
+                return !_process.HasExited && ProcessIdentity.Matches(captured, current);
+            }
+            catch { return false; }
+        }
+
+        public void RequestStop()
+        {
+            if (!NativeMethods.ControlService(_handle, NativeMethods.SERVICE_CONTROL_STOP, out _))
+                throw new Win32Exception(Marshal.GetLastWin32Error());
+        }
+
+        public void Dispose()
+        {
+            _process?.Dispose();
+            _ = NativeMethods.CloseServiceHandle(_handle);
         }
     }
 
@@ -245,4 +386,20 @@ public sealed class ServiceKillerService
         uint ControlsAccepted,
         uint ProcessId,
         string Message);
+}
+
+public enum ServiceStopOutcome { Stopped, Skipped, TimedOut, Cancelled, Failed }
+
+public sealed record ServiceStopCompletion(string ServiceName, ServiceStopOutcome Outcome, string Message)
+{
+    public bool Success => Outcome == ServiceStopOutcome.Stopped;
+}
+
+public readonly record struct ServiceStopState(NativeMethods.ServiceCurrentState State, int ProcessId, bool CanStop);
+
+public interface IServiceStopHandle : IDisposable
+{
+    ServiceStopState QueryStatus();
+    bool MatchesProcess(ProcessSnapshot captured);
+    void RequestStop();
 }

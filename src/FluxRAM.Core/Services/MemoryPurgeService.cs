@@ -24,19 +24,12 @@ public sealed class MemoryPurgeService
 
         try
         {
-            var beforeBytes = ReadWorkingSetBytes(processHandle);
-            var trimRequested = NativeMethods.SetProcessWorkingSetSize(processHandle, new IntPtr(-1), new IntPtr(-1));
-            var flushRequested = NativeMethods.EmptyWorkingSet(processHandle);
-            var afterBytes = ReadWorkingSetBytesWithRetry(processHandle);
-
-            if (!trimRequested || !flushRequested)
-            {
-                return MemoryPurgeResult.Failed(
-                    processId,
-                    $"Working-set trim failed with Win32Error={Marshal.GetLastWin32Error()}");
-            }
-
-            return MemoryPurgeResult.Succeeded(processId, beforeBytes, afterBytes);
+            return PurgeWorkingSet(
+                processId,
+                () => ReadWorkingSetBytes(processHandle),
+                () => NativeMethods.SetProcessWorkingSetSize(processHandle, new IntPtr(-1), new IntPtr(-1)),
+                () => NativeMethods.EmptyWorkingSet(processHandle),
+                Thread.Sleep);
         }
         finally
         {
@@ -44,26 +37,56 @@ public sealed class MemoryPurgeService
         }
     }
 
-    private static long ReadWorkingSetBytes(IntPtr processHandle)
+    private static MemoryPurgeResult PurgeWorkingSet(
+        int processId,
+        Func<long?> readWorkingSetBytes,
+        Func<bool> trimWorkingSet,
+        Func<bool> emptyWorkingSet,
+        Action<int> sleep)
+    {
+        var beforeBytes = readWorkingSetBytes();
+        if (!beforeBytes.HasValue)
+        {
+            return MemoryPurgeResult.Failed(
+                processId,
+                $"Working-set measurement before trim failed with Win32Error={Marshal.GetLastWin32Error()}");
+        }
+
+        var trimRequested = trimWorkingSet();
+        var trimError = trimRequested ? 0 : Marshal.GetLastWin32Error();
+        var flushRequested = emptyWorkingSet();
+        if (!trimRequested || !flushRequested)
+        {
+            var error = trimRequested ? Marshal.GetLastWin32Error() : trimError;
+            return MemoryPurgeResult.Failed(processId, $"Working-set trim failed with Win32Error={error}");
+        }
+
+        var afterBytes = ReadWorkingSetBytesWithRetry(readWorkingSetBytes, sleep);
+        return afterBytes.HasValue
+            ? MemoryPurgeResult.Succeeded(processId, beforeBytes.Value, afterBytes.Value)
+            : MemoryPurgeResult.SucceededWithoutMeasurement(processId, beforeBytes.Value);
+    }
+
+    private static long? ReadWorkingSetBytes(IntPtr processHandle)
     {
         var bufferSize = (uint)Marshal.SizeOf<NativeMethods.PROCESS_MEMORY_COUNTERS_EX>();
         var success = NativeMethods.GetProcessMemoryInfo(processHandle, out var counters, bufferSize);
         if (!success)
         {
-            return 0;
+            return null;
         }
 
         return checked((long)counters.WorkingSetSize.ToUInt64());
     }
 
-    private static long ReadWorkingSetBytesWithRetry(IntPtr processHandle)
+    private static long? ReadWorkingSetBytesWithRetry(Func<long?> readWorkingSetBytes, Action<int> sleep)
     {
-        var lowestObserved = ReadWorkingSetBytes(processHandle);
+        var lowestObserved = readWorkingSetBytes();
         for (var attempt = 0; attempt < 3; attempt += 1)
         {
-            Thread.Sleep(30);
-            var sampledBytes = ReadWorkingSetBytes(processHandle);
-            if (sampledBytes < lowestObserved)
+            sleep(30);
+            var sampledBytes = readWorkingSetBytes();
+            if (sampledBytes.HasValue && (!lowestObserved.HasValue || sampledBytes.Value < lowestObserved.Value))
             {
                 lowestObserved = sampledBytes;
             }

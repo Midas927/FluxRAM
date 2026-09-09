@@ -19,6 +19,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     private long _lastBoostTrimmedBytes;
     private long _totalTrimmedBytes;
     private long _boostNetGainBytes;
+    private bool _hasTrimMeasurement = true;
+    private bool _hasNetMeasurement = true;
     private double _reboundRatePercent;
     private bool _isAutoBoostEnabled;
     private int _protectedAppCount;
@@ -60,9 +62,9 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
         $"Used {FormatBytes(_totalRamBytes - Math.Min(_availableRamBytes, _totalRamBytes))} / Total {FormatBytes(_totalRamBytes)}",
         $"已用 {FormatBytes(_totalRamBytes - Math.Min(_availableRamBytes, _totalRamBytes))} / 总计 {FormatBytes(_totalRamBytes)}");
     public string RamDeltaValue => SignedBytes(_ramDeltaBytes);
-    public string LastBoostTrimmedValue => SignedBytes(_lastBoostTrimmedBytes);
+    public string LastBoostTrimmedValue => _hasTrimMeasurement ? SignedBytes(_lastBoostTrimmedBytes) : "--";
     public string TotalTrimmedValue => SignedBytes(_totalTrimmedBytes);
-    public string BoostNetGainValue => SignedBytes(_boostNetGainBytes);
+    public string BoostNetGainValue => _hasNetMeasurement ? SignedBytes(_boostNetGainBytes) : "--";
 
     public string RamDeltaDisplay
     {
@@ -79,8 +81,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         get
         {
-            var sign = _lastBoostTrimmedBytes >= 0 ? "+" : string.Empty;
-            return Metric("Last Boost Trimmed", "最近 Boost 裁剪量", $"{sign}{FormatBytes(_lastBoostTrimmedBytes)}");
+            return Metric("Last Boost Trimmed", "最近 Boost 裁剪量", LastBoostTrimmedValue);
         }
     }
 
@@ -97,12 +98,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     {
         get
         {
-            var sign = _boostNetGainBytes >= 0 ? "+" : string.Empty;
-            return Metric("Boost Net Gain", "Boost 净收益", $"{sign}{FormatBytes(_boostNetGainBytes)}");
+            return Metric("Boost Net Gain", "Boost 净收益", BoostNetGainValue);
         }
     }
 
-    public string ReboundRateDisplay => Metric("Rebound Rate", "回弹率", $"{_reboundRatePercent:0.0}%");
+    public string ReboundRateDisplay => Metric("Rebound Rate", "回弹率", _hasNetMeasurement ? $"{_reboundRatePercent:0.0}%" : "--");
 
     public string AutoBoostDisplay => _isAutoBoostEnabled
         ? L("Auto Boost: on, pressure-gated", "自动 Boost：开启，按内存压力触发")
@@ -182,17 +182,22 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged
     public void UpdateBoostMetrics(
         long lastBoostTrimmedBytes,
         long totalTrimmedBytes,
-        long boostNetGainBytes)
+        long boostNetGainBytes,
+        bool hasTrimMeasurement = true,
+        bool hasNetMeasurement = true)
     {
         _lastBoostTrimmedBytes = lastBoostTrimmedBytes;
         _totalTrimmedBytes = totalTrimmedBytes;
         _boostNetGainBytes = boostNetGainBytes;
+        _hasTrimMeasurement = hasTrimMeasurement;
+        _hasNetMeasurement = hasNetMeasurement;
         RaisePropertyChanged(nameof(LastBoostTrimmedDisplay));
         RaisePropertyChanged(nameof(TotalTrimmedDisplay));
         RaisePropertyChanged(nameof(BoostNetGainDisplay));
         RaisePropertyChanged(nameof(LastBoostTrimmedValue));
         RaisePropertyChanged(nameof(TotalTrimmedValue));
         RaisePropertyChanged(nameof(BoostNetGainValue));
+        RaisePropertyChanged(nameof(ReboundRateDisplay));
     }
 
     public void UpdateReboundRate(double reboundRatePercent)

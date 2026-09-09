@@ -31,6 +31,16 @@ public sealed class DesktopReadabilityTests
                 var app = new System.Windows.Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
                 AssertGaugeRendering();
                 window = new MainWindow(isUiPreview: true);
+                var observedAt = DateTimeOffset.UtcNow;
+                var observedProcess = new ProcessSnapshot(700001, "observed", 512L << 20, false,
+                    ExecutablePath: @"C:\Apps\Observed\observed.exe", StartTimeUtc: observedAt.AddHours(-1));
+                var observedGroup = new PurgeCandidateGroup("observed", observedProcess.ExecutablePath,
+                    [observedProcess], [observedProcess], observedProcess.WorkingSetBytes, 0, 0, 100, false, false);
+                var yieldTracker = (FluxRAM.Core.Services.ApplicationYieldTracker)GetField(window, "_applicationYieldTracker")!;
+                yieldTracker.Record(observedGroup, [(observedProcess, MemoryPurgeResult.Succeeded(700001, 512L << 20, 128L << 20))], observedAt);
+                Assert.Equal(true, Invoke(window, "ShouldDeferAutomaticApplication", observedGroup, false, 85u, observedAt));
+                Assert.Equal(false, Invoke(window, "ShouldDeferAutomaticApplication", observedGroup, true, 85u, observedAt));
+                Assert.Equal(false, Invoke(window, "ShouldDeferAutomaticApplication", observedGroup, false, 90u, observedAt));
                 var vm = (MainWindowViewModel)window.DataContext;
                 var tabs = (TabControl)window.FindName("WorkspaceTabs");
                 var root = (FrameworkElement)window.Content;
@@ -140,6 +150,58 @@ public sealed class DesktopReadabilityTests
                 Assert.Equal(1, tabs.SelectedIndex);
                 Assert.True(((TabItem)tabs.Items[1]).MoveFocus(new TraversalRequest(FocusNavigationDirection.Up)));
                 Assert.Equal(0, tabs.SelectedIndex);
+                string? inspected = null;
+                var preview = new ApplicationPreviewDialog(window, UiLanguage.English,
+                    Enumerable.Range(1, 60).Select(i => new ApplicationPreviewRow($"Application {i} | C:\\Apps\\{i}.exe", i % 2 == 0)).ToArray(),
+                    (_, text) => inspected = text);
+                preview.Show();
+                preview.UpdateLayout();
+                var previewList = Descendants<ListBox>(preview).Single();
+                Assert.Equal(60, previewList.Items.Count);
+                var search = Descendants<TextBox>(preview).Single();
+                search.Text = "Application 47";
+                Assert.Single(previewList.Items.Cast<object>());
+                Descendants<Button>(preview).Single(button => (string?)button.Content == "Details").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Assert.Contains("Application 47", inspected);
+                Descendants<CheckBox>(preview).Single().IsChecked = true;
+                Assert.Empty(previewList.Items.Cast<object>());
+                search.Text = "";
+                Assert.Equal(30, previewList.Items.Count);
+                preview.UpdateLayout();
+                Assert.Contains(Descendants<TextBlock>(previewList), text => text.Text.Contains("Application 2"));
+                Capture((FrameworkElement)preview.Content, "application-preview.png");
+                preview.Close();
+                Dispatcher.CurrentDispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, new Action(() =>
+                {
+                    var history = app.Windows.OfType<ApplicationPreviewDialog>().Single();
+                    Assert.Contains(Descendants<TextBlock>(history), text => text.Text.Contains("observed"));
+                    Capture((FrameworkElement)history.Content, "yield-history.png");
+                    history.Close();
+                }));
+                Invoke(window, "ViewYieldHistoryButton_OnClick", window, new RoutedEventArgs());
+                var forceCandidate = new ExtremeCloseCandidate("Synthetic app", [], 0, 0, 0, false, false, false);
+                foreach (var choice in new[] { "Force close", "Keep this app", "Cancel remaining" })
+                {
+                    using var cancellation = new CancellationTokenSource();
+                    var confirmation = (Task<bool>)Invoke(window, "ConfirmForceCloseAsync", window, forceCandidate, cancellation)!;
+                    Assert.False(confirmation.IsCompleted);
+                    Assert.True(window.IsEnabled);
+                    var prompt = app.Windows.OfType<Window>().Single(item => item != window);
+                    prompt.UpdateLayout();
+                    Capture((FrameworkElement)prompt.Content, "force-confirmation.png");
+                    Descendants<Button>(prompt).Single(button => (string?)button.Content == choice).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    Assert.Equal(choice == "Force close", confirmation.GetAwaiter().GetResult());
+                    Assert.Equal(choice == "Cancel remaining", cancellation.IsCancellationRequested);
+                    Assert.False(prompt.IsVisible);
+                }
+                using (var cancellation = new CancellationTokenSource())
+                {
+                    var confirmation = (Task<bool>)Invoke(window, "ConfirmForceCloseAsync", window, forceCandidate, cancellation)!;
+                    cancellation.Cancel();
+                    Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+                    Assert.False(confirmation.GetAwaiter().GetResult());
+                    Assert.Single(app.Windows.OfType<Window>());
+                }
                 // Exercise native selector input without persisting test choices to user settings.
                 foreach (var (name, page, guard) in new[] { ("ProfileSelector", 0, "_isSettingProfileSelector"), ("LanguageSelector", 3, "_isSettingLanguageSelector") })
                 {

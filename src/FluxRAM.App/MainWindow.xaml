@@ -596,6 +596,7 @@
               <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
               <DockPanel Margin="0,12,0,0">
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+                  <Button x:Name="ViewYieldHistoryButton" Content="Yield history" Click="ViewYieldHistoryButton_OnClick" Margin="0,0,8,0" />
                   <Button x:Name="ViewBoostDetailsButton" Content="Details" Click="ViewBoostDetailsButton_OnClick" Margin="0,0,8,0" />
                   <Button x:Name="PreviewBoostCandidatesButton" Content="Preview" Click="PreviewBoostCandidatesButton_OnClick" />
                 </StackPanel>

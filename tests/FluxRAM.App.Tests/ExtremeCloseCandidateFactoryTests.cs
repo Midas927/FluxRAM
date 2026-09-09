@@ -7,6 +7,21 @@ namespace FluxRAM.App.Tests;
 public sealed class ExtremeCloseCandidateFactoryTests
 {
     [Fact]
+    public void FromSnapshots_PreservesCapturedIdentitiesAndDoesNotTruncateAtForty()
+    {
+        var snapshots = Enumerable.Range(710001, 45).Select(id => new ProcessSnapshot(
+            id, $"app{id}", 100L * 1024 * 1024, false,
+            ExecutablePath: $@"C:\Apps\App{id}\app{id}.exe", StartTimeUtc: DateTimeOffset.UnixEpoch)).ToArray();
+
+        var candidates = ExtremeCloseCandidateFactory.FromSnapshots(snapshots);
+
+        Assert.Equal(45, candidates.Count);
+        foreach (var candidate in candidates)
+            Assert.Equal(snapshots.Single(snapshot => snapshot.ProcessId == candidate.ProcessIds.Single()),
+                Assert.Single(candidate.CapturedSnapshots!));
+    }
+
+    [Fact]
     public void FromSnapshots_GroupsHighMemoryAppsByProcessName()
     {
         var snapshots = new[]

@@ -18,20 +18,12 @@ public sealed class PurgePolicyService
         bool forcePurge = false,
         IReadOnlyCollection<string>? protectedProcessNames = null,
         IReadOnlyCollection<string>? protectedProcessPaths = null,
-        bool enableAdvancedProtection = true)
+        bool enableAdvancedProtection = true,
+        Func<PurgeCandidateGroup, bool>? deferApplication = null)
     {
         var shouldBypassThreshold = settings.IgnoreMemoryPressureThreshold;
         var effectiveThreshold = CalculateEffectiveThreshold(memorySnapshot, settings);
-        var protectedNames = BuildProtectedNameSet(protectedProcessNames);
-        if (settings.EnableGamingProcessProtection)
-        {
-            protectedNames.UnionWith(GamingProcessProtectionCatalog.ProcessNames);
-        }
-
-        var protectionContext = ProcessProtectionMatcher.CreateContext(
-            snapshots,
-            protectedNames,
-            protectedProcessPaths);
+        var protectionContext = BuildProtectionContext(snapshots, settings, protectedProcessNames, protectedProcessPaths);
         var protectionSummary = ProcessProtectionMatcher.Summarize(
             snapshots,
             protectionContext,
@@ -46,20 +38,10 @@ public sealed class PurgePolicyService
                 protectionSummary);
         }
 
-        var cooldown = TimeSpan.FromSeconds(settings.ProcessCooldownSeconds);
-
-        var assessedGroups = BuildCandidateGroups(snapshots, settings)
-            .Select(group => new CandidateGroupAssessment(
-                group,
-                GetRejectionReason(
-                    group,
-                    settings,
-                    now,
-                    cooldown,
-                    protectionContext,
-                    lastPurgeTimesByProcessId,
-                    enableAdvancedProtection)))
-            .ToArray();
+        var assessedGroups = AssessGroups(snapshots, settings, now, lastPurgeTimesByProcessId, protectionContext, enableAdvancedProtection);
+        if (deferApplication is not null)
+            assessedGroups = assessedGroups.Select(item => item.RejectionReason == CandidateGroupRejectionReason.None && deferApplication(item.Group)
+                ? item with { RejectionReason = CandidateGroupRejectionReason.LowYieldBackoff } : item).ToArray();
         var orderedGroups = assessedGroups
             .Where(assessment => assessment.RejectionReason == CandidateGroupRejectionReason.None)
             .Select(assessment => assessment.Group)
@@ -102,6 +84,36 @@ public sealed class PurgePolicyService
             candidates,
             protectionSummary,
             candidateGroups);
+    }
+
+    public IReadOnlyList<CandidateGroupAssessment> AssessApplications(
+        IReadOnlyList<ProcessSnapshot> snapshots,
+        OptimizerSettings settings,
+        DateTimeOffset now,
+        IReadOnlyDictionary<int, DateTimeOffset> lastPurgeTimesByProcessId,
+        IReadOnlyCollection<string>? protectedProcessNames = null,
+        IReadOnlyCollection<string>? protectedProcessPaths = null,
+        bool enableAdvancedProtection = true)
+    {
+        return AssessGroups(snapshots, settings, now, lastPurgeTimesByProcessId,
+            BuildProtectionContext(snapshots, settings, protectedProcessNames, protectedProcessPaths), enableAdvancedProtection);
+    }
+
+    private static ProcessProtectionContext BuildProtectionContext(IReadOnlyList<ProcessSnapshot> snapshots,
+        OptimizerSettings settings, IReadOnlyCollection<string>? names, IReadOnlyCollection<string>? paths)
+    {
+        var protectedNames = BuildProtectedNameSet(names);
+        if (settings.EnableGamingProcessProtection) protectedNames.UnionWith(GamingProcessProtectionCatalog.ProcessNames);
+        return ProcessProtectionMatcher.CreateContext(snapshots, protectedNames, paths);
+    }
+
+    private static IReadOnlyList<CandidateGroupAssessment> AssessGroups(IReadOnlyList<ProcessSnapshot> snapshots,
+        OptimizerSettings settings, DateTimeOffset now, IReadOnlyDictionary<int, DateTimeOffset> purgeTimes,
+        ProcessProtectionContext protection, bool advanced)
+    {
+        return BuildCandidateGroups(snapshots, settings).Select(group => new CandidateGroupAssessment(group,
+            GetRejectionReason(group, settings, now, TimeSpan.FromSeconds(settings.ProcessCooldownSeconds),
+                protection, purgeTimes, advanced))).ToArray();
     }
 
     private static IReadOnlyList<PurgeCandidateGroup> BuildCandidateGroups(
@@ -167,6 +179,9 @@ public sealed class PurgePolicyService
         {
             return CandidateGroupRejectionReason.Foreground;
         }
+
+        if (group.ObservedProcesses.Any(snapshot => !snapshot.HasWorkingSetMeasurement))
+            return CandidateGroupRejectionReason.UnmeasuredActivity;
 
         if (group.WorkingSetBytes < settings.MinimumCandidateWorkingSetBytes || group.Processes.Count == 0)
         {
@@ -369,6 +384,7 @@ public sealed class PurgePolicyService
         AddReason(reasons, CountRejected(assessedGroups, CandidateGroupRejectionReason.Active), "active CPU/I/O");
         AddReason(reasons, CountRejected(assessedGroups, CandidateGroupRejectionReason.Protected), "protected");
         AddReason(reasons, CountRejected(assessedGroups, CandidateGroupRejectionReason.Cooldown), "cooldown");
+        AddReason(reasons, CountRejected(assessedGroups, CandidateGroupRejectionReason.LowYieldBackoff), "yield observation or backoff");
 
         return reasons.Count == 0
             ? "No eligible process met safety criteria: no safe background candidate remained."
@@ -413,11 +429,11 @@ public sealed class PurgePolicyService
         return normalized.ToLowerInvariant();
     }
 
-    private readonly record struct CandidateGroupAssessment(
+    public readonly record struct CandidateGroupAssessment(
         PurgeCandidateGroup Group,
         CandidateGroupRejectionReason RejectionReason);
 
-    private enum CandidateGroupRejectionReason
+    public enum CandidateGroupRejectionReason
     {
         None,
         Foreground,
@@ -426,7 +442,8 @@ public sealed class PurgePolicyService
         NotCold,
         Active,
         Protected,
-        Cooldown
+        Cooldown,
+        LowYieldBackoff
     }
 
 }

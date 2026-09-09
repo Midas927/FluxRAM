@@ -46,7 +46,7 @@ public sealed class ProcessScraperService
                 var parentProcessId = parentProcessIds.TryGetValue(process.Id, out var parentId) ? parentId : null;
                 var mainWindowTitle = TryGetMainWindowTitle(process);
                 var coldnessScore = hasMeasuredActivity ? CalculateColdnessScore(
-                    workingSetBytes,
+                    workingSetBytes.GetValueOrDefault(),
                     cpuUsagePercent.GetValueOrDefault(),
                     ioBytesPerSecond.GetValueOrDefault(),
                     isForeground,
@@ -57,7 +57,7 @@ public sealed class ProcessScraperService
                     new ProcessSnapshot(
                         process.Id,
                         processName,
-                        workingSetBytes,
+                        workingSetBytes.GetValueOrDefault(),
                         isForeground,
                         cpuUsagePercent.GetValueOrDefault(),
                         hasVisibleWindow,
@@ -67,7 +67,9 @@ public sealed class ProcessScraperService
                         parentProcessId,
                         mainWindowTitle,
                         HasCpuMeasurement: cpuUsagePercent.HasValue,
-                        HasIoMeasurement: ioBytesPerSecond.HasValue));
+                        HasIoMeasurement: ioBytesPerSecond.HasValue,
+                        StartTimeUtc: TryGetStartTimeUtc(process),
+                        HasWorkingSetMeasurement: workingSetBytes.HasValue));
             }
         }
 
@@ -397,7 +399,19 @@ public sealed class ProcessScraperService
         }
     }
 
-    private static long TryGetWorkingSet(Process process)
+    private static DateTimeOffset? TryGetStartTimeUtc(Process process)
+    {
+        try
+        {
+            return new DateTimeOffset(process.StartTime.ToUniversalTime());
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static long? TryGetWorkingSet(Process process)
     {
         try
         {
@@ -405,7 +419,7 @@ public sealed class ProcessScraperService
         }
         catch
         {
-            return 0;
+            return null;
         }
     }
 

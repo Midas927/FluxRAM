@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using System.Reflection;
+using FluxRAM.Core.Models;
 using FluxRAM.Core.Services;
 using Xunit;
 
@@ -7,6 +9,40 @@ namespace FluxRAM.Core.Tests;
 public sealed class ProcessScraperServiceTests
 {
     private static readonly DateTimeOffset StartedAt = DateTimeOffset.Parse("2026-09-09T00:00:00Z");
+
+    [Fact]
+    public void ProcessSnapshot_StartTimeDefaultsToUnknown()
+    {
+        var snapshot = new ProcessSnapshot(10, "Product", 1024, false);
+        Assert.Null(snapshot.StartTimeUtc);
+        Assert.True(snapshot.HasWorkingSetMeasurement);
+    }
+
+    [Fact]
+    public void StartTime_ReadIsUtcAndUnavailableProcessIsUnknown()
+    {
+        var method = typeof(ProcessScraperService).GetMethod(
+            "TryGetStartTimeUtc", BindingFlags.Static | BindingFlags.NonPublic);
+        Assert.NotNull(method);
+        using var current = Process.GetCurrentProcess();
+        var start = Assert.IsType<DateTimeOffset>(method.Invoke(null, new object[] { current }));
+        Assert.Equal(TimeSpan.Zero, start.Offset);
+        Assert.Equal(current.StartTime.ToUniversalTime(), start.UtcDateTime);
+        using var unassociated = new Process();
+        Assert.Null(method.Invoke(null, new object[] { unassociated }));
+    }
+
+    [Fact]
+    public void WorkingSet_UnavailableProcessReturnsUnknownNotZero()
+    {
+        var method = typeof(ProcessScraperService).GetMethod(
+            "TryGetWorkingSet", BindingFlags.Static | BindingFlags.NonPublic);
+        Assert.NotNull(method);
+        using var current = Process.GetCurrentProcess();
+        Assert.True(Assert.IsType<long>(method.Invoke(null, new object[] { current })) >= 0);
+        using var unassociated = new Process();
+        Assert.Null(method.Invoke(null, new object[] { unassociated }));
+    }
 
     [Theory]
     [InlineData(true)]
