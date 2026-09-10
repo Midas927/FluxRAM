@@ -14,7 +14,7 @@ FluxRAM 不能把 8GB 变成 16GB，也不承诺固定释放量。实际效果�
 
 当前正式版为 **v0.4.2**，可从以下 Release 页面下载：
 
-[国内下载（GitCode）](https://gitcode.com/Midas927/FluxRAM/releases/tag/v0.4.2) | [GitHub 备用下载](https://github.com/Midas927/FluxRAM/releases/tag/v0.4.2)
+[国内下载（GitCode）](https://gitcode.com/Midas927/FluxRAM/releases/download/v0.4.2/FluxRAM-Portable-Windows-x64.zip) | [版本说明](https://gitcode.com/Midas927/FluxRAM/releases/v0.4.2) | [GitHub 备用下载](https://github.com/Midas927/FluxRAM/releases/tag/v0.4.2)
 
 推荐下载 `FluxRAM-Portable-Windows-x64.zip`，解压后双击 `FluxRAM.exe` 即可运行。普通版和 Pro 版使用同一个主程序；Pro 功能需使用当前电脑机器标识对应的 Pro Key 激活。
 

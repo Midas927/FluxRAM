@@ -10,7 +10,7 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $projectPath = Join-Path $repoRoot "src\FluxRAM.App\FluxRAM.App.csproj"
-$projectXml = [xml](Get-Content -LiteralPath $projectPath -Raw)
+$projectXml = [xml](Get-Content -LiteralPath $projectPath -Raw -Encoding UTF8)
 $version = [string]($projectXml.Project.PropertyGroup.Version | Select-Object -First 1)
 if ([string]::IsNullOrWhiteSpace($version)) {
     throw "Unable to read the FluxRAM version."
@@ -178,7 +178,7 @@ try {
             $formValues = New-Object 'System.Collections.Generic.Dictionary[string,string]'
             $formValues.Add("tag_name", $Tag)
             $formValues.Add("name", $Name)
-            $formValues.Add("body", (Get-Content -LiteralPath $notesFile -Raw))
+            $formValues.Add("body", (Get-Content -LiteralPath $notesFile -Raw -Encoding UTF8))
             $formValues.Add("release_status", "latest")
             $content = [System.Net.Http.FormUrlEncodedContent]::new($formValues)
             $releaseUri = $apiBase + "/releases"
@@ -250,7 +250,7 @@ try {
         throw "GitCode Release is missing assets: $($missingAssets -join ', ')"
     }
 
-    Write-Host ("GitCode Release verified: https://gitcode.com/Midas927/FluxRAM/releases/tag/" + $Tag) -ForegroundColor Green
+    Write-Host ("GitCode Release verified: https://gitcode.com/Midas927/FluxRAM/releases/" + $Tag) -ForegroundColor Green
 }
 finally {
     if ($null -ne $headers) {

@@ -14,7 +14,7 @@ FluxRAM cannot make 8GB behave like 16GB, and it does not promise a fixed amount
 
 Current stable release: **v0.4.2**.
 
-[China mirror (GitCode)](https://gitcode.com/Midas927/FluxRAM/releases/tag/v0.4.2) | [GitHub fallback](https://github.com/Midas927/FluxRAM/releases/tag/v0.4.2)
+[China mirror (GitCode)](https://gitcode.com/Midas927/FluxRAM/releases/download/v0.4.2/FluxRAM-Portable-Windows-x64.zip) | [Release notes](https://gitcode.com/Midas927/FluxRAM/releases/v0.4.2) | [GitHub fallback](https://github.com/Midas927/FluxRAM/releases/tag/v0.4.2)
 
 Recommended package: `FluxRAM-Portable-Windows-x64.zip`. Unzip it and run `FluxRAM.exe`.
 
