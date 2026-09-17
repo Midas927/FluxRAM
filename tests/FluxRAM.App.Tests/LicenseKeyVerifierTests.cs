@@ -22,6 +22,23 @@ public sealed class LicenseKeyVerifierTests
     }
 
     [Fact]
+    public void Verify_AcceptsLicenseSignedByTrustedPreviousKey()
+    {
+        using var currentRsa = RSA.Create(2048);
+        using var previousRsa = RSA.Create(2048);
+        var verifier = new LicenseKeyVerifier(
+            ExportPublicKeyPem(currentRsa),
+            ExportPublicKeyPem(previousRsa));
+        var licenseKey = LicenseKeyVerifier.CreateSignedLicenseKey(
+            new LicensePayload(1, "FluxRAM", "Pro", "FLX-ABCD-1234", DateTimeOffset.UtcNow),
+            previousRsa);
+
+        var result = verifier.Verify(licenseKey, "FLX-ABCD-1234");
+
+        Assert.True(result.IsValid);
+    }
+
+    [Fact]
     public void Verify_RejectsLicenseForAnotherMachine()
     {
         using var rsa = RSA.Create(2048);

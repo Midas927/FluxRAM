@@ -49,16 +49,16 @@ public sealed class LicenseKeyVerifier
         PropertyNameCaseInsensitive = true
     };
 
-    private readonly string _publicKey;
+    private readonly IReadOnlyList<string> _trustedPublicKeys;
 
     public LicenseKeyVerifier()
-        : this(DefaultPublicKey)
+        : this(DefaultPublicKey, PreviousPublicKey)
     {
     }
 
-    public LicenseKeyVerifier(string publicKey)
+    public LicenseKeyVerifier(string publicKey, params string[] additionalPublicKeys)
     {
-        _publicKey = publicKey;
+        _trustedPublicKeys = new[] { publicKey }.Concat(additionalPublicKeys).ToArray();
     }
 
     public LicenseVerificationResult Verify(string licenseKey, string currentMachineId)
@@ -79,14 +79,10 @@ public sealed class LicenseKeyVerifier
 
             var payloadBytes = DecodeBase64Url(parts[0]);
             var signatureBytes = DecodeBase64Url(parts[1]);
-            using var rsa = RSA.Create();
-            ImportPublicKey(rsa, _publicKey);
-
-            var isSignatureValid = rsa.VerifyData(
+            var isSignatureValid = _trustedPublicKeys.Any(publicKey => VerifySignature(
                 payloadBytes,
                 signatureBytes,
-                HashAlgorithmName.SHA256,
-                RSASignaturePadding.Pkcs1);
+                publicKey));
             if (!isSignatureValid)
             {
                 return LicenseVerificationResult.Invalid(LicenseVerificationFailure.InvalidSignature);
@@ -153,6 +149,17 @@ public sealed class LicenseKeyVerifier
         rsa.ImportFromPem(trimmed);
     }
 
+    private static bool VerifySignature(byte[] payloadBytes, byte[] signatureBytes, string publicKey)
+    {
+        using var rsa = RSA.Create();
+        ImportPublicKey(rsa, publicKey);
+        return rsa.VerifyData(
+            payloadBytes,
+            signatureBytes,
+            HashAlgorithmName.SHA256,
+            RSASignaturePadding.Pkcs1);
+    }
+
     private static string EncodeBase64Url(byte[] bytes)
     {
         return Convert.ToBase64String(bytes)
@@ -170,4 +177,8 @@ public sealed class LicenseKeyVerifier
 
     private const string DefaultPublicKey =
         "<RSAKeyValue><Modulus>xMI0UDL//A536V6Kbi8PfLsBXUE/QChb7839aquXFGGrU+iG/mwAQf4P/DUFI8qDZiof6kvEBd529oap8LaCvo7KwmMOv8zKUCOQthQFsdbk6a8DjRbvPhzm8aB6NM3hYWcRI588KJ0YKcPMtSXYOq5HZwCTJ02EUgwrg3ftMh+7TeBPlFNaqrLBdLy39hL13A/svxSt8iTFgM8ifFgufhTOVcKxV78cayTuziF7GP94pKxAqg23ptrczNXRN/csm5rzztHnSpUicym3r0Gfy5TWZEOlgzT3NUyi1G3kbncsrHnHydxY9JhYlaExXtiOdMEAgNZQvA0/xSq8uxFAGQ==</Modulus><Exponent>AQAB</Exponent></RSAKeyValue>";
+
+    // Keep the previous signing key so already activated copies survive key rotation.
+    private const string PreviousPublicKey =
+        "<RSAKeyValue><Modulus>nCt2RYUHG08d617d+KqHReIiJ3avzke8tz8/zumJDvi9bw688A0G1MYa7xE0/OUDpKG+6MpfC9+zJ/KKNtYe4XS8GF050tYI4L8aJ8dAEfN/k/0oAo0BjWuKxXBJS0uxb3vIjLeDLcvGo8LAEGlg1dv1lSxTdqgf2ohx3ptjEp19cCC/wVwPMtpLpTb+14khnSMgNKfnWWyvLXx9ZLECSFh19co5BC6u1JhdNT9VxcRGSi7iOY2LkQtXjg2NBqGT4Y0qEFC8Pemza58ktkygnzoXTbbaEngW5H/yCsjbjtDvbetPDjhMU1z4FvxLDH9Ai8LSM5B6NoFeK9b1MOOBKQ==</Modulus><Exponent>AQAB</Exponent></RSAKeyValue>";
 }
