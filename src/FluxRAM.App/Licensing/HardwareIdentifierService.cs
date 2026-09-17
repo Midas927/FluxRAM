@@ -1,4 +1,5 @@
 ﻿using System.Net.NetworkInformation;
+using System.IO;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Win32;
@@ -12,8 +13,26 @@ public interface IHardwareIdentifierProvider
 
 public sealed class HardwareIdentifierService : IHardwareIdentifierProvider
 {
+    private readonly string _machineIdentityPath;
+
+    public HardwareIdentifierService()
+        : this(AppDataPaths.GetMachineIdentityPath())
+    {
+    }
+
+    public HardwareIdentifierService(string machineIdentityPath)
+    {
+        _machineIdentityPath = machineIdentityPath;
+    }
+
     public string GetCurrentMachineId()
     {
+        var persistedMachineId = TryLoadPersistedMachineId();
+        if (persistedMachineId is not null)
+        {
+            return persistedMachineId;
+        }
+
         var parts = new List<string>();
         var machineGuid = TryReadMachineGuid();
         if (!string.IsNullOrWhiteSpace(machineGuid))
@@ -28,7 +47,9 @@ public sealed class HardwareIdentifierService : IHardwareIdentifierProvider
             parts.Add($"fallback:{Environment.MachineName}:{Environment.OSVersion.VersionString}");
         }
 
-        return BuildMachineId(parts);
+        var machineId = BuildMachineId(parts);
+        TryPersistMachineId(machineId);
+        return TryLoadPersistedMachineId() ?? machineId;
     }
 
     public static string BuildMachineId(IEnumerable<string> stableParts)
@@ -67,6 +88,59 @@ public sealed class HardwareIdentifierService : IHardwareIdentifierProvider
         {
             return null;
         }
+    }
+
+    private string? TryLoadPersistedMachineId()
+    {
+        try
+        {
+            if (!File.Exists(_machineIdentityPath))
+            {
+                return null;
+            }
+
+            var value = File.ReadAllText(_machineIdentityPath, Encoding.UTF8).Trim().ToUpperInvariant();
+            return IsMachineId(value) ? value : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private void TryPersistMachineId(string machineId)
+    {
+        try
+        {
+            var directory = Path.GetDirectoryName(_machineIdentityPath);
+            if (string.IsNullOrWhiteSpace(directory))
+            {
+                return;
+            }
+
+            Directory.CreateDirectory(directory);
+            using var stream = new FileStream(
+                _machineIdentityPath,
+                FileMode.CreateNew,
+                FileAccess.Write,
+                FileShare.Read);
+            using var writer = new StreamWriter(stream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+            writer.Write(machineId);
+        }
+        catch (IOException)
+        {
+        }
+        catch (UnauthorizedAccessException)
+        {
+        }
+    }
+
+    private static bool IsMachineId(string value)
+    {
+        var parts = value.Split('-');
+        return parts.Length == 9 &&
+            string.Equals(parts[0], "FLX", StringComparison.Ordinal) &&
+            parts[1..].All(part => part.Length == 4 && part.All(Uri.IsHexDigit));
     }
 
     private static IEnumerable<string> GetPhysicalMacAddresses()

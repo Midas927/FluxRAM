@@ -12,6 +12,14 @@ public static class AppDataPaths
             "license.key");
     }
 
+    public static string GetMachineIdentityPath()
+    {
+        return Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+            "FluxRAM",
+            "machine.id");
+    }
+
     public static string GetProtectedAppsPath()
     {
         return Path.Combine(
