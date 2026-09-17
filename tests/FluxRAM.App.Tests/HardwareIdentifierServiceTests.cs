@@ -10,13 +10,11 @@ public sealed class HardwareIdentifierServiceTests
     {
         var directory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
         var path = Path.Combine(directory, "machine.id");
-        const string machineId = "FLX-1111-2222-3333-4444-5555-6666-7777-8888";
-        Directory.CreateDirectory(directory);
-        File.WriteAllText(path, machineId);
+        var firstService = new HardwareIdentifierService(path);
+        var machineId = firstService.GetCurrentMachineId();
+        var secondService = new HardwareIdentifierService(path);
 
-        var service = new HardwareIdentifierService(path);
-
-        Assert.Equal(machineId, service.GetCurrentMachineId());
+        Assert.Equal(machineId, secondService.GetCurrentMachineId());
     }
 
     [Fact]
@@ -28,6 +26,9 @@ public sealed class HardwareIdentifierServiceTests
 
         var machineId = service.GetCurrentMachineId();
 
-        Assert.Equal(machineId, File.ReadAllText(path));
+        Assert.NotEqual(machineId, File.ReadAllText(path));
+
+        var reloadedMachineId = new HardwareIdentifierService(path).GetCurrentMachineId();
+        Assert.Equal(machineId, reloadedMachineId);
     }
 }

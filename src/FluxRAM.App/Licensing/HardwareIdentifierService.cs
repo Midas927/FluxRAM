@@ -13,6 +13,8 @@ public interface IHardwareIdentifierProvider
 
 public sealed class HardwareIdentifierService : IHardwareIdentifierProvider
 {
+    private static readonly byte[] MachineIdentityEntropy =
+        Encoding.UTF8.GetBytes("FluxRAM.MachineIdentity.v1");
     private readonly string _machineIdentityPath;
 
     public HardwareIdentifierService()
@@ -99,7 +101,14 @@ public sealed class HardwareIdentifierService : IHardwareIdentifierProvider
                 return null;
             }
 
-            var value = File.ReadAllText(_machineIdentityPath, Encoding.UTF8).Trim().ToUpperInvariant();
+            var protectedValue = File.ReadAllBytes(_machineIdentityPath);
+            var value = Encoding.UTF8.GetString(
+                    ProtectedData.Unprotect(
+                        protectedValue,
+                        MachineIdentityEntropy,
+                        DataProtectionScope.LocalMachine))
+                .Trim()
+                .ToUpperInvariant();
             return IsMachineId(value) ? value : null;
         }
         catch
@@ -119,13 +128,16 @@ public sealed class HardwareIdentifierService : IHardwareIdentifierProvider
             }
 
             Directory.CreateDirectory(directory);
+            var protectedValue = ProtectedData.Protect(
+                Encoding.UTF8.GetBytes(machineId),
+                MachineIdentityEntropy,
+                DataProtectionScope.LocalMachine);
             using var stream = new FileStream(
                 _machineIdentityPath,
                 FileMode.CreateNew,
                 FileAccess.Write,
                 FileShare.Read);
-            using var writer = new StreamWriter(stream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
-            writer.Write(machineId);
+            stream.Write(protectedValue);
         }
         catch (IOException)
         {
