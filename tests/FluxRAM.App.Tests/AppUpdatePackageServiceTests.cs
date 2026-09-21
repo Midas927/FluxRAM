@@ -67,6 +67,8 @@ public sealed class AppUpdatePackageServiceTests : IDisposable
         Assert.Contains("Copy-Item", script, StringComparison.Ordinal);
         Assert.Contains("Start-Process", script, StringComparison.Ordinal);
         Assert.Contains("$BackupExe", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("ProgramData", script, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("license.key", script, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

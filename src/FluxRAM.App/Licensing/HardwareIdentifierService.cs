@@ -1,5 +1,5 @@
-﻿using System.Net.NetworkInformation;
-using System.IO;
+using System.Management;
+using System.Net.NetworkInformation;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Win32;
@@ -9,49 +9,63 @@ namespace FluxRAM.App.Licensing;
 public interface IHardwareIdentifierProvider
 {
     string GetCurrentMachineId();
+    string GetLegacyMachineId();
 }
+
+public sealed record HardwareIdentifierFacts(
+    string? SystemUuid,
+    string? MachineGuid,
+    IReadOnlyList<string> MacAddresses);
 
 public sealed class HardwareIdentifierService : IHardwareIdentifierProvider
 {
-    private static readonly byte[] MachineIdentityEntropy =
-        Encoding.UTF8.GetBytes("FluxRAM.MachineIdentity.v1");
-    private readonly string _machineIdentityPath;
+    private readonly Func<HardwareIdentifierFacts>? _factsProvider;
 
     public HardwareIdentifierService()
-        : this(AppDataPaths.GetMachineIdentityPath())
     {
     }
 
-    public HardwareIdentifierService(string machineIdentityPath)
+    public HardwareIdentifierService(Func<HardwareIdentifierFacts> factsProvider)
     {
-        _machineIdentityPath = machineIdentityPath;
+        _factsProvider = factsProvider ?? throw new ArgumentNullException(nameof(factsProvider));
     }
 
     public string GetCurrentMachineId()
     {
-        var persistedMachineId = TryLoadPersistedMachineId();
-        if (persistedMachineId is not null)
+        var facts = _factsProvider?.Invoke() ?? new HardwareIdentifierFacts(
+            QueryWmiValue("Win32_ComputerSystemProduct", "UUID"),
+            null,
+            []);
+        var systemUuid = NormalizeSystemUuid(facts.SystemUuid);
+        if (systemUuid is not null)
         {
-            return persistedMachineId;
+            return BuildMachineId([$"smbios:{systemUuid}"]);
         }
 
-        var parts = new List<string>();
-        var machineGuid = TryReadMachineGuid();
-        if (!string.IsNullOrWhiteSpace(machineGuid))
+        throw new InvalidOperationException("A stable hardware identifier is unavailable.");
+    }
+
+    public string GetLegacyMachineId()
+    {
+        var facts = _factsProvider?.Invoke() ?? new HardwareIdentifierFacts(
+            null,
+            ReadMachineGuid(),
+            GetActiveMacAddresses());
+        var macAddresses = facts.MacAddresses
+            .Where(address => !string.IsNullOrWhiteSpace(address))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(address => address, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        if (string.IsNullOrWhiteSpace(facts.MachineGuid) || macAddresses.Length == 0)
         {
-            parts.Add($"machine:{machineGuid}");
+            throw new InvalidOperationException("The previous machine identifier cannot be proven.");
         }
 
-        parts.AddRange(GetPhysicalMacAddresses().Select(address => $"mac:{address}"));
-
-        if (parts.Count == 0)
-        {
-            parts.Add($"fallback:{Environment.MachineName}:{Environment.OSVersion.VersionString}");
-        }
-
-        var machineId = BuildMachineId(parts);
-        TryPersistMachineId(machineId);
-        return TryLoadPersistedMachineId() ?? machineId;
+        return BuildMachineId(
+        [
+            $"machine:{facts.MachineGuid}",
+            .. macAddresses.Select(address => $"mac:{address}")
+        ]);
     }
 
     public static string BuildMachineId(IEnumerable<string> stableParts)
@@ -73,104 +87,85 @@ public sealed class HardwareIdentifierService : IHardwareIdentifierProvider
         return "FLX-" + string.Join("-", Enumerable.Range(0, 8).Select(index => compact.Substring(index * 4, 4)));
     }
 
-    private static string? TryReadMachineGuid()
+    private static string? QueryWmiValue(string className, string propertyName)
     {
-        return TryReadMachineGuid(RegistryView.Registry64) ?? TryReadMachineGuid(RegistryView.Registry32);
+        using var searcher = new ManagementObjectSearcher($"SELECT {propertyName} FROM {className}");
+        searcher.Options.Timeout = TimeSpan.FromSeconds(2);
+        searcher.Options.ReturnImmediately = true;
+        using var results = searcher.Get();
+        foreach (ManagementBaseObject item in results)
+        {
+            using (item)
+            {
+                var value = item[propertyName]?.ToString();
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    return value;
+                }
+            }
+        }
+
+        return null;
     }
 
-    private static string? TryReadMachineGuid(RegistryView registryView)
+    private static string? ReadMachineGuid()
     {
+        Exception? registry64Exception = null;
         try
         {
-            using var baseKey = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, registryView);
-            using var key = baseKey.OpenSubKey(@"SOFTWARE\Microsoft\Cryptography", false);
-            return key?.GetValue("MachineGuid") as string;
+            var value = ReadMachineGuid(RegistryView.Registry64);
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                return value;
+            }
         }
-        catch
+        catch (Exception ex)
+        {
+            registry64Exception = ex;
+        }
+
+        try
+        {
+            return ReadMachineGuid(RegistryView.Registry32);
+        }
+        catch (Exception ex) when (registry64Exception is not null)
+        {
+            throw new AggregateException(
+                "MachineGuid could not be read from either registry view.",
+                registry64Exception,
+                ex);
+        }
+    }
+
+    private static string? ReadMachineGuid(RegistryView registryView)
+    {
+        using var baseKey = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, registryView);
+        using var key = baseKey.OpenSubKey(@"SOFTWARE\Microsoft\Cryptography", false);
+        return key?.GetValue("MachineGuid") as string;
+    }
+
+    private static IReadOnlyList<string> GetActiveMacAddresses()
+    {
+        return NetworkInterface.GetAllNetworkInterfaces()
+            .Where(networkInterface => networkInterface.NetworkInterfaceType != NetworkInterfaceType.Loopback)
+            .Where(networkInterface => networkInterface.OperationalStatus == OperationalStatus.Up)
+            .Select(networkInterface => networkInterface.GetPhysicalAddress().ToString())
+            .Where(address => !string.IsNullOrWhiteSpace(address))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(address => address, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
+
+    private static string? NormalizeSystemUuid(string? value)
+    {
+        if (!Guid.TryParse(value?.Trim().Trim('\0'), out var uuid) ||
+            uuid == Guid.Empty ||
+            uuid == new Guid("FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF"))
         {
             return null;
         }
+
+        return uuid.ToString("D").ToUpperInvariant();
     }
 
-    private string? TryLoadPersistedMachineId()
-    {
-        try
-        {
-            if (!File.Exists(_machineIdentityPath))
-            {
-                return null;
-            }
-
-            var protectedValue = File.ReadAllBytes(_machineIdentityPath);
-            var value = Encoding.UTF8.GetString(
-                    ProtectedData.Unprotect(
-                        protectedValue,
-                        MachineIdentityEntropy,
-                        DataProtectionScope.LocalMachine))
-                .Trim()
-                .ToUpperInvariant();
-            return IsMachineId(value) ? value : null;
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    private void TryPersistMachineId(string machineId)
-    {
-        try
-        {
-            var directory = Path.GetDirectoryName(_machineIdentityPath);
-            if (string.IsNullOrWhiteSpace(directory))
-            {
-                return;
-            }
-
-            Directory.CreateDirectory(directory);
-            var protectedValue = ProtectedData.Protect(
-                Encoding.UTF8.GetBytes(machineId),
-                MachineIdentityEntropy,
-                DataProtectionScope.LocalMachine);
-            using var stream = new FileStream(
-                _machineIdentityPath,
-                FileMode.CreateNew,
-                FileAccess.Write,
-                FileShare.Read);
-            stream.Write(protectedValue);
-        }
-        catch (IOException)
-        {
-        }
-        catch (UnauthorizedAccessException)
-        {
-        }
-    }
-
-    private static bool IsMachineId(string value)
-    {
-        var parts = value.Split('-');
-        return parts.Length == 9 &&
-            string.Equals(parts[0], "FLX", StringComparison.Ordinal) &&
-            parts[1..].All(part => part.Length == 4 && part.All(Uri.IsHexDigit));
-    }
-
-    private static IEnumerable<string> GetPhysicalMacAddresses()
-    {
-        try
-        {
-            return NetworkInterface.GetAllNetworkInterfaces()
-                .Where(networkInterface => networkInterface.NetworkInterfaceType != NetworkInterfaceType.Loopback)
-                .Where(networkInterface => networkInterface.OperationalStatus == OperationalStatus.Up)
-                .Select(networkInterface => networkInterface.GetPhysicalAddress().ToString())
-                .Where(address => !string.IsNullOrWhiteSpace(address))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .OrderBy(address => address, StringComparer.OrdinalIgnoreCase)
-                .ToArray();
-        }
-        catch
-        {
-            return Array.Empty<string>();
-        }
-    }
 }

@@ -1,4 +1,4 @@
-﻿using System.Security.Cryptography;
+using System.Security.Cryptography;
 using FluxRAM.App.Licensing;
 using Xunit;
 
@@ -39,6 +39,37 @@ public sealed class LicenseKeyVerifierTests
     }
 
     [Fact]
+    public void VerifyClaims_AcceptsValidPayloadWithoutTreatingItAsMachineAuthorization()
+    {
+        using var rsa = RSA.Create(2048);
+        var verifier = new LicenseKeyVerifier(ExportPublicKeyPem(rsa));
+        var licenseKey = LicenseKeyVerifier.CreateSignedLicenseKey(
+            new LicensePayload(1, "FluxRAM", "Pro", "FLX-OTHER-MACHINE", DateTimeOffset.UtcNow),
+            rsa);
+
+        var result = verifier.VerifyClaims(licenseKey);
+
+        Assert.True(result.IsValid);
+        Assert.Equal("FLX-OTHER-MACHINE", result.Payload?.MachineId);
+        Assert.False(verifier.Verify(licenseKey, "FLX-LOCAL-MACHINE").IsValid);
+    }
+
+    [Fact]
+    public void Verify_RejectsUnsupportedPayloadVersionEvenWhenSignatureIsValid()
+    {
+        using var rsa = RSA.Create(2048);
+        var verifier = new LicenseKeyVerifier(ExportPublicKeyPem(rsa));
+        var licenseKey = LicenseKeyVerifier.CreateSignedLicenseKey(
+            new LicensePayload(2, "FluxRAM", "Pro", "FLX-ABCD-1234", DateTimeOffset.UtcNow),
+            rsa);
+
+        var result = verifier.VerifyClaims(licenseKey);
+
+        Assert.False(result.IsValid);
+        Assert.Equal(LicenseVerificationFailure.UnsupportedVersion, result.Failure);
+    }
+
+    [Fact]
     public void Verify_RejectsLicenseForAnotherMachine()
     {
         using var rsa = RSA.Create(2048);
@@ -51,6 +82,20 @@ public sealed class LicenseKeyVerifierTests
 
         Assert.False(result.IsValid);
         Assert.Equal(LicenseVerificationFailure.MachineMismatch, result.Failure);
+    }
+
+    [Fact]
+    public void VerifyClaims_RejectsWrongProductAndEdition()
+    {
+        using var rsa = RSA.Create(2048);
+        var verifier = new LicenseKeyVerifier(ExportPublicKeyPem(rsa));
+        var wrongProduct = LicenseKeyVerifier.CreateSignedLicenseKey(
+            new LicensePayload(1, "Other", "Pro", "FLX-ABCD-1234", DateTimeOffset.UtcNow), rsa);
+        var wrongEdition = LicenseKeyVerifier.CreateSignedLicenseKey(
+            new LicensePayload(1, "FluxRAM", "Free", "FLX-ABCD-1234", DateTimeOffset.UtcNow), rsa);
+
+        Assert.Equal(LicenseVerificationFailure.WrongProduct, verifier.VerifyClaims(wrongProduct).Failure);
+        Assert.Equal(LicenseVerificationFailure.WrongEdition, verifier.VerifyClaims(wrongEdition).Failure);
     }
 
     [Fact]

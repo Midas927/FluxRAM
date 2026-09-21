@@ -26,8 +26,15 @@ public sealed class DesktopReadabilityTests
         {
             MainWindow? window = null;
             string? settingsFolder = null;
+            string? testDataRoot = null;
+            IDisposable? pathScope = null;
+            Exception? completionError = null;
             try
             {
+                testDataRoot = Path.Combine(Path.GetTempPath(), "FluxRAM.Tests", Guid.NewGuid().ToString("N"));
+                pathScope = AppDataPaths.UseTestRoots(
+                    Path.Combine(testDataRoot, "CommonAppData"),
+                    Path.Combine(testDataRoot, "LocalAppData"));
                 var app = new System.Windows.Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
                 AssertGaugeRendering();
                 window = new MainWindow(isUiPreview: true);
@@ -137,6 +144,81 @@ public sealed class DesktopReadabilityTests
                 Assert.Same(previousDetails, vm.BoostDetails);
                 Assert.Equal(previousBoostAt, GetField(window, "_lastBoostAt"));
                 Assert.Equal("+300.0 MB", vm.LastBoostTrimmedValue);
+
+                var originalLicenseStatus = (LicenseStatus)GetField(window, "_licenseStatus")!;
+                SetField(window, "_licenseStatus", new LicenseStatus(
+                    originalLicenseStatus.MachineId,
+                    AppEditionCatalog.For(AppEdition.Pro),
+                    false,
+                    "Legacy session",
+                    LicenseVerificationFailure.LegacyKeyRequiresReplacement));
+                var licenseKeyTextBox = (TextBox)window.FindName("LicenseKeyTextBox");
+                licenseKeyTextBox.Text = "invalid replacement";
+                Invoke(
+                    window,
+                    "ActivateProButton_OnClick",
+                    window.FindName("ActivateProButton"),
+                    new RoutedEventArgs(Button.ClickEvent));
+                Assert.Equal(
+                    AppEdition.Pro,
+                    ((LicenseStatus)GetField(window, "_licenseStatus")!).Features.Edition);
+                Assert.Contains(
+                    "valid only for this session",
+                    (string)Invoke(
+                        window,
+                        "LocalizeLicenseMessage",
+                        "Legacy session",
+                        LicenseVerificationFailure.LegacyKeyRequiresReplacement)!);
+
+                SetField(window, "_licenseStatus", new LicenseStatus(
+                    originalLicenseStatus.MachineId,
+                    AppEditionCatalog.For(AppEdition.Free),
+                    false,
+                    "Stored legacy key",
+                    LicenseVerificationFailure.LegacyKeyRequiresReplacement));
+                var storedLegacyMessage = (string)Invoke(
+                    window,
+                    "LocalizeLicenseMessage",
+                    "Stored legacy key",
+                    LicenseVerificationFailure.LegacyKeyRequiresReplacement)!;
+                Assert.Contains("stored legacy Pro key", storedLegacyMessage);
+                Assert.DoesNotContain("valid only for this session", storedLegacyMessage);
+                SetField(window, "_uiLanguage", UiLanguage.ChineseSimplified);
+                Assert.StartsWith(
+                    "检测到已保存的旧版 Key",
+                    (string)Invoke(
+                        window,
+                        "LocalizeLicenseMessage",
+                        "Stored legacy key",
+                        LicenseVerificationFailure.LegacyKeyRequiresReplacement)!);
+                SetField(window, "_uiLanguage", UiLanguage.English);
+
+                SetField(window, "_licenseStatus", new LicenseStatus(
+                    originalLicenseStatus.MachineId,
+                    AppEditionCatalog.For(AppEdition.Free),
+                    false,
+                    "Legacy identity unavailable",
+                    LicenseVerificationFailure.LegacyIdentityUnavailable));
+                var unavailableLegacyMessage = (string)Invoke(
+                    window,
+                    "LocalizeLicenseMessage",
+                    "Legacy identity unavailable",
+                    LicenseVerificationFailure.LegacyIdentityUnavailable)!;
+                Assert.Contains("cannot be verified", unavailableLegacyMessage);
+                Assert.DoesNotContain("use Pro for this session", unavailableLegacyMessage);
+                SetField(window, "_uiLanguage", UiLanguage.ChineseSimplified);
+                Assert.StartsWith(
+                    "无法验证旧机器标识",
+                    (string)Invoke(
+                        window,
+                        "LocalizeLicenseMessage",
+                        "Legacy identity unavailable",
+                        LicenseVerificationFailure.LegacyIdentityUnavailable)!);
+                SetField(window, "_uiLanguage", UiLanguage.English);
+
+                SetField(window, "_licenseStatus", originalLicenseStatus);
+                licenseKeyTextBox.Text = string.Empty;
+                Invoke(window, "ApplyEditionUi");
 
                 // Only preview windows and synthetic candidates are used; no purge is executed.
                 tabs.SelectedIndex = 0;
@@ -267,7 +349,6 @@ public sealed class DesktopReadabilityTests
                 Choose("Later");
                 CheckUpdates(false);
                 Assert.Equal(4, responses.Count);
-                completion.SetResult();
 
                 void Choose(string label) => Dispatcher.CurrentDispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, new Action(() =>
                 {
@@ -288,12 +369,24 @@ public sealed class DesktopReadabilityTests
                     task.GetAwaiter().GetResult();
                 }
             }
-            catch (Exception ex) { completion.SetException(ex); }
+            catch (Exception ex) { completionError = ex; }
             finally
             {
-                if (window is not null) { SetField(window, "_isExitRequested", true); window.Close(); }
-                System.Windows.Application.Current?.Shutdown();
-                if (settingsFolder is not null && Directory.Exists(settingsFolder)) Directory.Delete(settingsFolder, true);
+                try
+                {
+                    if (window is not null) { SetField(window, "_isExitRequested", true); window.Close(); }
+                    System.Windows.Application.Current?.Shutdown();
+                    pathScope?.Dispose();
+                    if (settingsFolder is not null && Directory.Exists(settingsFolder)) Directory.Delete(settingsFolder, true);
+                    if (testDataRoot is not null && Directory.Exists(testDataRoot)) Directory.Delete(testDataRoot, true);
+                }
+                catch (Exception ex)
+                {
+                    completionError ??= ex;
+                }
+
+                if (completionError is null) completion.SetResult();
+                else completion.SetException(completionError);
             }
         });
         thread.SetApartmentState(ApartmentState.STA);

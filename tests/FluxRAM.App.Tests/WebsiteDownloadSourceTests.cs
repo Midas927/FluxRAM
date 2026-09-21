@@ -5,9 +5,9 @@ namespace FluxRAM.App.Tests;
 public sealed class WebsiteDownloadSourceTests
 {
     private const string GitCodeReleaseBase =
-        "https://gitcode.com/Midas927/FluxRAM/releases/download/v0.4.2/";
+        "https://gitcode.com/Midas927/FluxRAM/releases/download/v0.4.3/";
     private const string GitHubReleaseBase =
-        "https://github.com/Midas927/FluxRAM/releases/download/v0.4.2/";
+        "https://github.com/Midas927/FluxRAM/releases/download/v0.4.3/";
 
     [Fact]
     public void Website_UsesGitCodeForPrimaryDownloadsAndKeepsGitHubFallbacks()
@@ -22,7 +22,7 @@ public sealed class WebsiteDownloadSourceTests
         Assert.Contains(GitHubReleaseBase + "FluxRAM-Lite-Windows-x64.zip", html);
         Assert.Contains("国内下载", html);
         Assert.Contains("GitHub 备用", html);
-        Assert.Contains("https://gitcode.com/Midas927/FluxRAM/releases/v0.4.2", html);
+        Assert.Contains("https://gitcode.com/Midas927/FluxRAM/releases/v0.4.3", html);
         Assert.DoesNotContain("https://gitcode.com/Midas927/FluxRAM/releases/tag/", html);
     }
 
@@ -36,7 +36,7 @@ public sealed class WebsiteDownloadSourceTests
         Assert.Contains("后台状态", html);
         Assert.DoesNotContain("BACKGROUND FRAGMENTS", html);
         Assert.DoesNotContain("memory-field-manual", html);
-        Assert.Contains("FluxRAM 0.4.2", html);
+        Assert.Contains("FluxRAM 0.4.3", html);
         Assert.Contains("先判断，再释放。", html);
         Assert.Contains("普通 Boost 不替你关闭应用。", html);
         Assert.Contains("深度释放", html);
@@ -64,14 +64,14 @@ public sealed class WebsiteDownloadSourceTests
     public void PublicReadmesAndReleaseNotesUseGitCodeRoutes()
     {
         var root = Directory.GetParent(Path.GetDirectoryName(FindWebsiteIndex())!)!.FullName;
-        foreach (var relative in new[] { "README.md", "README.en.md", "docs/releases/v0.4.2.md" })
+        foreach (var relative in new[] { "README.md", "README.en.md", "docs/releases/v0.4.3.md" })
         {
             var text = File.ReadAllText(Path.Combine(root, relative));
-            Assert.Contains("https://gitcode.com/Midas927/FluxRAM/releases/v0.4.2", text);
+            Assert.Contains("https://gitcode.com/Midas927/FluxRAM/releases/v0.4.3", text);
             Assert.DoesNotContain("https://gitcode.com/Midas927/FluxRAM/releases/tag/", text);
             if (relative.StartsWith("README", StringComparison.Ordinal))
                 Assert.Contains("[" + (relative == "README.md" ? "国内下载（GitCode）" : "China mirror (GitCode)") +
-                    "](https://gitcode.com/Midas927/FluxRAM/releases/download/v0.4.2/FluxRAM-Portable-Windows-x64.zip)", text);
+                    "](https://gitcode.com/Midas927/FluxRAM/releases/download/v0.4.3/FluxRAM-Portable-Windows-x64.zip)", text);
         }
     }
 }

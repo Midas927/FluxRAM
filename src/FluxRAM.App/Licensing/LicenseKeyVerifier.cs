@@ -16,9 +16,14 @@ public enum LicenseVerificationFailure
     None,
     Malformed,
     InvalidSignature,
+    UnsupportedVersion,
     WrongProduct,
     WrongEdition,
-    MachineMismatch
+    MachineMismatch,
+    LegacyKeyRequiresReplacement,
+    LegacyIdentityUnavailable,
+    StorageError,
+    HardwareUnavailable
 }
 
 public sealed record LicenseVerificationResult(
@@ -63,6 +68,22 @@ public sealed class LicenseKeyVerifier
 
     public LicenseVerificationResult Verify(string licenseKey, string currentMachineId)
     {
+        var claims = VerifyClaims(licenseKey);
+        if (!claims.IsValid || claims.Payload is null)
+        {
+            return claims;
+        }
+
+        return string.Equals(
+            NormalizeMachineId(claims.Payload.MachineId),
+            NormalizeMachineId(currentMachineId),
+            StringComparison.Ordinal)
+            ? claims
+            : LicenseVerificationResult.Invalid(LicenseVerificationFailure.MachineMismatch);
+    }
+
+    public LicenseVerificationResult VerifyClaims(string licenseKey)
+    {
         try
         {
             var normalized = NormalizeLicenseKey(licenseKey);
@@ -71,19 +92,15 @@ public sealed class LicenseKeyVerifier
                 return LicenseVerificationResult.Invalid(LicenseVerificationFailure.Malformed);
             }
 
-            var parts = normalized[LicensePrefix.Length..].Split('.', StringSplitOptions.RemoveEmptyEntries);
-            if (parts.Length != 2)
+            var parts = normalized[LicensePrefix.Length..].Split('.');
+            if (parts.Length != 2 || parts.Any(string.IsNullOrEmpty))
             {
                 return LicenseVerificationResult.Invalid(LicenseVerificationFailure.Malformed);
             }
 
             var payloadBytes = DecodeBase64Url(parts[0]);
             var signatureBytes = DecodeBase64Url(parts[1]);
-            var isSignatureValid = _trustedPublicKeys.Any(publicKey => VerifySignature(
-                payloadBytes,
-                signatureBytes,
-                publicKey));
-            if (!isSignatureValid)
+            if (!_trustedPublicKeys.Any(publicKey => VerifySignature(payloadBytes, signatureBytes, publicKey)))
             {
                 return LicenseVerificationResult.Invalid(LicenseVerificationFailure.InvalidSignature);
             }
@@ -94,6 +111,11 @@ public sealed class LicenseKeyVerifier
                 return LicenseVerificationResult.Invalid(LicenseVerificationFailure.Malformed);
             }
 
+            if (payload.Version != 1)
+            {
+                return LicenseVerificationResult.Invalid(LicenseVerificationFailure.UnsupportedVersion);
+            }
+
             if (!string.Equals(payload.Product, ProductId, StringComparison.Ordinal))
             {
                 return LicenseVerificationResult.Invalid(LicenseVerificationFailure.WrongProduct);
@@ -102,14 +124,6 @@ public sealed class LicenseKeyVerifier
             if (!string.Equals(payload.Edition, "Pro", StringComparison.OrdinalIgnoreCase))
             {
                 return LicenseVerificationResult.Invalid(LicenseVerificationFailure.WrongEdition);
-            }
-
-            if (!string.Equals(
-                    NormalizeMachineId(payload.MachineId),
-                    NormalizeMachineId(currentMachineId),
-                    StringComparison.Ordinal))
-            {
-                return LicenseVerificationResult.Invalid(LicenseVerificationFailure.MachineMismatch);
             }
 
             return LicenseVerificationResult.Valid(payload);

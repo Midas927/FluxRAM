@@ -1,10 +1,22 @@
-﻿using System.IO;
+using System.IO;
 using System.Text;
 
 namespace FluxRAM.App.Licensing;
 
+public enum LicenseActivationReadState
+{
+    Missing,
+    Success,
+    Error
+}
+
+public sealed record LicenseActivationReadResult(
+    LicenseActivationReadState State,
+    string? LicenseKey);
+
 public sealed class LicenseActivationStore
 {
+    private static readonly Encoding Utf8WithoutBom = new UTF8Encoding(false);
     private readonly string _licenseKeyPath;
 
     public LicenseActivationStore()
@@ -17,37 +29,74 @@ public sealed class LicenseActivationStore
         _licenseKeyPath = licenseKeyPath;
     }
 
-    public string? Load()
+    public LicenseActivationReadResult Read()
     {
         try
         {
+            if (Directory.Exists(_licenseKeyPath))
+            {
+                return new LicenseActivationReadResult(LicenseActivationReadState.Error, null);
+            }
+
             if (!File.Exists(_licenseKeyPath))
             {
-                return null;
+                return new LicenseActivationReadResult(LicenseActivationReadState.Missing, null);
             }
 
             var licenseKey = File.ReadAllText(_licenseKeyPath, Encoding.UTF8).Trim();
-            return licenseKey.Length == 0 ? null : licenseKey;
+            return licenseKey.Length == 0
+                ? new LicenseActivationReadResult(LicenseActivationReadState.Error, null)
+                : new LicenseActivationReadResult(LicenseActivationReadState.Success, licenseKey);
         }
         catch
         {
-            return null;
+            return new LicenseActivationReadResult(LicenseActivationReadState.Error, null);
         }
     }
 
-    public void Save(string licenseKey)
+    public string? Load()
+    {
+        var result = Read();
+        return result.State == LicenseActivationReadState.Success ? result.LicenseKey : null;
+    }
+
+    public bool Save(string licenseKey)
     {
         if (string.IsNullOrWhiteSpace(licenseKey))
         {
-            return;
+            return false;
         }
 
-        var directory = Path.GetDirectoryName(_licenseKeyPath);
-        if (!string.IsNullOrWhiteSpace(directory))
+        string? temporaryPath = null;
+        try
         {
-            Directory.CreateDirectory(directory);
-        }
+            var directory = Path.GetDirectoryName(_licenseKeyPath);
+            if (!string.IsNullOrWhiteSpace(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
 
-        File.WriteAllText(_licenseKeyPath, licenseKey.Trim(), Encoding.UTF8);
+            temporaryPath = _licenseKeyPath + "." + Guid.NewGuid().ToString("N") + ".tmp";
+            File.WriteAllText(temporaryPath, licenseKey.Trim(), Utf8WithoutBom);
+            File.Move(temporaryPath, _licenseKeyPath, overwrite: true);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+        finally
+        {
+            if (temporaryPath is not null)
+            {
+                try
+                {
+                    File.Delete(temporaryPath);
+                }
+                catch
+                {
+                }
+            }
+        }
     }
 }

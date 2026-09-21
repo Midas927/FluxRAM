@@ -881,19 +881,43 @@ public partial class MainWindow : Window
 
     private void ActivateProButton_OnClick(object sender, RoutedEventArgs e)
     {
-        _licenseStatus = _licenseManager.Activate(LicenseKeyTextBox.Text);
-        if (_licenseStatus.Features.Edition == AppEdition.Pro)
+        var previousStatus = _licenseStatus;
+        var activationStatus = _licenseManager.Activate(LicenseKeyTextBox.Text);
+        _licenseStatus = activationStatus.Features.Edition == AppEdition.Pro ||
+                         previousStatus.Features.Edition != AppEdition.Pro
+            ? activationStatus
+            : previousStatus;
+
+        if (activationStatus.Features.Edition == AppEdition.Pro && activationStatus.IsActivated)
         {
             LicenseKeyTextBox.Text = string.Empty;
             _viewModel.AddEvent(T(
                 "Pro edition activated for this computer.",
                 "此电脑已永久激活专业版。"));
         }
+        else if (activationStatus.Failure == LicenseVerificationFailure.LegacyIdentityUnavailable)
+        {
+            _viewModel.AddEvent(T(
+                "The previous machine identifier cannot be verified. Request a replacement key for the current Machine ID.",
+                "无法验证旧机器标识，请按当前机器标识申请换发新 Key。"));
+        }
+        else if (activationStatus.Failure == LicenseVerificationFailure.LegacyKeyRequiresReplacement)
+        {
+            _viewModel.AddEvent(T(
+                "This legacy Pro key is valid only for this session. Request a replacement key for the current Machine ID.",
+                "旧版 Key 仅在本次运行中有效，请按当前机器标识申请换发新 Key。"));
+        }
+        else if (activationStatus.Features.Edition == AppEdition.Pro)
+        {
+            _viewModel.AddEvent(T(
+                "Pro is available for this session, but activation could not be saved.",
+                "本次运行可使用专业版，但激活状态未能保存。"));
+        }
         else
         {
             _viewModel.AddEvent(T(
-                $"Pro activation failed: {_licenseStatus.Failure}.",
-                $"专业版激活失败：{_licenseStatus.Failure}。"));
+                $"Pro activation failed: {activationStatus.Failure}.",
+                $"专业版激活失败：{activationStatus.Failure}。"));
         }
 
         ApplyEditionUi();
@@ -1463,10 +1487,11 @@ public partial class MainWindow : Window
 
     private void UpdateLicenseUi()
     {
-        var isPro = _licenseStatus.Features.Edition == AppEdition.Pro;
+        var isPersistentlyActivated =
+            _licenseStatus.Features.Edition == AppEdition.Pro && _licenseStatus.IsActivated;
         MachineIdTextBox.Text = _licenseStatus.MachineId;
-        LicenseKeyTextBox.IsEnabled = !isPro;
-        ActivateProButton.IsEnabled = !isPro;
+        LicenseKeyTextBox.IsEnabled = !isPersistentlyActivated;
+        ActivateProButton.IsEnabled = !isPersistentlyActivated;
         LicenseStatusTextBlock.Text = LocalizeLicenseMessage(_licenseStatus.Message, _licenseStatus.Failure);
     }
 
@@ -2705,18 +2730,42 @@ public partial class MainWindow : Window
     {
         if (_uiLanguage is not (UiLanguage.ChineseSimplified or UiLanguage.ChineseTraditional))
         {
-            return failure == LicenseVerificationFailure.None ? message : $"{message} ({failure})";
+            return failure switch
+            {
+                LicenseVerificationFailure.LegacyIdentityUnavailable =>
+                    "The previous machine identifier cannot be verified. Request a replacement key for the current Machine ID.",
+                LicenseVerificationFailure.LegacyKeyRequiresReplacement
+                    when _licenseStatus.Features.Edition == AppEdition.Pro =>
+                    "This legacy Pro key is valid only for this session. Request a replacement key for the current Machine ID.",
+                LicenseVerificationFailure.LegacyKeyRequiresReplacement =>
+                    "A stored legacy Pro key was detected. Enter it to use Pro for this session, or request a replacement key for the current Machine ID.",
+                LicenseVerificationFailure.None => message,
+                _ => $"{message} ({failure})"
+            };
         }
 
         return failure switch
         {
+            LicenseVerificationFailure.None when _licenseStatus.Features.Edition == AppEdition.Pro &&
+                                                       _licenseStatus.IsActivated =>
+                "此电脑已永久激活专业版。",
             LicenseVerificationFailure.None when _licenseStatus.Features.Edition == AppEdition.Pro =>
-                _licenseStatus.IsActivated ? "此电脑已永久激活专业版。" : "当前构建为专业版。",
+                "本次运行可使用专业版，但激活状态未持久化。",
             LicenseVerificationFailure.None => "普通版。输入专业版 Key 可激活 FluxRAM Pro。",
-            LicenseVerificationFailure.MachineMismatch => "Key 不属于当前电脑。",
+            LicenseVerificationFailure.MachineMismatch => "Key 不属于当前电脑，需要人工换发。",
+            LicenseVerificationFailure.LegacyIdentityUnavailable =>
+                "无法验证旧机器标识，请按当前机器标识申请换发新 Key。",
+            LicenseVerificationFailure.LegacyKeyRequiresReplacement
+                when _licenseStatus.Features.Edition == AppEdition.Pro =>
+                "旧版 Key 仅在本次运行中有效，请按当前机器标识申请换发新 Key。",
+            LicenseVerificationFailure.LegacyKeyRequiresReplacement =>
+                "检测到已保存的旧版 Key。请重新输入以在本次运行中使用专业版，或按当前机器标识申请换发新 Key。",
             LicenseVerificationFailure.InvalidSignature => "Key 签名无效。",
+            LicenseVerificationFailure.UnsupportedVersion => "Key 版本不受支持。",
             LicenseVerificationFailure.WrongProduct => "Key 不属于 FluxRAM。",
             LicenseVerificationFailure.WrongEdition => "Key 不是专业版授权。",
+            LicenseVerificationFailure.StorageError => "授权文件读写失败，激活状态未能持久化。",
+            LicenseVerificationFailure.HardwareUnavailable => "无法读取稳定机器标识，请检查系统硬件信息。",
             _ => "Key 格式无效。"
         };
     }
